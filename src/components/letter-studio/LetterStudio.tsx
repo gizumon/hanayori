@@ -21,20 +21,26 @@ export function LetterStudio() {
     return <div className={styles.root} />;
   }
 
-  const geometry = api.geom(cardConf, THEMES[api.state.draft.theme || "rose"].rule);
+  const geometry = cardConf
+    ? api.geom(cardConf, THEMES[state.draft.theme || "rose"].rule)
+    : null;
 
   return (
     <div className={styles.root}>
-      {state.screen === "login" && <LoginScreen onLogin={() => api.go("home")} />}
+      {state.screen === "login" && <LoginScreen />}
 
       {state.screen !== "login" && (
         <>
-          <AppHeader onLogout={() => api.go("login")} />
+          <AppHeader
+            userName={state.userName}
+            onLogout={() => api.logout()}
+            onUpdateName={api.updateNickname}
+          />
 
           {state.screen === "home" && (
             <HomeScreen
               projects={state.projects}
-              onOpen={(id) => api.go("project", { curP: id })}
+              onOpen={(id) => api.openProject(id)}
               onNew={() => api.setModalShown(true)}
             />
           )}
@@ -42,25 +48,28 @@ export function LetterStudio() {
           {state.screen === "project" && curProject && (
             <ProjectScreen
               project={curProject}
+              letters={state.letters}
               projTab={state.projTab}
               onProjTabChange={api.setProjTab}
-              onBack={() => api.go("home")}
+              onBack={api.goHome}
               onNewLetter={api.newLetter}
               onEditLetter={api.editLetter}
               onShowQr={(l) => api.setQrModal(l)}
               onCopyLink={api.copyLink}
+              onDeleteLetter={(l) => api.deleteLetter(l.id)}
+              deletingLetter={api.deletingLetter}
               letterUrl={api.letterUrl}
               cardNameFor={api.cardNameFor}
               onChangeName={(name) => api.updateProject({ name })}
               onChangeDate={(date) => api.updateProject({ date })}
-              onToggleHasDate={(hasDate) => api.updateProject({ noDate: !hasDate })}
+              onToggleHasDate={(hasDate) => api.updateProject({ date: hasDate ? curProject.date || "" : null })}
               onToggleCardEnabled={(enabled) => api.updateProject({ cardEnabled: enabled })}
               onSetFont={(font) => api.updateProject({ font })}
               onGoCardSettings={api.goCardSettings}
             />
           )}
 
-          {state.screen === "editor" && curProject && (
+          {state.screen === "editor" && curProject && cardConf && geometry && (
             <EditorScreen
               project={curProject}
               draft={state.draft}
@@ -77,15 +86,14 @@ export function LetterStudio() {
               onChangeCardName={(cardName) => api.setDraft({ cardName })}
               onSetHonor={(honor) => api.setDraft({ honor })}
               onSetTheme={(theme) => api.setDraft({ theme })}
-              onUploadPhoto={api.upPhoto}
-              onRemovePhoto={() => api.setDraft({ photo: null })}
               onGoCard={() => api.go("card")}
               onSave={api.saveLetter}
+              saving={api.savingLetter}
               letterUrl={state.draft.id ? api.letterUrl(state.draft.id) : "#"}
             />
           )}
 
-          {state.screen === "card" && curProject && (
+          {state.screen === "card" && curProject && cardConf && geometry && (
             <CardScreen
               project={curProject}
               draft={state.draft}
@@ -116,10 +124,11 @@ export function LetterStudio() {
           onChangeDate={api.setNewDate}
           onCancel={() => api.setModalShown(false)}
           onCreate={api.createProject}
+          creating={api.creatingProject}
         />
       )}
 
-      {state.qrModal && curProject && (
+      {state.qrModal && curProject && cardConf && (
         <QrModal
           paper={THEMES[state.qrModal.theme].paper}
           accent={THEMES[state.qrModal.theme].accent}
@@ -132,10 +141,7 @@ export function LetterStudio() {
           cardName={api.cardNameFor(state.qrModal)}
           heading={cardConf.heading}
           note={cardConf.note}
-          footText={
-            curProject.name +
-            (!curProject.noDate && curProject.date ? ` ・ ${curProject.date}` : "")
-          }
+          footText={curProject.name + (curProject.date ? ` ・ ${curProject.date}` : "")}
           qrUrl={api.letterUrl(state.qrModal.id)}
           onClose={() => api.setQrModal(null)}
         />

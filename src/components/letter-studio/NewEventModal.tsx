@@ -10,6 +10,7 @@ interface NewEventModalProps {
   onChangeDate: (v: string) => void;
   onCancel: () => void;
   onCreate: () => void;
+  creating: boolean;
 }
 
 export function NewEventModal({
@@ -19,6 +20,7 @@ export function NewEventModal({
   onChangeDate,
   onCancel,
   onCreate,
+  creating,
 }: NewEventModalProps) {
   return (
     <div
@@ -107,6 +109,7 @@ export function NewEventModal({
           <button
             type="button"
             onClick={onCreate}
+            disabled={creating}
             className={styles.btnSolid}
             style={{
               padding: "10px 22px",
@@ -116,9 +119,11 @@ export function NewEventModal({
               color: "#FFF9F5",
               fontSize: 13,
               letterSpacing: "0.06em",
+              opacity: creating ? 0.6 : 1,
+              cursor: creating ? "default" : "pointer",
             }}
           >
-            作成する
+            {creating ? "作成中…" : "作成する"}
           </button>
         </div>
       </div>

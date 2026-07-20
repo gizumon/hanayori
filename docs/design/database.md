@@ -7,16 +7,19 @@
 - イベント内の**お手紙**には **ULID** が発行され、`/letter/{ulid}` の URL を知っていれば**ログイン不要で誰でも閲覧**できる(推測困難な URL による限定公開)。
 - 写真バイナリは Firestore に置かず **Cloud Storage** に保存する(1 ドキュメント 1MiB 制限のため)。
 
-### アクセス経路の整理
+### アクセス経路の整理(実装済み)
 
-正規化を保ったまま(手紙側に日付・フォントを複製せずに)ゲスト閲覧を成立させるため、アクセス経路を 2 系統に分ける。
+**Firestore への読み書きはすべて Next.js サーバー(Route Handler + Admin SDK)経由に統一した。** クライアント(ブラウザ)は Firestore に直接触れない。理由は 2 つ:
+
+1. 正規化を保ったまま(手紙側に日付・フォントを複製せずに)ゲスト閲覧を成立させるため。手紙 → イベントの参照解決はサーバーが行う。
+2. stg/prod が同一 Firestore を共有し、コレクション名の環境プレフィックス(`dev_` / `stg_` / `prod_`、[§9](#9-実装メモ環境プレフィックスとセッション認証) 参照)で分離する設計上、この判定は **Cloud Run のランタイム環境変数**(`APP_ENV`)で行う必要がある。Next.js の `NEXT_PUBLIC_*` はビルド時に静的埋め込みされる([Dockerfile](../../Dockerfile) 参照)ため、ブラウザ側では環境を判定できない。サーバーに寄せることでこの問題を回避している。
 
 | 経路 | 対象 | 認可 |
 | --- | --- | --- |
-| **クライアント SDK** | スタジオ(編集画面)の読み書き | Firestore セキュリティルール(メンバーのみ) |
-| **Next.js サーバー(Admin SDK)** | ゲストの手紙閲覧 `/letter/{ulid}`、招待の受諾、写真の署名付き URL 発行 | サーバー側コードで検証(ルールはバイパス) |
+| **ブラウザ → Route Handler**(`fetch`) | スタジオ(ログイン中の編集画面)の読み書き全般 | Firebase Auth の ID トークンから発行した **httpOnly セッションクッキー**をサーバーが検証し、`memberUids` を手動チェック |
+| **Next.js サーバー(Admin SDK)** | 上記に加え、ゲストの手紙閲覧 `/letter/{ulid}`、招待リンクの受諾(未実装) | サーバー側コードで検証(Admin SDK は Firestore セキュリティルールをバイパスする) |
 
-ゲストは Firestore に直接アクセスしない。したがってルール上は**全コレクションをメンバー限定に保てる**。手紙 → イベントの参照解決(日付・フォント・イベント名)はサーバーが行うため、非正規化が不要になり不整合も起きない。
+Admin SDK は常にルールをバイパスするため、`firestore.rules` はこの用途では実行されない。ルールは「将来クライアントから直接 Firestore を叩く経路(例: リアルタイム購読)を足す場合の防御層」として維持している。ルール上のパス(`/events/{eventId}`)は環境プレフィックスなしの前提で書かれている点に注意 — プレフィックス付きコレクションに直接アクセスする経路を追加する場合はルールも合わせて調整すること。
 
 ### 現行クライアント実装との対応
 
@@ -91,7 +94,7 @@ Firebase Authentication の `uid` をキーとするプロフィール。
 
 ### 3.3 `letters/{letterId}`
 
-お手紙。**ドキュメント ID = ULID**(26 文字、時系列ソート可能、推測困難)。ULID はクライアントで発行する。
+お手紙。**ドキュメント ID = ULID**(26 文字、時系列ソート可能、推測困難)。ULID は作成時にサーバー(Route Handler)が発行する — クライアントは `POST /api/events/{eventId}/letters` を叩くだけで、レスポンスで ID を受け取る。
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
@@ -99,27 +102,30 @@ Firebase Authentication の `uid` をキーとするプロフィール。
 | `to` | string | 宛名(例: 「さくらへ」) |
 | `body` | string | 本文 |
 | `theme` | string | `rose` \| `blue` \| `sage` \| `kinari` |
-| `photos` | map[] | 添付写真のリスト(下記)。表示順 = 配列順。現行 UI は 1 枚だが複数枚を許容 |
+| `photos` | map[] | 添付写真のリスト(下記)。表示順 = 配列順。現行 UI は 1 枚だが複数枚を許容できる形にしてある |
 | `cardName` | string \| null | 席札の氏名(null なら宛名から自動生成) |
 | `honor` | string \| null | 手紙個別の敬称。**null = イベント既定に従う**、`様` \| `さん` \| `""`(空文字 = 明示的に敬称なし) |
 | `createdAt` | timestamp | 作成日時 |
 | `updatedAt` | timestamp | 更新日時 |
 
-`photos` 配列の要素:
+`photos` 配列の要素(**暫定実装**。§5 参照):
 
 | キー | 型 | 説明 |
 | --- | --- | --- |
-| `id` | string | 写真 ID(ULID)。Storage パスは `letters/{letterId}/photos/{id}.jpg` に規約で対応 |
-| `ratio` | number | アスペクト比(横/縦) |
+| `id` | string | 写真 ID。将来 Storage へ移行する際もこの ID を Storage パスの一部として使う |
+| `dataUrl` | string | **暫定**: 圧縮済み JPEG の data URL をそのまま格納(Storage バケット未整備のため)。将来はこのキーを署名付き URL 参照に置き換える |
+| `ratio` | number \| null | アスペクト比(横/縦) |
 
 - 挙式日・フォントは**持たない**。イベント側の値が唯一の情報源(single source of truth)で、閲覧時に `eventId` から解決する。設定変更時のファンアウト更新は不要。
-- 読み書きはイベントメンバーのみ(ルール内 `get()` で `eventId` の `memberUids` を判定)。ゲスト閲覧はサーバー経由なのでルールでの公開は不要。
+- 読み書きはイベントメンバーのみ。Route Handler 内でイベントの `memberUids` を確認してから Admin SDK で読み書きする。
 
 必要なインデックス:
 
 - `letters`: `eventId ASC, createdAt ASC`(イベント詳細画面の手紙一覧用)
 
 ## 4. 招待フロー
+
+**未実装**(設計のみ)。`events.inviteToken` フィールドはスキーマに用意済みだが、発行・受諾の API はまだない。
 
 招待は専用コレクションを持たず、**イベントドキュメント上の `inviteToken` 1 フィールド**で実現する。
 
@@ -131,6 +137,8 @@ Firebase Authentication の `uid` をキーとするプロフィール。
 - 有効期限が必要になったら `inviteTokenExpiresAt`(timestamp)を追加する程度の拡張で対応可能。
 
 ## 5. Cloud Storage 構成と写真のアクセス制御
+
+**未整備**(目標設計)。`gizumon-hanayori` プロジェクトには Firebase Storage の既定バケットがまだ作成されておらず、対応する Terraform モジュールもない。バケット作成は Terraform 管理下に置く方針のため、現状は §3.3 の通り `photos[].dataUrl` に圧縮 JPEG を直接埋め込む暫定実装で動いている(1 通あたり写真 1 枚・数十〜150KB 程度に収まる想定で、Firestore の 1MiB ドキュメント上限には余裕がある)。以下は Storage 移行時の目標設計。
 
 ```
 letters/{letterId}/photos/{photoId}.jpg
@@ -206,18 +214,52 @@ service cloud.firestore {
 
 ## 7. 主なアクセスパターン
 
-| 画面 / 操作 | 経路 | クエリ・処理 |
+「経路」は「ブラウザが叩く先」。実装状況の凡例: ✅ 実装済み / ⬜ 未実装(設計のみ)。
+
+| 画面 / 操作 | 経路 | クエリ・処理 | 状態 |
+| --- | --- | --- | --- |
+| ログイン | `POST /api/auth/session` | Firebase Auth の ID トークンを検証し、httpOnly セッションクッキーを発行 | ✅ |
+| イベント一覧(ホーム) | `GET /api/events` | `events.where("memberUids","array-contains",uid).orderBy("createdAt")` + 手紙数を `count()` で集計 | ✅ |
+| イベント作成 | `POST /api/events` | `events` へ `add`(`memberUids: [uid]`) | ✅ |
+| イベント設定変更 | `PATCH /api/events/{eventId}` | メンバー確認 → 部分更新 | ✅ |
+| イベント詳細(手紙一覧) | `GET /api/events/{eventId}/letters` | メンバー確認 → `letters.where("eventId","==",eventId).orderBy("createdAt")` | ✅ |
+| 手紙の作成 | `POST /api/events/{eventId}/letters` | メンバー確認 → ULID 発行 → `letters/{ulid}` へ `set` | ✅ |
+| 手紙の更新 | `PATCH /api/letters/{letterId}` | 手紙 `get` →`eventId` からメンバー確認 → 部分更新 | ✅ |
+| ゲストの手紙閲覧 `/letter/{ulid}` | サーバー SSR | 手紙 `get` → `eventId` からイベント `get`(日付・フォントを解決)。開封アニメーション(`WeddingLetter.dc.html` を移植)付き | ✅ |
+| 招待リンク発行 / 無効化 | サーバー API | 作成者が `inviteToken` を更新 | ⬜ |
+| 招待の受諾 `/join/{token}` | サーバー API | トークン照合 → `memberUids` へ追加 | ⬜ |
+
+## 8. localStorage モックからの移行
+
+本番ユーザーが存在しない段階で Firestore 実装に切り替えたため、データ移行は行っていない(`localStorage` の `wl_studio_v1` / `wl_letters_v1` は単純に読まなくなった)。
+
+## 9. 実装メモ: 環境プレフィックスとセッション認証
+
+### 環境プレフィックス
+
+stg/prod は同一 Firestore データベースを共有する(`infrastructure/environments/10_shared/main.tf` 参照)。コレクション名の先頭に `APP_ENV` から決まるプレフィックスを付けて分離する。
+
+| `APP_ENV` | プレフィックス | 用途 |
 | --- | --- | --- |
-| イベント一覧(ホーム) | クライアント | `events.where("memberUids", "array-contains", uid).orderBy("createdAt")` |
-| イベント詳細(手紙一覧) | クライアント | `letters.where("eventId", "==", eventId).orderBy("createdAt")` |
-| 手紙の保存 | クライアント | `letters/{ulid}` へ `set`(photos 以外) |
-| 写真アップロード | サーバー API | メンバー検証 → Storage 書き込み + `photos[]` 更新 |
-| ゲストの手紙閲覧 `/letter/{ulid}` | サーバー SSR | 手紙 `get` → `eventId` からイベント `get`(日付・フォント・イベント名を解決)→ 写真の署名付き URL 発行 |
-| 招待リンク発行 / 無効化 | クライアント | 作成者が `inviteToken` を更新 |
-| 招待の受諾 `/join/{token}` | サーバー API | トークン照合 → `memberUids` へ追加 |
+| 未設定 / `development` | `dev_` | ローカル開発(`npm run dev`)。実プロジェクト `gizumon-hanayori` の Firestore に書き込むが、stg/prod のコレクションとは名前空間が分かれているため衝突しない |
+| `staging` | `stg_` | Cloud Run stg |
+| `production` | `prod_` | Cloud Run prod |
 
-## 8. 移行メモ(localStorage → Firestore)
+実装は `src/lib/server/env.ts`(`collectionPrefix()`)と `src/lib/server/collections.ts`(`eventsCollection()` / `lettersCollection()`)。
 
-1. 初回ログイン時に `wl_studio_v1` が存在すれば、イベント/手紙を上記スキーマへ変換してアップロードするワンショット移行を行う(手紙 ID は既存の短い乱数 ID から ULID へ振り直し、QR/URL は再生成)。
-2. dataURL 写真は Blob 化して写真アップロード API 経由で Storage へ移す。
-3. 移行完了後に localStorage をクリアし、以降は Firestore を単一の情報源とする(`wl_letters_v1` ミラーは廃止)。
+### セッション認証
+
+- クライアント(`src/lib/firebase/client.ts`, `src/lib/firebase/auth.ts`)は Firebase Auth の Web SDK で Google ポップアップ / メール・パスワードのサインインのみを行う。
+- サインイン成功後、ID トークンを `POST /api/auth/session` に渡し、サーバーが `firebase-admin` の `createSessionCookie()` で httpOnly セッションクッキー(有効期限 14 日)を発行する(`src/lib/server/session.ts`)。以降のすべての `/api/*` リクエストはこのクッキーで認可する。
+- ログアウトは `DELETE /api/auth/session` でクッキーを破棄し、クライアント側でも `signOut()` する。
+- Google ログインは Identity Platform 側で `google.com` プロバイダがまだ有効化されていない(`infrastructure/modules/firebase_auth` の `google_oauth_client_id` が未設定)。GCP Console で OAuth クライアントを手動作成し、`10_shared/terraform.tfvars` に `google_oauth_client_id` / `google_oauth_client_secret` を設定して `terraform apply` するまでは、ログイン画面の Google ボタンはエラーになる。メール/パスワードは Identity Platform 側で有効化済みですぐ使える。
+
+### ローカル開発時の認証情報
+
+`firebase-admin`(Admin SDK)はローカルでは `gcloud auth application-default login` の Application Default Credentials を使う(サービスアカウントキーのファイルは使わない)。Cloud Run 上では Workload Identity(アタッチされたサービスアカウント)を自動的に使う。`.env.local` は `.env.local.example` をコピーして作成し、Firebase Web アプリの設定値(`firebase apps:sdkconfig WEB <appId> --project gizumon-hanayori` で取得可能)を埋める。
+
+### 未実装・今後の課題
+
+- 招待リンクの発行・受諾 API(`events.inviteToken` を使った §4 のフロー)
+- 写真の Cloud Storage 移行(§5)。Storage バケット作成用の Terraform モジュールがまだない
+- リアルタイム更新(現状は各操作後にクライアントが明示的に再取得する方式。複数メンバーが同時編集するケースは考慮していない)

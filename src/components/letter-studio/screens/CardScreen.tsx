@@ -43,7 +43,7 @@ const FRAME_OPTS: { key: CardFrame; label: string }[] = [
 const HONOR_OPTS: { key: Honor; label: string }[] = [
   { key: "様", label: "様" },
   { key: "さん", label: "さん" },
-  { key: "なし", label: "なし" },
+  { key: "", label: "なし" },
 ];
 
 export function CardScreen({
@@ -113,7 +113,7 @@ export function CardScreen({
             cardName={cardName}
             heading={cardConf.heading}
             note={cardConf.note}
-            footText={project.name + (!project.noDate && project.date ? ` ・ ${project.date}` : "")}
+            footText={project.name + (project.date ? ` ・ ${project.date}` : "")}
             qrUrl={qrUrl}
             boxShadow="0 18px 50px rgba(150,110,130,0.25)"
           />

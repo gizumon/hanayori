@@ -1,7 +1,7 @@
 {
   "indexes": [
     {
-      "collectionGroup": "events",
+      "collectionGroup": "dev_events",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "memberUids", "arrayConfig": "CONTAINS" },
@@ -9,7 +9,39 @@
       ]
     },
     {
-      "collectionGroup": "letters",
+      "collectionGroup": "dev_letters",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "eventId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "stg_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "memberUids", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "stg_letters",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "eventId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "prod_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "memberUids", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "prod_letters",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "eventId", "order": "ASCENDING" },

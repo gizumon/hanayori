@@ -1,4 +1,4 @@
-import type { CardConfig, FontKey, ThemeKey } from "./types";
+import type { FontKey, ThemeKey } from "./types";
 
 export const THEMES: Record<
   ThemeKey,
@@ -77,19 +77,3 @@ export const FONTS: Record<FontKey, { label: string; family: string }> = {
   gothic: { label: "ゴシック体", family: "'Zen Kaku Gothic New', sans-serif" },
   maru: { label: "丸ゴシック", family: "'Zen Maru Gothic', sans-serif" },
 };
-
-export const DEMO_BODY =
-  "今日は私たちの結婚式に\n来てくれて本当にありがとう。\n\nさくらの顔を見つけた瞬間、\n緊張がすっとほどけて、\n心から笑うことができました。\n\nこれからもずっと、よろしくね。\n\n花嫁より";
-
-export const DEFAULT_CARD_CONFIG: CardConfig = {
-  orient: "landscape",
-  honor: "様",
-  frame: "line",
-  heading: "WEDDING RECEPTION",
-  note: "スマホで読み取ると\nあなた宛のお手紙が届きます",
-};
-
-export const uid = (): string => Math.random().toString(36).slice(2, 9);
-
-export const STORAGE_KEY = "wl_studio_v1";
-export const LETTERS_MIRROR_KEY = "wl_letters_v1";

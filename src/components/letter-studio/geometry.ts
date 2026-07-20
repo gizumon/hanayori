@@ -1,4 +1,4 @@
-import type { CardConfig, Draft, Honor, Letter } from "./types";
+import type { CardConfig, Draft, Letter } from "./types";
 
 export interface CardGeometry {
   w: string;
@@ -93,13 +93,13 @@ export function geom(cc: CardConfig, rule: string): CardGeometry {
 }
 
 export function cardNameFor(
-  letter: (Draft & { honor?: Honor }) | Letter | null | undefined,
+  letter: Draft | Letter | null | undefined,
   cc: CardConfig
 ): string {
   const base =
     letter?.cardName ||
     (letter?.to ? letter.to.replace(/(さん)?へ$/, "") : "") ||
     "お名前";
-  const honor = letter?.honor || cc.honor;
-  return honor === "なし" ? base : `${base} ${honor}`;
+  const honor = letter?.honor ?? cc.honor;
+  return honor === "" ? base : `${base} ${honor}`;
 }

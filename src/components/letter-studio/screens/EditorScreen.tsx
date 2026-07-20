@@ -1,10 +1,10 @@
 "use client";
 
-import type { ChangeEvent } from "react";
 import { FONTS, THEMES } from "../constants";
 import { fieldStyle } from "../controls";
 import { QrCardFace } from "../QrCardFace";
 import type { CardGeometry } from "../geometry";
+import { withAlpha } from "@/lib/color";
 import styles from "../letter-studio.module.css";
 import type { CardConfig, Draft, EditorTab, Honor, Project } from "../types";
 
@@ -22,12 +22,11 @@ interface EditorScreenProps {
   onChangeTo: (v: string) => void;
   onChangeBody: (v: string) => void;
   onChangeCardName: (v: string) => void;
-  onSetHonor: (h: Honor) => void;
+  onSetHonor: (h: Honor | null) => void;
   onSetTheme: (theme: Draft["theme"]) => void;
-  onUploadPhoto: (file: File) => void;
-  onRemovePhoto: () => void;
   onGoCard: () => void;
   onSave: () => void;
+  saving: boolean;
   letterUrl: string;
 }
 
@@ -47,10 +46,9 @@ export function EditorScreen({
   onChangeCardName,
   onSetHonor,
   onSetTheme,
-  onUploadPhoto,
-  onRemovePhoto,
   onGoCard,
   onSave,
+  saving,
   letterUrl,
 }: EditorScreenProps) {
   const theme = THEMES[draft.theme || "rose"];
@@ -58,12 +56,7 @@ export function EditorScreen({
   const cFont = FONTS[project.cardFont || "mincho"].family;
   const showLetterFields = edTab !== "card" || !cardEnabled;
   const showCardFields = edTab === "card" && cardEnabled;
-  const footText = project.name + (!project.noDate && project.date ? ` ・ ${project.date}` : "");
-
-  const handlePhoto = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) onUploadPhoto(file);
-  };
+  const footText = project.name + (project.date ? ` ・ ${project.date}` : "");
 
   return (
     <main
@@ -168,7 +161,7 @@ export function EditorScreen({
           )}
           {showLetterFields && (
             <div style={{ fontSize: 12, color: "#B4A2A2", letterSpacing: "0.06em" }}>
-              日付はイベントの挙式日({project.noDate ? "" : project.date})が使われます
+              日付はイベントの挙式日({project.date ?? ""})が使われます
             </div>
           )}
 
@@ -204,24 +197,31 @@ export function EditorScreen({
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <span style={{ fontSize: 12.5, letterSpacing: "0.1em", color: "#8C7676" }}>敬称</span>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {(["", "様", "さん", "なし"] as const).map((k) => (
+                  {(
+                    [
+                      { value: null, label: `既定(${cardConf.honor || "なし"})` },
+                      { value: "様", label: "様" },
+                      { value: "さん", label: "さん" },
+                      { value: "", label: "なし" },
+                    ] as const
+                  ).map(({ value, label }) => (
                     <button
-                      key={k || "default"}
+                      key={label}
                       type="button"
-                      onClick={() => onSetHonor(k)}
+                      onClick={() => onSetHonor(value)}
                       className={styles.btnOutline}
                       style={{
                         padding: "8px 14px",
                         borderRadius: 999,
                         fontSize: 12,
                         letterSpacing: "0.05em",
-                        background: (draft.honor || "") === k ? "#D3A5B4" : "#FFFFFF",
-                        color: (draft.honor || "") === k ? "#FFF9F5" : "#5C4A4A",
+                        background: (draft.honor ?? null) === value ? "#D3A5B4" : "#FFFFFF",
+                        color: (draft.honor ?? null) === value ? "#FFF9F5" : "#5C4A4A",
                         border:
-                          (draft.honor || "") === k ? "1px solid #D3A5B4" : "1px solid #EBD9DF",
+                          (draft.honor ?? null) === value ? "1px solid #D3A5B4" : "1px solid #EBD9DF",
                       }}
                     >
-                      {k || `既定(${cardConf.honor})`}
+                      {label}
                     </button>
                   ))}
                 </div>
@@ -320,53 +320,17 @@ export function EditorScreen({
                 <span style={{ fontSize: 12.5, letterSpacing: "0.1em", color: "#8C7676" }}>
                   写真(本文のあとに1枚)
                 </span>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <label
-                    className={styles.btnOutline}
-                    style={{
-                      padding: "10px 18px",
-                      borderRadius: 999,
-                      border: "1px solid #EBD9DF",
-                      background: "#FFFFFF",
-                      fontSize: 12.5,
-                      letterSpacing: "0.06em",
-                      color: "#5C4A4A",
-                    }}
-                  >
-                    写真を選ぶ
-                    <input type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} />
-                  </label>
-                  {draft.photo && (
-                    <>
-                      <div
-                        role="img"
-                        aria-label="添付写真"
-                        style={{
-                          width: 56,
-                          height: 56,
-                          backgroundImage: `url('${draft.photo}')`,
-                          backgroundSize: "cover",
-                          backgroundPosition: "center",
-                          borderRadius: 8,
-                          boxShadow: "0 3px 10px rgba(150,110,130,0.2)",
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={onRemovePhoto}
-                        style={{
-                          border: "none",
-                          background: "none",
-                          color: "#B08A99",
-                          fontSize: 12,
-                          cursor: "pointer",
-                          textDecoration: "underline",
-                        }}
-                      >
-                        削除
-                      </button>
-                    </>
-                  )}
+                <div
+                  style={{
+                    background: "rgba(255,252,248,0.55)",
+                    border: "1px dashed #E3CBD4",
+                    borderRadius: 14,
+                    padding: "14px 18px",
+                    color: "#B4A2A2",
+                    maxWidth: 260,
+                  }}
+                >
+                  <div style={{ fontSize: 13, letterSpacing: "0.08em" }}>Coming soon</div>
                 </div>
               </div>
             </>
@@ -376,6 +340,7 @@ export function EditorScreen({
             <button
               type="button"
               onClick={onSave}
+              disabled={saving}
               className={styles.btnSolid}
               style={{
                 padding: "12px 26px",
@@ -386,9 +351,11 @@ export function EditorScreen({
                 fontSize: 14,
                 letterSpacing: "0.08em",
                 boxShadow: "0 6px 16px rgba(150,110,130,0.28)",
+                opacity: saving ? 0.6 : 1,
+                cursor: saving ? "default" : "pointer",
               }}
             >
-              保存する
+              {saving ? "保存中…" : "保存する"}
             </button>
             <a
               href={letterUrl}
@@ -442,7 +409,7 @@ export function EditorScreen({
                   style={{
                     position: "absolute",
                     inset: 8,
-                    border: `1px solid color-mix(in srgb, ${theme.accent} 38%, transparent)`,
+                    border: `1px solid ${withAlpha(theme.accent, 38)}`,
                     pointerEvents: "none",
                   }}
                 />
@@ -451,7 +418,7 @@ export function EditorScreen({
                   style={{
                     position: "absolute",
                     inset: 11,
-                    border: `1px solid color-mix(in srgb, ${theme.accent} 18%, transparent)`,
+                    border: `1px solid ${withAlpha(theme.accent, 18)}`,
                     pointerEvents: "none",
                   }}
                 />
@@ -534,7 +501,7 @@ export function EditorScreen({
                     marginTop: 16,
                   }}
                 >
-                  {project.noDate ? "" : project.date}
+                  {project.date}
                 </div>
               </div>
             </div>

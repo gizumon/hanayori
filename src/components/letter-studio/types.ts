@@ -3,20 +3,21 @@ export type FontKey = "yomogi" | "klee" | "mincho" | "gothic" | "maru";
 export type Screen = "login" | "home" | "project" | "editor" | "card";
 export type CardOrient = "landscape" | "portrait" | "tent-l" | "tent-p";
 export type CardFrame = "line" | "frame" | "minimal";
-export type Honor = "" | "様" | "さん" | "なし";
+/** イベント既定の敬称。"" = 敬称なし。 */
+export type Honor = "" | "様" | "さん";
 export type ProjectTab = "letters" | "settings";
 export type EditorTab = "letter" | "card";
 
 export interface Letter {
   id: string;
   to: string;
-  date: string;
-  theme: ThemeKey;
   body: string;
+  theme: ThemeKey;
   photo: string | null;
   photoRatio?: number;
-  cardName?: string;
-  honor?: Honor;
+  cardName?: string | null;
+  /** null/undefined = イベント既定の敬称に従う */
+  honor?: Honor | null;
 }
 
 export interface CardConfig {
@@ -27,25 +28,32 @@ export interface CardConfig {
   note: string;
 }
 
+/** イベント本体。手紙は別途 letters state で保持する(サーバー上も別コレクション)。 */
 export interface Project {
   id: string;
   name: string;
-  date: string;
-  letters: Letter[];
-  cardConfig?: CardConfig;
-  font?: FontKey;
-  cardFont?: FontKey;
-  cardEnabled?: boolean;
-  noDate?: boolean;
+  date: string | null;
+  cardConfig: CardConfig;
+  font: FontKey;
+  cardFont: FontKey;
+  cardEnabled: boolean;
+}
+
+/** ホーム画面のイベント一覧用(手紙数はサーバーで集計)。 */
+export interface EventSummary extends Project {
+  letterCount: number;
 }
 
 export type Draft = Partial<Letter>;
 
 export interface StudioState {
   screen: Screen;
-  projects: Project[];
+  userName: string;
+  projects: EventSummary[];
   curP: string | null;
   curL: string | null;
+  /** 開いているイベントの手紙一覧。イベントを開いたときに取得する。 */
+  letters: Letter[];
   draft: Draft;
   modalShown: boolean;
   newName: string;
@@ -54,9 +62,4 @@ export interface StudioState {
   qrModal: Letter | null;
   projTab: ProjectTab;
   edTab: EditorTab;
-}
-
-export interface StudioPersisted {
-  loggedIn: boolean;
-  projects: Project[];
 }

@@ -1,0 +1,261 @@
+.root {
+  margin: 0;
+  font-family: "Shippori Mincho", serif;
+  color: #5c4a4a;
+  -webkit-font-smoothing: antialiased;
+}
+
+.heroWrap {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 120% 60% at 50% -10%, #fcf6f8 0%, transparent 60%),
+    linear-gradient(175deg, #f7ecef 0%, #f1e0e7 55%, #edd8e1 100%);
+}
+
+.logoMark {
+  width: 34px;
+  height: 24px;
+  position: relative;
+  background: linear-gradient(160deg, #fffdfb, #f9efe9);
+  border-radius: 3px;
+  box-shadow: 0 3px 8px rgba(150, 110, 130, 0.2);
+  display: block;
+}
+.logoMark::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 55%;
+  background: linear-gradient(180deg, #fdf7f3, #f6e9e2);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.logoMark::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 9px;
+  height: 9px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #d3a5b4;
+}
+
+.navCta,
+.ctaPrimary,
+.ctaFinal {
+  border-radius: 999px;
+  background: #d3a5b4;
+  color: #fff9f5;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.navCta:hover,
+.ctaPrimary:hover,
+.ctaFinal:hover {
+  background: #c393a5;
+}
+
+.navCta {
+  padding: 10px 22px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  box-shadow: 0 5px 14px rgba(150, 110, 130, 0.3);
+}
+
+.ctaPrimary {
+  padding: 14px 32px;
+  font-size: 14.5px;
+  letter-spacing: 0.1em;
+  box-shadow: 0 8px 20px rgba(150, 110, 130, 0.32);
+}
+
+.ctaFinal {
+  display: inline-block;
+  padding: 15px 40px;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  box-shadow: 0 10px 26px rgba(150, 110, 130, 0.35);
+}
+
+.ctaSecondary {
+  padding: 14px 28px;
+  border-radius: 999px;
+  border: 1px solid #d3a5b4;
+  color: #b08a99;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.4);
+  transition: background 0.15s ease;
+}
+.ctaSecondary:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.heroCopy {
+  animation: fadeUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.heroArt {
+  animation: fadeUp 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+@keyframes fadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.envelope {
+  position: relative;
+  width: min(300px, 80vw);
+  aspect-ratio: 1.5 / 1;
+  margin-top: 120px;
+  animation: bob 4.6s ease-in-out 3.4s infinite;
+  filter: drop-shadow(0 20px 34px rgba(150, 110, 130, 0.28));
+}
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.envelopeFlap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 55%;
+  background: linear-gradient(180deg, #fdf7f3 0%, #f6e9e2 100%);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform-origin: top center;
+  box-shadow: inset 0 -1px 0 rgba(180, 140, 155, 0.2);
+  animation: flapOpen 3s cubic-bezier(0.45, 0, 0.2, 1) 0.6s both;
+}
+@keyframes flapOpen {
+  0%,
+  18% {
+    transform: rotateX(0deg);
+    z-index: 3;
+  }
+  55%,
+  100% {
+    transform: rotateX(178deg);
+    z-index: 0;
+  }
+}
+
+.envelopeBody {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, #fffdfb 0%, #fbf3ee 100%);
+  border-radius: 6px;
+}
+
+.envelopePaper {
+  position: absolute;
+  left: 50%;
+  top: 6%;
+  width: 82%;
+  background: #fffcf8;
+  box-shadow: 0 -6px 22px rgba(150, 110, 130, 0.16);
+  padding: 20px 18px 16px;
+  animation: paperRise 3.2s cubic-bezier(0.25, 1, 0.4, 1) 1.7s both;
+  z-index: 1;
+}
+.envelopePaper::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(211, 165, 180, 0.4);
+  pointer-events: none;
+}
+@keyframes paperRise {
+  0%,
+  30% {
+    transform: translate(-50%, 4%);
+  }
+  70%,
+  100% {
+    transform: translate(-50%, -78%);
+  }
+}
+
+.envelopeFront {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: 6px;
+  background: linear-gradient(160deg, #fffdfb 0%, #f9efe9 100%);
+  clip-path: polygon(0 28%, 50% 62%, 100% 28%, 100% 100%, 0 100%);
+  box-shadow: inset 0 0 0 1px rgba(180, 140, 155, 0.18);
+}
+
+.lineIn {
+  animation: lineIn 0.9s ease both;
+}
+@keyframes lineIn {
+  0% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.featureCard {
+  background: #fffcf8;
+  border-radius: 18px;
+  padding: 30px 26px;
+  box-shadow: 0 10px 30px rgba(150, 110, 130, 0.13);
+}
+.featureIcon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #f7ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.themeCard {
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 26px rgba(150, 110, 130, 0.14);
+  padding: 22px 16px 18px;
+}
+.themeCardPaper {
+  padding: 16px 14px;
+  box-shadow: 0 6px 18px rgba(150, 110, 130, 0.14);
+  position: relative;
+}
+.themeCardPaper::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid var(--rule-color);
+  pointer-events: none;
+}
+
+.placeCard {
+  background: #fffcf8;
+  box-shadow: 0 14px 36px rgba(150, 110, 130, 0.2);
+  position: relative;
+  overflow: hidden;
+  font-family: "Shippori Mincho", serif;
+}

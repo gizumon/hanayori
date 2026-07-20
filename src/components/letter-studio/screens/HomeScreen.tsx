@@ -1,10 +1,10 @@
 "use client";
 
 import styles from "../letter-studio.module.css";
-import type { Project } from "../types";
+import type { EventSummary } from "../types";
 
 interface HomeScreenProps {
-  projects: Project[];
+  projects: EventSummary[];
   onOpen: (id: string) => void;
   onNew: () => void;
 }
@@ -74,7 +74,7 @@ export function HomeScreen({ projects, onOpen, onNew }: HomeScreenProps) {
                 width: "100%",
               }}
             >
-              お手紙 {p.letters.length} 通
+              お手紙 {p.letterCount} 通
             </span>
           </button>
         ))}

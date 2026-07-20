@@ -1,0 +1,83 @@
+/*
+ * Global (unscoped) on purpose: these keyframe names are referenced from
+ * inline `style` attributes (React inline styles and imperative
+ * `element.style.cssText` in Petals.tsx), which are never touched by CSS
+ * Modules scoping/hashing. Prefixed with wl- to avoid collisions.
+ */
+
+.wedding-letter-root {
+  margin: 0;
+  font-family: "Yomogi", sans-serif;
+  color: #5c4a4a;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wedding-letter-root a {
+  color: #b78a9b;
+}
+.wedding-letter-root a:hover {
+  color: #9d6f83;
+}
+
+@keyframes wl-fall {
+  0% {
+    transform: translate(0, -3vh) rotate(0deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.55;
+  }
+  90% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: translate(6vw, 106vh) rotate(320deg);
+    opacity: 0;
+  }
+}
+
+@keyframes wl-env-in {
+  0% {
+    opacity: 0;
+    transform: translateY(36px) scale(0.94) rotate(1.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0);
+  }
+}
+
+@keyframes wl-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes wl-seal-off {
+  0% {
+    transform: translate(-50%, -50%) rotate(-3deg);
+    opacity: 1;
+  }
+  40% {
+    transform: translate(-50%, -62%) scale(1.04) rotate(-6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -145%) scale(0.55) rotate(-20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes wl-hint-fade {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}

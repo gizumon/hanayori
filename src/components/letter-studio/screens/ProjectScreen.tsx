@@ -7,6 +7,7 @@ import type { FontKey, Letter, Project, ProjectTab } from "../types";
 
 interface ProjectScreenProps {
   project: Project;
+  letters: Letter[];
   projTab: ProjectTab;
   onProjTabChange: (t: ProjectTab) => void;
   onBack: () => void;
@@ -14,6 +15,8 @@ interface ProjectScreenProps {
   onEditLetter: (letter: Letter) => void;
   onShowQr: (letter: Letter) => void;
   onCopyLink: (id: string) => void;
+  onDeleteLetter: (letter: Letter) => void;
+  deletingLetter: boolean;
   letterUrl: (id: string) => string;
   cardNameFor: (letter: Letter) => string;
   onChangeName: (name: string) => void;
@@ -26,6 +29,7 @@ interface ProjectScreenProps {
 
 export function ProjectScreen({
   project,
+  letters,
   projTab,
   onProjTabChange,
   onBack,
@@ -33,6 +37,8 @@ export function ProjectScreen({
   onEditLetter,
   onShowQr,
   onCopyLink,
+  onDeleteLetter,
+  deletingLetter,
   letterUrl,
   cardNameFor,
   onChangeName,
@@ -43,7 +49,7 @@ export function ProjectScreen({
   onGoCardSettings,
 }: ProjectScreenProps) {
   const cardEnabled = project.cardEnabled !== false;
-  const hasDate = !project.noDate;
+  const hasDate = project.date !== null;
   const pFont = FONTS[project.font || "yomogi"].family;
   const cFont = FONTS[project.cardFont || "mincho"].family;
 
@@ -83,7 +89,7 @@ export function ProjectScreen({
             {project.name}
           </h2>
           <p style={{ margin: 0, fontSize: 12.5, color: "#8C7676", letterSpacing: "0.08em" }}>
-            {project.noDate ? "" : project.date}
+            {project.date}
           </p>
         </div>
         <button
@@ -115,7 +121,7 @@ export function ProjectScreen({
       >
         {(
           [
-            ["letters", `お手紙 (${project.letters.length})`],
+            ["letters", `お手紙 (${letters.length})`],
             ["settings", "共通設定"],
           ] as const
         ).map(([k, label]) => (
@@ -143,7 +149,7 @@ export function ProjectScreen({
 
       {projTab === "letters" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {project.letters.map((l) => (
+          {letters.map((l) => (
             <div
               key={l.id}
               style={{
@@ -291,6 +297,30 @@ export function ProjectScreen({
                 >
                   お手紙を開く
                 </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`「${l.to}」を削除しますか？この操作は取り消せません。`)) {
+                      onDeleteLetter(l);
+                    }
+                  }}
+                  disabled={deletingLetter}
+                  title="お手紙を削除"
+                  className={styles.btnOutline}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 999,
+                    border: "1px solid #EBD9DF",
+                    background: "#FFFFFF",
+                    color: "#B5555F",
+                    fontSize: 12.5,
+                    letterSpacing: "0.06em",
+                    opacity: deletingLetter ? 0.6 : 1,
+                    cursor: deletingLetter ? "default" : "pointer",
+                  }}
+                >
+                  削除
+                </button>
               </div>
             </div>
           ))}
@@ -336,16 +366,16 @@ export function ProjectScreen({
               <span style={{ fontSize: 12.5, letterSpacing: "0.1em", color: "#8C7676" }}>挙式日</span>
               <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                 <input
-                  value={project.noDate ? "" : project.date}
+                  value={project.date ?? ""}
                   onChange={(e) => onChangeDate(e.target.value)}
-                  disabled={project.noDate}
+                  disabled={project.date === null}
                   placeholder="2026年10月24日(土)"
                   className={styles.field}
                   style={fieldStyle({
                     flex: 1,
                     minWidth: 180,
                     fontSize: 14.5,
-                    background: project.noDate ? "#F2ECEC" : "#FFFFFF",
+                    background: project.date === null ? "#F2ECEC" : "#FFFFFF",
                   })}
                 />
                 <Toggle checked={hasDate} onChange={onToggleHasDate} label="日付を設定する" />

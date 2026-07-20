@@ -1,31 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  DEFAULT_CARD_CONFIG,
-  DEMO_BODY,
-  LETTERS_MIRROR_KEY,
-  STORAGE_KEY,
-  uid,
-} from "./constants";
+  getFirebaseAuth,
+  onAuthStateChanged,
+  signOutEverywhere,
+  updateDisplayName,
+  type User,
+} from "@/lib/firebase/auth";
 import { cardNameFor, geom } from "./geometry";
 import type {
   CardConfig,
   Draft,
   EditorTab,
+  EventSummary,
   Letter,
-  Project,
   ProjectTab,
   Screen,
-  StudioPersisted,
   StudioState,
 } from "./types";
 
 const initialState: StudioState = {
   screen: "login",
+  userName: "",
   projects: [],
   curP: null,
   curL: null,
+  letters: [],
   draft: {},
   modalShown: false,
   newName: "",
@@ -36,107 +37,98 @@ const initialState: StudioState = {
   edTab: "letter",
 };
 
+async function api<T>(input: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(input, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init?.headers },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error || `${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+async function establishSession(user: User) {
+  const idToken = await user.getIdToken();
+  await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+}
+
 export function useLetterStudio() {
   const [state, setState] = useState<StudioState>(initialState);
   const [hydrated, setHydrated] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const savingLetterRef = useRef(false);
+  const [savingLetter, setSavingLetter] = useState(false);
+  const creatingProjectRef = useRef(false);
+  const [creatingProject, setCreatingProject] = useState(false);
+  const deletingLetterRef = useRef(false);
+  const [deletingLetter, setDeletingLetter] = useState(false);
 
   const patch = useCallback((p: Partial<StudioState>) => {
     setState((s) => ({ ...s, ...p }));
   }, []);
 
-  const mirrorLetter = useCallback((letter: Letter, cp: Project | null) => {
-    let all: Record<string, unknown> = {};
-    try {
-      all = JSON.parse(localStorage.getItem(LETTERS_MIRROR_KEY) || "{}");
-    } catch {
-      all = {};
-    }
-    all[letter.id] = {
-      to: letter.to,
-      date: cp?.noDate ? "" : cp ? cp.date : letter.date,
-      theme: letter.theme,
-      body: letter.body,
-      photo: letter.photo,
-      photoRatio: letter.photoRatio,
-      font: cp?.font || "yomogi",
-    };
-    localStorage.setItem(LETTERS_MIRROR_KEY, JSON.stringify(all));
-  }, []);
+  const toast = useCallback(
+    (msg: string) => {
+      patch({ toastMsg: msg });
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => patch({ toastMsg: "" }), 2400);
+    },
+    [patch]
+  );
 
-  // Hydrate from localStorage on mount. Deliberately deferred to an effect
-  // (rather than a useState lazy initializer) so the server-rendered and
-  // first client-rendered HTML both show the neutral `initialState` and
-  // never mismatch; the `hydrated` gate hides that one-frame transition.
-  useEffect(() => {
-    let saved: StudioPersisted | null = null;
-    try {
-      saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    } catch {
-      saved = null;
-    }
-    let demo: Letter | null = null;
-    let nextProjects: Project[];
-    let nextScreen: Screen;
-    if (saved && saved.projects) {
-      nextProjects = saved.projects;
-      nextScreen = saved.loggedIn ? "home" : "login";
-    } else {
-      demo = {
-        id: "demo",
-        to: "さくらへ",
-        date: "2026年10月24日(土)",
-        theme: "rose",
-        body: DEMO_BODY,
-        photo: null,
-      };
-      nextProjects = [
-        {
-          id: uid(),
-          name: "ゆい & 蓮 の結婚式",
-          date: "2026年10月24日(土)",
-          letters: [demo],
-        },
-      ];
-      nextScreen = initialState.screen;
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from localStorage, a browser-only external system, is exactly what effects are for
-    setState((s) => ({ ...s, projects: nextProjects, screen: nextScreen }));
-    if (demo) mirrorLetter(demo, null);
-    setHydrated(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Persist projects/login-state, and keep the guest-facing mirror in sync.
-  useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        loggedIn: state.screen !== "login",
-        projects: state.projects,
-      } satisfies StudioPersisted)
-    );
-    const cp = state.projects.find((p) => p.id === state.curP) || null;
-    if (cp) cp.letters.forEach((l) => mirrorLetter(l, cp));
-  }, [hydrated, state.screen, state.projects, state.curP, mirrorLetter]);
-
-  const toast = useCallback((msg: string) => {
-    patch({ toastMsg: msg });
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => patch({ toastMsg: "" }), 2400);
+  const refreshEvents = useCallback(async () => {
+    const data = await api<{ events: EventSummary[] }>("/api/events");
+    patch({ projects: data.events });
+    return data.events;
   }, [patch]);
 
-  const curProject = useMemo(
-    () => state.projects.find((p) => p.id === state.curP) || null,
-    [state.projects, state.curP]
-  );
+  // Firebase Auth is the source of truth for sign-in state; the httpOnly
+  // session cookie backs every /api/* call. Both server-rendered and
+  // first-client-rendered HTML show the neutral `initialState` (screen:
+  // "login") so they never mismatch — the `hydrated` gate hides the
+  // one-frame transition once onAuthStateChanged resolves.
+  useEffect(() => {
+    const unsub = onAuthStateChanged(getFirebaseAuth(), async (user) => {
+      if (!user) {
+        setState((s) => ({
+          ...s,
+          screen: "login",
+          userName: "",
+          projects: [],
+          letters: [],
+          curP: null,
+          curL: null,
+        }));
+        setHydrated(true);
+        return;
+      }
+      const userName = user.displayName || user.email?.split("@")[0] || "";
+      try {
+        const events = await refreshEvents();
+        setState((s) => ({ ...s, projects: events, screen: "home", userName }));
+      } catch {
+        try {
+          await establishSession(user);
+          const events = await refreshEvents();
+          setState((s) => ({ ...s, projects: events, screen: "home", userName }));
+        } catch {
+          setState((s) => ({ ...s, screen: "login" }));
+        }
+      }
+      setHydrated(true);
+    });
+    return unsub;
+  }, [refreshEvents]);
 
-  const cardConf: CardConfig = useMemo(
-    () => ({ ...DEFAULT_CARD_CONFIG, ...(curProject?.cardConfig || {}) }),
-    [curProject]
-  );
+  const curProject = state.projects.find((p) => p.id === state.curP) || null;
+  const cardConf: CardConfig | null = curProject?.cardConfig ?? null;
 
   const go = useCallback(
     (screen: Screen, extra?: Partial<StudioState>) => {
@@ -145,36 +137,48 @@ export function useLetterStudio() {
     [patch]
   );
 
-  const updateProject = useCallback(
-    (projPatch: Partial<Project>) => {
-      setState((s) => ({
-        ...s,
-        projects: s.projects.map((p) =>
-          p.id === s.curP ? { ...p, ...projPatch } : p
-        ),
-      }));
+  const goHome = useCallback(() => {
+    patch({ screen: "home", curP: null, curL: null, letters: [] });
+    void refreshEvents();
+  }, [patch, refreshEvents]);
+
+  const openProject = useCallback(
+    async (id: string) => {
+      patch({ curP: id, screen: "project", projTab: "letters" });
+      try {
+        const data = await api<{ letters: Letter[] }>(`/api/events/${id}/letters`);
+        patch({ letters: data.letters });
+      } catch {
+        toast("お手紙の読み込みに失敗しました");
+      }
     },
-    []
+    [patch, toast]
+  );
+
+  const updateProject = useCallback(
+    async (projPatch: Record<string, unknown>) => {
+      if (!state.curP) return;
+      try {
+        const data = await api<{ event: EventSummary }>(`/api/events/${state.curP}`, {
+          method: "PATCH",
+          body: JSON.stringify(projPatch),
+        });
+        setState((s) => ({
+          ...s,
+          projects: s.projects.map((p) => (p.id === data.event.id ? { ...p, ...data.event } : p)),
+        }));
+      } catch {
+        toast("更新に失敗しました");
+      }
+    },
+    [state.curP, toast]
   );
 
   const setCard = useCallback(
     (confPatch: Partial<CardConfig>) => {
-      setState((s) => {
-        const cp = s.projects.find((p) => p.id === s.curP) || null;
-        const conf = {
-          ...DEFAULT_CARD_CONFIG,
-          ...(cp?.cardConfig || {}),
-          ...confPatch,
-        };
-        return {
-          ...s,
-          projects: s.projects.map((p) =>
-            p.id === s.curP ? { ...p, cardConfig: conf } : p
-          ),
-        };
-      });
+      void updateProject({ cardConfig: confPatch });
     },
-    []
+    [updateProject]
   );
 
   const setDraft = useCallback((d: Draft) => {
@@ -187,37 +191,73 @@ export function useLetterStudio() {
     return new URL(`/letter/${id}`, window.location.origin).href;
   }, []);
 
-  const saveLetter = useCallback(() => {
-    setState((s) => {
-      const cp = s.projects.find((p) => p.id === s.curP) || null;
-      const d: Letter = {
-        id: s.draft.id || uid(),
-        to: s.draft.to || "",
-        date: cp ? (cp.noDate ? "" : cp.date) : "",
-        theme: s.draft.theme || "rose",
-        body: s.draft.body || "",
-        photo: s.draft.photo ?? null,
-        photoRatio: s.draft.photoRatio,
-        cardName: s.draft.cardName,
-        honor: s.draft.honor,
-      };
-      if (!d.to) {
-        toast("宛名を入力してください");
-        return s;
-      }
-      const projects = s.projects.map((p) => {
-        if (p.id !== s.curP) return p;
-        const exists = p.letters.some((l) => l.id === d.id);
-        const letters = exists
-          ? p.letters.map((l) => (l.id === d.id ? d : l))
-          : p.letters.concat([d]);
-        return { ...p, letters };
-      });
-      mirrorLetter(d, cp);
+  const saveLetter = useCallback(async () => {
+    if (!state.curP) return;
+    if (savingLetterRef.current) return;
+    const d = state.draft;
+    if (!d.to) {
+      toast("宛名を入力してください");
+      return;
+    }
+    const payload = {
+      to: d.to,
+      body: d.body || "",
+      theme: d.theme || "rose",
+      photo: d.photo ?? null,
+      photoRatio: d.photoRatio,
+      cardName: d.cardName ?? null,
+      honor: d.honor ?? null,
+    };
+    savingLetterRef.current = true;
+    setSavingLetter(true);
+    try {
+      const data = d.id
+        ? await api<{ letter: Letter }>(`/api/letters/${d.id}`, {
+            method: "PATCH",
+            body: JSON.stringify(payload),
+          })
+        : await api<{ letter: Letter }>(`/api/events/${state.curP}/letters`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+      setState((s) => ({
+        ...s,
+        draft: { ...s.draft, id: data.letter.id },
+        letters: s.letters.some((l) => l.id === data.letter.id)
+          ? s.letters.map((l) => (l.id === data.letter.id ? data.letter : l))
+          : s.letters.concat([data.letter]),
+      }));
       toast("保存しました");
-      return { ...s, projects };
-    });
-  }, [mirrorLetter, toast]);
+    } catch {
+      toast("保存に失敗しました");
+    } finally {
+      savingLetterRef.current = false;
+      setSavingLetter(false);
+    }
+  }, [state.curP, state.draft, toast]);
+
+  const deleteLetter = useCallback(
+    async (id: string) => {
+      if (deletingLetterRef.current) return;
+      deletingLetterRef.current = true;
+      setDeletingLetter(true);
+      try {
+        await api(`/api/letters/${id}`, { method: "DELETE" });
+        setState((s) => ({
+          ...s,
+          letters: s.letters.filter((l) => l.id !== id),
+          ...(s.draft.id === id ? { draft: {}, screen: "project" as const } : {}),
+        }));
+        toast("削除しました");
+      } catch {
+        toast("削除に失敗しました");
+      } finally {
+        deletingLetterRef.current = false;
+        setDeletingLetter(false);
+      }
+    },
+    [toast]
+  );
 
   const upPhoto = useCallback(
     (file: File) => {
@@ -244,25 +284,28 @@ export function useLetterStudio() {
     [setDraft]
   );
 
-  const copyLink = useCallback(async (id: string) => {
-    const url = letterUrl(id);
-    try {
-      await navigator.clipboard.writeText(url);
-      toast("リンクをコピーしました");
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = url;
-      document.body.appendChild(ta);
-      ta.select();
+  const copyLink = useCallback(
+    async (id: string) => {
+      const url = letterUrl(id);
       try {
-        document.execCommand("copy");
+        await navigator.clipboard.writeText(url);
         toast("リンクをコピーしました");
       } catch {
-        toast("コピーに失敗しました");
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+          toast("リンクをコピーしました");
+        } catch {
+          toast("コピーに失敗しました");
+        }
+        ta.remove();
       }
-      ta.remove();
-    }
-  }, [letterUrl, toast]);
+    },
+    [letterUrl, toast]
+  );
 
   const captureCard = useCallback(async (): Promise<HTMLCanvasElement | null> => {
     if (!cardRef.current) return null;
@@ -297,7 +340,9 @@ export function useLetterStudio() {
       toast("ポップアップがブロックされました");
       return;
     }
-    const dims = geom(cardConf, "#ccc").printDims;
+    const dims = cardConf
+      ? geom(cardConf, "#ccc").printDims
+      : "width:91mm;height:55mm";
     w.document.write(
       `<html><head><title>QRカード印刷</title><style>@page{size:auto;margin:10mm}body{margin:0;display:flex;justify-content:center;padding-top:10mm}img{${dims}}</style></head><body><img src="${canvas.toDataURL(
         "image/png"
@@ -306,43 +351,47 @@ export function useLetterStudio() {
     w.document.close();
   }, [cardConf, captureCard, toast]);
 
-  const createProject = useCallback(() => {
-    setState((s) => {
-      if (!s.newName) {
-        if (toastTimer.current) clearTimeout(toastTimer.current);
-        toastTimer.current = setTimeout(() => patch({ toastMsg: "" }), 2400);
-        return { ...s, toastMsg: "イベント名を入力してください" };
-      }
-      const p: Project = {
-        id: uid(),
-        name: s.newName,
-        date: s.newDate || "",
-        letters: [],
-      };
-      return {
+  const createProject = useCallback(async () => {
+    if (!state.newName) {
+      toast("イベント名を入力してください");
+      return;
+    }
+    if (creatingProjectRef.current) return;
+    creatingProjectRef.current = true;
+    setCreatingProject(true);
+    try {
+      const data = await api<{ event: EventSummary }>("/api/events", {
+        method: "POST",
+        body: JSON.stringify({ name: state.newName, date: state.newDate || null }),
+      });
+      setState((s) => ({
         ...s,
-        projects: s.projects.concat([p]),
+        projects: s.projects.concat([data.event]),
         modalShown: false,
-        curP: p.id,
+        curP: data.event.id,
         screen: "project",
-      };
-    });
-  }, [patch]);
+        letters: [],
+      }));
+    } catch {
+      toast("イベントの作成に失敗しました");
+    } finally {
+      creatingProjectRef.current = false;
+      setCreatingProject(false);
+    }
+  }, [state.newName, state.newDate, toast]);
 
   const newLetter = useCallback(() => {
     go("editor", {
       curL: null,
       edTab: "letter",
       draft: {
-        id: uid(),
         to: "",
-        date: curProject ? (curProject.noDate ? "" : curProject.date) : "",
         theme: "rose",
         body: "",
         photo: null,
       },
     });
-  }, [curProject, go]);
+  }, [go]);
 
   const editLetter = useCallback(
     (letter: Letter) => {
@@ -352,25 +401,48 @@ export function useLetterStudio() {
   );
 
   const goCardSettings = useCallback(() => {
-    const first: Pick<Letter, "to" | "theme"> & { id: string | null } =
-      curProject?.letters[0] || { id: null, to: "ゲスト", theme: "rose" };
+    const first: Letter | { id: null; to: string; theme: "rose" } =
+      state.letters[0] || { id: null, to: "ゲスト", theme: "rose" };
     go("card", {
       curL: first.id,
       draft: { ...first, id: first.id ?? undefined },
     });
-  }, [curProject, go]);
+  }, [state.letters, go]);
 
-  const projTab: ProjectTab = state.projTab;
-  const edTab: EditorTab = state.edTab;
+  const logout = useCallback(async () => {
+    await signOutEverywhere();
+  }, []);
+
+  const updateNickname = useCallback(
+    async (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed || trimmed === state.userName) return;
+      const previous = state.userName;
+      // 反映待ちのラグをなくすため、確定を待たず先に表示だけ切り替える。
+      // 失敗したら previous に戻す。
+      setState((s) => ({ ...s, userName: trimmed }));
+      try {
+        await updateDisplayName(trimmed);
+        toast("ニックネームを更新しました");
+      } catch {
+        setState((s) => ({ ...s, userName: previous }));
+        toast("ニックネームの更新に失敗しました");
+      }
+    },
+    [state.userName, toast]
+  );
 
   return {
     state,
     hydrated,
-    patch,
     curProject,
     cardConf,
     cardRef,
     go,
+    goHome,
+    openProject,
+    logout,
+    updateNickname,
     setProjTab: (t: ProjectTab) => patch({ projTab: t }),
     setEdTab: (t: EditorTab) => patch({ edTab: t }),
     updateProject,
@@ -378,19 +450,23 @@ export function useLetterStudio() {
     setDraft,
     letterUrl,
     saveLetter,
+    savingLetter,
+    deleteLetter,
+    deletingLetter,
     upPhoto,
     copyLink,
     saveCard,
     printCard,
     createProject,
+    creatingProject,
     newLetter,
     editLetter,
     goCardSettings,
     cardNameFor: (l: Draft | Letter | null | undefined) =>
-      cardNameFor(l, cardConf),
+      cardConf ? cardNameFor(l, cardConf) : "お名前",
     geom,
-    projTab,
-    edTab,
+    projTab: state.projTab,
+    edTab: state.edTab,
     setQrModal: (l: Letter | null) => patch({ qrModal: l }),
     setModalShown: (v: boolean) =>
       patch({ modalShown: v, ...(v ? { newName: "", newDate: "" } : {}) }),
