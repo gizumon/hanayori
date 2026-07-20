@@ -1,0 +1,24 @@
+# cp terraform.tfvars.example terraform.tfvars
+# project_id / service_name / region は _global-settings/settings.tf で定義済み
+
+container_image = "asia-northeast1-docker.pkg.dev/gizumon-hanayori/hanayori-docker/hanayori:latest"
+
+health_check_path = "/"
+custom_domain     = "" # e.g. "stg.example.com"
+
+env_vars = {
+  APP_ENV   = "staging"
+  LOG_LEVEL = "debug"
+}
+
+# Secret Manager references (./scripts/create-secrets.sh stg で作成したシークレットを参照)
+secret_env_vars = {
+  NEXT_PUBLIC_FIREBASE_API_KEY = {
+    secret_name = "stg-firebase-api-key"
+    version     = "latest"
+  }
+  NEXT_PUBLIC_FIREBASE_APP_ID = {
+    secret_name = "stg-firebase-app-id"
+    version     = "latest"
+  }
+}

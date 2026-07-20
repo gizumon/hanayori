@@ -1,0 +1,90 @@
+name: Terraform Lint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "infrastructure/**"
+  pull_request:
+    paths:
+      - "infrastructure/**"
+
+env:
+  TERRAFORM_VERSION: "1.9.0"
+  TFLINT_VERSION: "v0.54.0"
+
+jobs:
+  # ----------------------------------------------------------------
+  # fmt: フォーマットチェック (ファイル変更なし)
+  # ----------------------------------------------------------------
+  fmt:
+    name: terraform fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive -diff infrastructure/
+
+  # ----------------------------------------------------------------
+  # validate: 構文・設定チェック (バックエンド接続なし)
+  # ----------------------------------------------------------------
+  validate:
+    name: terraform validate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir:
+          - infrastructure/environments/00_bootstrap
+          - infrastructure/environments/10_shared
+          - infrastructure/environments/20_stg
+          - infrastructure/environments/30_prod
+          - infrastructure/environments/90_github
+          - infrastructure/modules/cloud_run
+          - infrastructure/modules/firestore
+          - infrastructure/modules/firebase_auth
+          - infrastructure/_global-settings
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Init (${{ matrix.dir }})
+        working-directory: ${{ matrix.dir }}
+        run: terraform init -backend=false
+
+      - name: Validate (${{ matrix.dir }})
+        working-directory: ${{ matrix.dir }}
+        run: terraform validate
+
+  # ----------------------------------------------------------------
+  # tflint: Terraform リンター + GCP ルール
+  # ----------------------------------------------------------------
+  tflint:
+    name: tflint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: ${{ env.TFLINT_VERSION }}
+
+      - name: Init tflint (download plugins)
+        run: tflint --init --config=.tflint.hcl
+
+      - name: Run tflint
+        run: |
+          tflint \
+            --recursive \
+            --config="$(pwd)/.tflint.hcl" \
+            --chdir=infrastructure/

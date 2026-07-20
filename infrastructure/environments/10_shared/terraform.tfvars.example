@@ -1,0 +1,16 @@
+# cp terraform.tfvars.example terraform.tfvars
+# project_id / service_name / region は _global-settings/settings.tf で定義済み
+
+# Cloud Run URL やカスタムドメインを Firebase Auth の許可ドメインに追加する場合は記述する。
+# デプロイ後に Cloud Run の URL が確定したら更新すること。
+# authorized_domains = [
+#   "hanayori-stg-xxxx-an.a.run.app",
+#   "hanayori-prod-xxxx-an.a.run.app",
+#   "stg.example.com",
+#   "example.com",
+# ]
+authorized_domains = []
+
+# Google Sign-In を有効にする場合のみ設定 (GCP Console > APIs & Services > Credentials で手動作成)
+# google_oauth_client_id     = "xxxxxxxx.apps.googleusercontent.com"
+# google_oauth_client_secret = "xxxxxxxx"

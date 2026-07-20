@@ -1,0 +1,135 @@
+.root {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 120% 60% at 50% -10%, #fcf6f8 0%, transparent 60%),
+    linear-gradient(175deg, #f7ecef 0%, #f1e0e7 55%, #edd8e1 100%);
+  font-family: "Shippori Mincho", serif;
+  color: #5c4a4a;
+  -webkit-font-smoothing: antialiased;
+}
+
+.root a {
+  color: #b78a9b;
+}
+.root a:hover {
+  color: #9d6f83;
+}
+
+.root input,
+.root textarea,
+.root button,
+.root select {
+  font-family: inherit;
+}
+
+@keyframes fadeup {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fadeup {
+  animation: fadeup 0.6s ease both;
+}
+
+.fadeupSlow {
+  animation: fadeup 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* white pill with hairline border */
+.btnOutline {
+  cursor: pointer;
+}
+.btnOutline:hover {
+  background: #fbf4f6 !important;
+}
+
+/* solid accent pill */
+.btnSolid {
+  cursor: pointer;
+}
+.btnSolid:hover {
+  background: #c393a5 !important;
+}
+
+/* transparent / ghost pill with accent border */
+.btnGhost {
+  cursor: pointer;
+}
+.btnGhost:hover {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* text-only back link */
+.linkBack {
+  cursor: pointer;
+}
+.linkBack:hover {
+  color: #9d6f83 !important;
+}
+
+/* home screen event card */
+.cardTile {
+  cursor: pointer;
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+.cardTile:hover {
+  box-shadow: 0 12px 34px rgba(150, 110, 130, 0.22);
+  transform: translateY(-2px);
+}
+
+/* dashed "add new" tile */
+.dashedAdd {
+  cursor: pointer;
+}
+.dashedAdd:hover {
+  background: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* font/style option row */
+.optionRow {
+  cursor: pointer;
+}
+.optionRow:hover {
+  background: #fbf4f6 !important;
+}
+
+.field {
+  outline: none;
+}
+.field:focus {
+  border-color: #d3a5b4 !important;
+}
+
+.toggleTrack {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  transition: background 0.2s;
+  flex: none;
+}
+.toggleInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.toggleKnob {
+  position: absolute;
+  top: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: left 0.2s;
+}

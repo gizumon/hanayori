@@ -1,0 +1,183 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+  workflow_run:
+    workflows: ["Release"]
+    branches: [main]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "stg"
+        type: choice
+        options:
+          - stg
+          - prod
+
+env:
+  REGION: ${{ vars.GCP_REGION }}
+
+jobs:
+  # ----------------------------------------------------------------
+  # Staging: main ブランチへの push またはデプロイ手動実行(stg)
+  # ----------------------------------------------------------------
+  deploy-stg:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'stg')
+    environment: stg
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # タグ情報を取得してバージョン計算に使う
+          fetch-tags: true
+
+      - name: Resolve app version for STG
+        id: version
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          # 最新リリースタグをベースに "{major}.{minor}.{patch}-stg.{sha7}" を生成
+          LATEST_TAG=$(git tag --sort=-creatordate | grep '^v' | head -1 || echo "v0.0.0")
+          BASE_VERSION=${LATEST_TAG#v}
+          echo "app_version=${BASE_VERSION}-stg.${SHA:0:7}" >> $GITHUB_OUTPUT
+          echo "APP_VERSION: ${BASE_VERSION}-stg.${SHA:0:7}"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push Docker image
+        env:
+          SHA: ${{ github.sha }}
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
+        run: |
+          IMAGE=${{ vars.ARTIFACT_REGISTRY_URL }}/${{ vars.SERVICE_NAME }}
+          API_KEY=$(gcloud secrets versions access latest --secret=stg-firebase-api-key --project=${{ vars.GCP_PROJECT_ID }})
+          APP_ID=$(gcloud secrets versions access latest --secret=stg-firebase-app-id --project=${{ vars.GCP_PROJECT_ID }})
+          docker build --platform linux/amd64 \
+            --build-arg NEXT_PUBLIC_FIREBASE_API_KEY="${API_KEY}" \
+            --build-arg NEXT_PUBLIC_FIREBASE_APP_ID="${APP_ID}" \
+            --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID="${{ vars.GCP_PROJECT_ID }}" \
+            --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="${{ vars.GCP_PROJECT_ID }}.firebaseapp.com" \
+            --build-arg NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="${{ vars.GCP_PROJECT_ID }}.firebasestorage.app" \
+            --build-arg NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="${{ vars.FIREBASE_MESSAGING_SENDER_ID }}" \
+            --build-arg NEXT_PUBLIC_APP_URL="${{ vars.APP_URL }}" \
+            --build-arg NEXT_PUBLIC_APP_VERSION="${APP_VERSION}" \
+            -t ${IMAGE}:stg-${SHA:0:7} \
+            -t ${IMAGE}:stg-latest \
+            -f Dockerfile .
+          docker push ${IMAGE}:stg-${SHA:0:7}
+          docker push ${IMAGE}:stg-latest
+
+      - name: Deploy to Cloud Run (stg)
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          SHA: ${{ github.sha }}
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
+        run: |
+          IMAGE=${{ vars.ARTIFACT_REGISTRY_URL }}/${{ vars.SERVICE_NAME }}:stg-${SHA:0:7}
+          gcloud run deploy ${{ vars.SERVICE_NAME }}-stg \
+            --image ${IMAGE} \
+            --region ${{ env.REGION }} \
+            --project ${PROJECT_ID}
+
+      - name: Show service URL
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
+        run: |
+          URL=$(gcloud run services describe ${{ vars.SERVICE_NAME }}-stg --region=${{ env.REGION }} --project=${PROJECT_ID} --format='value(status.url)')
+          echo "Deployed (stg): ${URL}  [APP_VERSION=${APP_VERSION}]"
+
+  # ----------------------------------------------------------------
+  # Production: v* タグ push またはデプロイ手動実行(prod)
+  # ----------------------------------------------------------------
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
+    environment: prod
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          # workflow_run / workflow_dispatch: use latest tag, fallback to SHA
+          git fetch --tags --quiet
+          TAG=$(git tag --sort=-creatordate | grep '^v' | head -1)
+          echo "tag=${TAG:-${{ github.sha }}}" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push Docker image
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          IMAGE=${{ vars.ARTIFACT_REGISTRY_URL }}/${{ vars.SERVICE_NAME }}
+          API_KEY=$(gcloud secrets versions access latest --secret=prod-firebase-api-key --project=${{ vars.GCP_PROJECT_ID }})
+          APP_ID=$(gcloud secrets versions access latest --secret=prod-firebase-app-id --project=${{ vars.GCP_PROJECT_ID }})
+          # Strip leading 'v' from tag (e.g. v1.2.0 → 1.2.0)
+          APP_VERSION=${TAG#v}
+          docker build --platform linux/amd64 \
+            --build-arg NEXT_PUBLIC_FIREBASE_API_KEY="${API_KEY}" \
+            --build-arg NEXT_PUBLIC_FIREBASE_APP_ID="${APP_ID}" \
+            --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID="${{ vars.GCP_PROJECT_ID }}" \
+            --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="${{ vars.GCP_PROJECT_ID }}.firebaseapp.com" \
+            --build-arg NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="${{ vars.GCP_PROJECT_ID }}.firebasestorage.app" \
+            --build-arg NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="${{ vars.FIREBASE_MESSAGING_SENDER_ID }}" \
+            --build-arg NEXT_PUBLIC_APP_URL="${{ vars.APP_URL }}" \
+            --build-arg NEXT_PUBLIC_APP_VERSION="${APP_VERSION}" \
+            -t ${IMAGE}:${TAG} \
+            -t ${IMAGE}:latest \
+            -f Dockerfile .
+          docker push ${IMAGE}:${TAG}
+          docker push ${IMAGE}:latest
+
+      - name: Deploy to Cloud Run (prod)
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          IMAGE=${{ vars.ARTIFACT_REGISTRY_URL }}/${{ vars.SERVICE_NAME }}:${TAG}
+          gcloud run deploy ${{ vars.SERVICE_NAME }}-prod \
+            --image ${IMAGE} \
+            --region ${{ env.REGION }} \
+            --project ${PROJECT_ID}
+
+      - name: Show service URL
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          echo "Deployed: $(gcloud run services describe ${{ vars.SERVICE_NAME }}-prod --region=${{ env.REGION }} --project=${PROJECT_ID} --format='value(status.url)')"

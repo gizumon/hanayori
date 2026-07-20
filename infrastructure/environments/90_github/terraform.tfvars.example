@@ -1,0 +1,35 @@
+# cp terraform.tfvars.example terraform.tfvars
+# project_id / service_name / region は _global-settings/settings.tf で定義済み
+# gcp_sa_key と github_token は機密情報なので terraform.tfvars に直接記載しても可
+# (terraform.tfvars は .gitignore に含まれる)
+
+github_owner      = "your-github-org-or-user"
+github_repository = "hanayori"
+
+# GitHub PAT: repo, admin:org, workflow スコープが必要
+# 環境変数 GITHUB_TOKEN でも代替可: export GITHUB_TOKEN=ghp_xxxx
+# github_token = "ghp_xxxxxxxxxxxx"
+
+# 00_bootstrap の output から取得:
+#   cd environments/00_bootstrap
+#   terraform output -raw github_actions_sa_key
+gcp_sa_key = "base64-encoded-sa-key"
+
+# prod デプロイ承認者 (任意: GitHub のユーザー/チームの node_id)
+# prod_reviewer_users = [123456]
+# prod_reviewer_teams = []
+
+# NEXT_PUBLIC_APP_URL をビルド時に埋め込むためのリポジトリ共通変数 (deploy.yml が参照)
+# extra_actions_variables = {
+#   APP_URL = "https://example.com"
+# }
+
+# stg 環境固有の追加変数
+# extra_stg_variables = {
+#   APP_URL = "https://stg.example.com"
+# }
+
+# prod 環境固有の追加変数
+# extra_prod_variables = {
+#   APP_URL = "https://example.com"
+# }

@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Release type (conventional commits are auto-detected)"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      dry_run:
+        description: "Dry run (tag and release are not created)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Bump version and create release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get current date (JST)
+        id: date
+        env:
+          TZ: Asia/Tokyo
+        run: echo "date=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+
+      # Conventional Commits でバージョンを自動決定
+      # feat: → minor, fix: → patch, BREAKING CHANGE → major
+      # 参考: https://github.com/mathieudutour/github-tag-action
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: ${{ github.event.inputs.release_type }}
+          dry_run: ${{ github.event.inputs.dry_run }}
+
+      - name: Create GitHub release
+        if: ${{ github.event.inputs.dry_run == 'false' }}
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.tag_version.outputs.new_tag }}
+          name: Release ${{ steps.tag_version.outputs.new_tag }}
+          body: |
+            # ${{ github.event.inputs.release_type }} release ${{ steps.tag_version.outputs.new_tag }}
+            Released at ${{ steps.date.outputs.date }} (JST)
+
+            ## Changes
+            ${{ steps.tag_version.outputs.changelog }}
