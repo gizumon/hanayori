@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { LogOut, Pencil } from "lucide-react";
 import { fieldStyle } from "../controls";
 import styles from "../letter-studio.module.css";
 
@@ -8,9 +9,10 @@ interface AppHeaderProps {
   userName: string;
   onLogout: () => void;
   onUpdateName: (name: string) => void | Promise<void>;
+  onGoHome: () => void;
 }
 
-export function AppHeader({ userName, onLogout, onUpdateName }: AppHeaderProps) {
+export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState(userName);
@@ -78,7 +80,20 @@ export function AppHeader({ userName, onLogout, onUpdateName }: AppHeaderProps) 
         borderBottom: "1px solid rgba(211,165,180,0.25)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+      <button
+        type="button"
+        onClick={onGoHome}
+        aria-label="イベント一覧へ戻る"
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: 12,
+          border: "none",
+          background: "none",
+          padding: 0,
+          cursor: "pointer",
+        }}
+      >
         <span
           style={{
             fontFamily: "'Shippori Mincho', serif",
@@ -93,7 +108,7 @@ export function AppHeader({ userName, onLogout, onUpdateName }: AppHeaderProps) 
         <span style={{ fontSize: 11, letterSpacing: "0.28em", color: "#B08A99" }}>
           花嫁のお便り
         </span>
-      </div>
+      </button>
 
       <div ref={containerRef} style={{ position: "relative" }}>
         <button
@@ -227,9 +242,12 @@ export function AppHeader({ userName, onLogout, onUpdateName }: AppHeaderProps) 
                   onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(211,165,180,0.12)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
-                  <span aria-hidden="true" style={{ fontSize: 13, color: "#B08A99" }}>
-                    ✎
-                  </span>
+                  <Pencil
+                    size={13}
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                    style={{ color: "#B08A99", flex: "none" }}
+                  />
                   ニックネームを変更
                 </button>
                 <div style={{ height: 1, background: "#F0E2E7", margin: "4px 2px" }} />
@@ -256,9 +274,12 @@ export function AppHeader({ userName, onLogout, onUpdateName }: AppHeaderProps) 
                   onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(211,165,180,0.12)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
-                  <span aria-hidden="true" style={{ fontSize: 13, color: "#B08A99" }}>
-                    ↪
-                  </span>
+                  <LogOut
+                    size={13}
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                    style={{ color: "#B08A99", flex: "none" }}
+                  />
                   ログアウト
                 </button>
               </>

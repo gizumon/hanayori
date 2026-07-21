@@ -1,11 +1,11 @@
 "use client";
 
 import { FONTS, THEMES } from "./constants";
+import { EventSettingsDrawer } from "./EventSettingsDrawer";
 import styles from "./letter-studio.module.css";
 import { NewEventModal } from "./NewEventModal";
 import { QrModal } from "./QrModal";
 import { AppHeader } from "./screens/AppHeader";
-import { CardScreen } from "./screens/CardScreen";
 import { EditorScreen } from "./screens/EditorScreen";
 import { HomeScreen } from "./screens/HomeScreen";
 import { LoginScreen } from "./screens/LoginScreen";
@@ -35,6 +35,7 @@ export function LetterStudio() {
             userName={state.userName}
             onLogout={() => api.logout()}
             onUpdateName={api.updateNickname}
+            onGoHome={api.goHome}
           />
 
           {state.screen === "home" && (
@@ -49,9 +50,8 @@ export function LetterStudio() {
             <ProjectScreen
               project={curProject}
               letters={state.letters}
-              projTab={state.projTab}
-              onProjTabChange={api.setProjTab}
               onBack={api.goHome}
+              onOpenSettings={() => api.openSettings("general")}
               onNewLetter={api.newLetter}
               onEditLetter={api.editLetter}
               onShowQr={(l) => api.setQrModal(l)}
@@ -60,12 +60,6 @@ export function LetterStudio() {
               deletingLetter={api.deletingLetter}
               letterUrl={api.letterUrl}
               cardNameFor={api.cardNameFor}
-              onChangeName={(name) => api.updateProject({ name })}
-              onChangeDate={(date) => api.updateProject({ date })}
-              onToggleHasDate={(hasDate) => api.updateProject({ date: hasDate ? curProject.date || "" : null })}
-              onToggleCardEnabled={(enabled) => api.updateProject({ cardEnabled: enabled })}
-              onSetFont={(font) => api.updateProject({ font })}
-              onGoCardSettings={api.goCardSettings}
             />
           )}
 
@@ -76,7 +70,6 @@ export function LetterStudio() {
               edTab={state.edTab}
               cardConf={cardConf}
               geometry={geometry}
-              cardEnabled={curProject.cardEnabled !== false}
               cardName={api.cardNameFor(state.draft)}
               qrUrl={state.draft.id ? api.letterUrl(state.draft.id) : ""}
               onBack={() => api.go("project")}
@@ -86,31 +79,20 @@ export function LetterStudio() {
               onChangeCardName={(cardName) => api.setDraft({ cardName })}
               onSetHonor={(honor) => api.setDraft({ honor })}
               onSetTheme={(theme) => api.setDraft({ theme })}
-              onGoCard={() => api.go("card")}
+              onOpenCardSettings={() => api.openSettings("card")}
               onSave={api.saveLetter}
               saving={api.savingLetter}
               letterUrl={state.draft.id ? api.letterUrl(state.draft.id) : "#"}
             />
           )}
 
-          {state.screen === "card" && curProject && cardConf && geometry && (
-            <CardScreen
+          {curProject && state.settingsTab && (
+            <EventSettingsDrawer
               project={curProject}
-              draft={state.draft}
-              cardConf={cardConf}
-              geometry={geometry}
-              cardName={api.cardNameFor(state.draft)}
-              qrUrl={state.draft.id ? api.letterUrl(state.draft.id) : ""}
-              cardRef={api.cardRef}
-              onBack={() => api.go("editor")}
-              onSetOrient={(orient) => api.setCard({ orient })}
-              onSetFrame={(frame) => api.setCard({ frame })}
-              onSetHonor={(honor) => api.setCard({ honor })}
-              onSetCardFont={(cardFont) => api.updateProject({ cardFont })}
-              onChangeHeading={(heading) => api.setCard({ heading })}
-              onChangeNote={(note) => api.setCard({ note })}
-              onSave={api.saveCard}
-              onPrint={api.printCard}
+              tab={state.settingsTab}
+              onTabChange={api.setSettingsTab}
+              onClose={api.closeSettings}
+              onSave={api.saveSettings}
             />
           )}
         </>
@@ -135,7 +117,7 @@ export function LetterStudio() {
           gold={THEMES[state.qrModal.theme].gold}
           ink={THEMES[state.qrModal.theme].ink}
           inkSoft={THEMES[state.qrModal.theme].inkSoft}
-          font={FONTS[curProject.cardFont || "mincho"].family}
+          font={FONTS[cardConf.font].family}
           frame={cardConf.frame}
           geometry={api.geom(cardConf, THEMES[state.qrModal.theme].rule)}
           cardName={api.cardNameFor(state.qrModal)}
@@ -143,6 +125,9 @@ export function LetterStudio() {
           note={cardConf.note}
           footText={curProject.name + (curProject.date ? ` ・ ${curProject.date}` : "")}
           qrUrl={api.letterUrl(state.qrModal.id)}
+          cardRef={api.cardRef}
+          onSaveImage={api.saveCard}
+          onPrint={api.printCard}
           onClose={() => api.setQrModal(null)}
         />
       )}

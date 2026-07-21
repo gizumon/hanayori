@@ -1,9 +1,20 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { eventsCollection, lettersCollection } from "./collections";
 import { HttpError } from "./http-error";
-import type { CardConfigDoc, EventDoc, FontKey } from "./schema";
+import type {
+  CardConfigDoc,
+  EventDoc,
+  FontKey,
+  LetterConfigDoc,
+} from "./schema";
+
+const DEFAULT_LETTER_CONFIG: LetterConfigDoc = {
+  font: "yomogi",
+};
 
 const DEFAULT_CARD_CONFIG: CardConfigDoc = {
+  enabled: true,
+  font: "mincho",
   orient: "landscape",
   honor: "様",
   frame: "line",
@@ -11,13 +22,41 @@ const DEFAULT_CARD_CONFIG: CardConfigDoc = {
   note: "スマホで読み取ると\nあなた宛のお手紙が届きます",
 };
 
+/** 旧形式ドキュメントに残っているトップレベルのフィールド。 */
+interface LegacyEventFields {
+  font?: FontKey;
+  cardFont?: FontKey;
+  cardEnabled?: boolean;
+}
+
+/**
+ * 旧形式(font / cardFont / cardEnabled がトップレベル、cardConfig に
+ * enabled / font がない)のドキュメントを新形式へ畳み込む。
+ * 書き込みは updateEvent が正規化済みの全体を書き戻すことで自然に移行する。
+ */
+export function normalizeEventDoc(data: EventDoc): EventDoc {
+  const legacy = data as EventDoc & LegacyEventFields;
+  return {
+    ...data,
+    letterConfig: {
+      ...DEFAULT_LETTER_CONFIG,
+      ...(legacy.font ? { font: legacy.font } : {}),
+      ...data.letterConfig,
+    },
+    cardConfig: {
+      ...DEFAULT_CARD_CONFIG,
+      ...(legacy.cardFont ? { font: legacy.cardFont } : {}),
+      ...(legacy.cardEnabled !== undefined ? { enabled: legacy.cardEnabled } : {}),
+      ...data.cardConfig,
+    },
+  };
+}
+
 export interface EventJson {
   id: string;
   name: string;
   date: string | null;
-  font: FontKey;
-  cardFont: FontKey;
-  cardEnabled: boolean;
+  letterConfig: LetterConfigDoc;
   cardConfig: CardConfigDoc;
   letterCount: number;
   createdAt: string;
@@ -30,8 +69,9 @@ function toIso(ts: Timestamp | undefined): string {
 
 async function serializeEvent(
   id: string,
-  data: EventDoc
+  rawData: EventDoc
 ): Promise<EventJson> {
+  const data = normalizeEventDoc(rawData);
   const countSnap = await lettersCollection()
     .where("eventId", "==", id)
     .count()
@@ -40,9 +80,7 @@ async function serializeEvent(
     id,
     name: data.name,
     date: data.date,
-    font: data.font,
-    cardFont: data.cardFont,
-    cardEnabled: data.cardEnabled,
+    letterConfig: data.letterConfig,
     cardConfig: data.cardConfig,
     letterCount: countSnap.data().count,
     createdAt: toIso(data.createdAt),
@@ -84,9 +122,7 @@ export async function createEvent(
     createdBy: uid,
     memberUids: [uid],
     inviteToken: null,
-    font: "yomogi",
-    cardFont: "mincho",
-    cardEnabled: true,
+    letterConfig: DEFAULT_LETTER_CONFIG,
     cardConfig: DEFAULT_CARD_CONFIG,
     createdAt: now,
     updatedAt: now,
@@ -99,9 +135,7 @@ export async function createEvent(
 export interface UpdateEventInput {
   name?: string;
   date?: string | null;
-  font?: FontKey;
-  cardFont?: FontKey;
-  cardEnabled?: boolean;
+  letterConfig?: Partial<LetterConfigDoc>;
   cardConfig?: Partial<CardConfigDoc>;
 }
 
@@ -111,15 +145,21 @@ export async function updateEvent(
   patch: UpdateEventInput
 ): Promise<EventJson> {
   const { ref, data } = await requireMembership(uid, eventId);
+  const current = normalizeEventDoc(data);
 
   const update: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
   if (patch.name !== undefined) update.name = patch.name;
   if (patch.date !== undefined) update.date = patch.date;
-  if (patch.font !== undefined) update.font = patch.font;
-  if (patch.cardFont !== undefined) update.cardFont = patch.cardFont;
-  if (patch.cardEnabled !== undefined) update.cardEnabled = patch.cardEnabled;
+  // 部分マージした完全形を書き戻す。旧形式ドキュメントもこの時点で新形式に移行し、
+  // 残っていた旧トップレベルフィールドは削除する。
+  if (patch.letterConfig !== undefined) {
+    update.letterConfig = { ...current.letterConfig, ...patch.letterConfig };
+    update.font = FieldValue.delete();
+  }
   if (patch.cardConfig !== undefined) {
-    update.cardConfig = { ...data.cardConfig, ...patch.cardConfig };
+    update.cardConfig = { ...current.cardConfig, ...patch.cardConfig };
+    update.cardFont = FieldValue.delete();
+    update.cardEnabled = FieldValue.delete();
   }
 
   await ref.update(update);

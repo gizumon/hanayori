@@ -33,3 +33,9 @@ variable "google_oauth_client_secret" {
   sensitive   = true
   default     = ""
 }
+
+variable "cloud_run_service_account_emails" {
+  description = "Cloud Run runtime service accounts that need Admin SDK access (verifyIdToken / createSessionCookie) to Firebase Authentication"
+  type        = list(string)
+  default     = []
+}

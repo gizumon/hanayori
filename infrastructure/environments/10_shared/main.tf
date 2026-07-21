@@ -74,4 +74,9 @@ module "firebase_auth" {
 
   google_oauth_client_id     = var.google_oauth_client_id
   google_oauth_client_secret = var.google_oauth_client_secret
+
+  cloud_run_service_account_emails = [
+    module.global.cloud_run_sa_stg,
+    module.global.cloud_run_sa_prod,
+  ]
 }

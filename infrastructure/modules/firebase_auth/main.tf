@@ -57,3 +57,14 @@ resource "google_identity_platform_default_supported_idp_config" "google" {
 
   depends_on = [google_identity_platform_config.main]
 }
+
+# Cloud Run 側は Admin SDK (verifyIdToken / createSessionCookie) で
+# Identity Toolkit API を呼ぶため、Workload Identity のサービスアカウントに
+# 権限が無いと auth/insufficient-permission で失敗する。
+resource "google_project_iam_member" "cloud_run_firebase_auth_admin" {
+  for_each = toset(var.cloud_run_service_account_emails)
+
+  project = var.project_id
+  role    = "roles/firebaseauth.admin"
+  member  = "serviceAccount:${each.value}"
+}

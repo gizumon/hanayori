@@ -7,7 +7,15 @@ export type CardFrame = "line" | "frame" | "minimal";
 /** イベント側の既定敬称。"" = 敬称なし。 */
 export type Honor = "" | "様" | "さん";
 
+/** お手紙のイベント共通設定 */
+export interface LetterConfigDoc {
+  font: FontKey;
+}
+
+/** 席札/QRカードのイベント共通設定 */
 export interface CardConfigDoc {
+  enabled: boolean;
+  font: FontKey;
   orient: CardOrient;
   honor: Honor;
   frame: CardFrame;
@@ -15,16 +23,19 @@ export interface CardConfigDoc {
   note: string;
 }
 
-/** Firestore `{prefix}events/{eventId}` ドキュメント */
+/**
+ * Firestore `{prefix}events/{eventId}` ドキュメント。
+ * 旧形式(トップレベルの font / cardFont / cardEnabled、enabled/font を持たない
+ * cardConfig)のドキュメントは読み込み時に events.ts の normalizeEventDoc で
+ * この形へ畳み込む。
+ */
 export interface EventDoc {
   name: string;
   date: string | null;
   createdBy: string;
   memberUids: string[];
   inviteToken: string | null;
-  font: FontKey;
-  cardFont: FontKey;
-  cardEnabled: boolean;
+  letterConfig: LetterConfigDoc;
   cardConfig: CardConfigDoc;
   createdAt: Timestamp;
   updatedAt: Timestamp;
