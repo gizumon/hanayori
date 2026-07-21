@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight } from "lucide-react";
 import { FONTS, THEMES } from "../constants";
 import { fieldStyle } from "../controls";
 import { QrCardFace } from "../QrCardFace";
@@ -14,7 +15,6 @@ interface EditorScreenProps {
   edTab: EditorTab;
   cardConf: CardConfig;
   geometry: CardGeometry;
-  cardEnabled: boolean;
   cardName: string;
   qrUrl: string;
   onBack: () => void;
@@ -24,7 +24,7 @@ interface EditorScreenProps {
   onChangeCardName: (v: string) => void;
   onSetHonor: (h: Honor | null) => void;
   onSetTheme: (theme: Draft["theme"]) => void;
-  onGoCard: () => void;
+  onOpenCardSettings: () => void;
   onSave: () => void;
   saving: boolean;
   letterUrl: string;
@@ -36,7 +36,6 @@ export function EditorScreen({
   edTab,
   cardConf,
   geometry: g,
-  cardEnabled,
   cardName,
   qrUrl,
   onBack,
@@ -46,14 +45,15 @@ export function EditorScreen({
   onChangeCardName,
   onSetHonor,
   onSetTheme,
-  onGoCard,
+  onOpenCardSettings,
   onSave,
   saving,
   letterUrl,
 }: EditorScreenProps) {
   const theme = THEMES[draft.theme || "rose"];
-  const pFont = FONTS[project.font || "yomogi"].family;
-  const cFont = FONTS[project.cardFont || "mincho"].family;
+  const pFont = FONTS[project.letterConfig.font].family;
+  const cFont = FONTS[cardConf.font].family;
+  const cardEnabled = cardConf.enabled;
   const showLetterFields = edTab !== "card" || !cardEnabled;
   const showCardFields = edTab === "card" && cardEnabled;
   const footText = project.name + (project.date ? ` ・ ${project.date}` : "");
@@ -242,7 +242,7 @@ export function EditorScreen({
                 </span>
                 <button
                   type="button"
-                  onClick={onGoCard}
+                  onClick={onOpenCardSettings}
                   className={styles.btnGhost}
                   style={{
                     alignSelf: "flex-start",
@@ -363,6 +363,9 @@ export function EditorScreen({
               rel="noreferrer"
               className={styles.btnOutline}
               style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
                 padding: "12px 22px",
                 borderRadius: 999,
                 border: "1px solid #EBD9DF",
@@ -373,7 +376,8 @@ export function EditorScreen({
                 textDecoration: "none",
               }}
             >
-              お手紙を開く ↗
+              お手紙を開く
+              <ArrowUpRight size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
             </a>
           </div>
           <p style={{ margin: 0, fontSize: 11.5, color: "#B4A2A2", letterSpacing: "0.05em" }}>

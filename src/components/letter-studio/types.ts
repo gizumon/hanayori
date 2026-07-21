@@ -1,11 +1,11 @@
 export type ThemeKey = "rose" | "blue" | "sage" | "kinari";
 export type FontKey = "yomogi" | "klee" | "mincho" | "gothic" | "maru";
-export type Screen = "login" | "home" | "project" | "editor" | "card";
+export type Screen = "login" | "home" | "project" | "editor";
 export type CardOrient = "landscape" | "portrait" | "tent-l" | "tent-p";
 export type CardFrame = "line" | "frame" | "minimal";
 /** イベント既定の敬称。"" = 敬称なし。 */
 export type Honor = "" | "様" | "さん";
-export type ProjectTab = "letters" | "settings";
+export type SettingsTab = "general" | "card";
 export type EditorTab = "letter" | "card";
 
 export interface Letter {
@@ -20,7 +20,15 @@ export interface Letter {
   honor?: Honor | null;
 }
 
+/** お手紙のイベント共通設定 */
+export interface LetterConfig {
+  font: FontKey;
+}
+
+/** 席札/QRカードのイベント共通設定 */
 export interface CardConfig {
+  enabled: boolean;
+  font: FontKey;
   orient: CardOrient;
   honor: Honor;
   frame: CardFrame;
@@ -33,15 +41,21 @@ export interface Project {
   id: string;
   name: string;
   date: string | null;
+  letterConfig: LetterConfig;
   cardConfig: CardConfig;
-  font: FontKey;
-  cardFont: FontKey;
-  cardEnabled: boolean;
 }
 
 /** ホーム画面のイベント一覧用(手紙数はサーバーで集計)。 */
 export interface EventSummary extends Project {
   letterCount: number;
+}
+
+/** 共通設定ドロワーの保存ペイロード(イベントPATCHの形)。 */
+export interface EventSettingsPatch {
+  name: string;
+  date: string | null;
+  letterConfig: LetterConfig;
+  cardConfig: CardConfig;
 }
 
 export type Draft = Partial<Letter>;
@@ -60,6 +74,7 @@ export interface StudioState {
   newDate: string;
   toastMsg: string;
   qrModal: Letter | null;
-  projTab: ProjectTab;
+  /** 共通設定ドロワー。null = 閉。どの画面からでも開ける。 */
+  settingsTab: SettingsTab | null;
   edTab: EditorTab;
 }

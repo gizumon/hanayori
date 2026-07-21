@@ -1,6 +1,7 @@
 "use client";
 
-import type { MouseEvent } from "react";
+import type { MouseEvent, RefObject } from "react";
+import { Download, Printer } from "lucide-react";
 import { QrCardFace } from "./QrCardFace";
 import type { CardGeometry } from "./geometry";
 import type { CardConfig } from "./types";
@@ -19,6 +20,9 @@ interface QrModalProps {
   note: string;
   footText: string;
   qrUrl: string;
+  cardRef: RefObject<HTMLDivElement | null>;
+  onSaveImage: () => void;
+  onPrint: () => void;
   onClose: () => void;
 }
 
@@ -43,9 +47,26 @@ export function QrModal({
   note,
   footText,
   qrUrl,
+  cardRef,
+  onSaveImage,
+  onPrint,
   onClose,
 }: QrModalProps) {
   const stop = (e: MouseEvent) => e.stopPropagation();
+
+  const actionStyle = {
+    display: "flex",
+    alignItems: "center",
+    gap: 7,
+    padding: "9px 20px",
+    borderRadius: 999,
+    border: "none",
+    background: "rgba(255,249,245,0.9)",
+    color: "#5C4A4A",
+    fontSize: 12.5,
+    letterSpacing: "0.06em",
+    cursor: "pointer",
+  } as const;
 
   return (
     <div
@@ -67,6 +88,7 @@ export function QrModal({
         style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}
       >
         <QrCardFace
+          ref={cardRef}
           width={modalCardWidth(g)}
           aspect={g.aspect}
           paper={paper}
@@ -84,22 +106,19 @@ export function QrModal({
           qrUrl={qrUrl}
           boxShadow="0 22px 60px rgba(0,0,0,0.3)"
         />
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            padding: "9px 22px",
-            borderRadius: 999,
-            border: "none",
-            background: "rgba(255,249,245,0.9)",
-            color: "#5C4A4A",
-            fontSize: 12.5,
-            letterSpacing: "0.06em",
-            cursor: "pointer",
-          }}
-        >
-          閉じる
-        </button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+          <button type="button" onClick={onSaveImage} style={actionStyle}>
+            <Download size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
+            画像として保存
+          </button>
+          <button type="button" onClick={onPrint} style={actionStyle}>
+            <Printer size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
+            印刷する
+          </button>
+          <button type="button" onClick={onClose} style={actionStyle}>
+            閉じる
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -13,10 +13,11 @@ import type {
   CardConfig,
   Draft,
   EditorTab,
+  EventSettingsPatch,
   EventSummary,
   Letter,
-  ProjectTab,
   Screen,
+  SettingsTab,
   StudioState,
 } from "./types";
 
@@ -33,7 +34,7 @@ const initialState: StudioState = {
   newDate: "",
   toastMsg: "",
   qrModal: null,
-  projTab: "letters",
+  settingsTab: null,
   edTab: "letter",
 };
 
@@ -144,7 +145,7 @@ export function useLetterStudio() {
 
   const openProject = useCallback(
     async (id: string) => {
-      patch({ curP: id, screen: "project", projTab: "letters" });
+      patch({ curP: id, screen: "project" });
       try {
         const data = await api<{ letters: Letter[] }>(`/api/events/${id}/letters`);
         patch({ letters: data.letters });
@@ -156,8 +157,8 @@ export function useLetterStudio() {
   );
 
   const updateProject = useCallback(
-    async (projPatch: Record<string, unknown>) => {
-      if (!state.curP) return;
+    async (projPatch: object): Promise<boolean> => {
+      if (!state.curP) return false;
       try {
         const data = await api<{ event: EventSummary }>(`/api/events/${state.curP}`, {
           method: "PATCH",
@@ -167,18 +168,22 @@ export function useLetterStudio() {
           ...s,
           projects: s.projects.map((p) => (p.id === data.event.id ? { ...p, ...data.event } : p)),
         }));
+        return true;
       } catch {
         toast("更新に失敗しました");
+        return false;
       }
     },
     [state.curP, toast]
   );
 
-  const setCard = useCallback(
-    (confPatch: Partial<CardConfig>) => {
-      void updateProject({ cardConfig: confPatch });
+  const saveSettings = useCallback(
+    async (settingsPatch: EventSettingsPatch): Promise<boolean> => {
+      const ok = await updateProject(settingsPatch);
+      if (ok) toast("設定を保存しました");
+      return ok;
     },
-    [updateProject]
+    [updateProject, toast]
   );
 
   const setDraft = useCallback((d: Draft) => {
@@ -400,15 +405,6 @@ export function useLetterStudio() {
     [go]
   );
 
-  const goCardSettings = useCallback(() => {
-    const first: Letter | { id: null; to: string; theme: "rose" } =
-      state.letters[0] || { id: null, to: "ゲスト", theme: "rose" };
-    go("card", {
-      curL: first.id,
-      draft: { ...first, id: first.id ?? undefined },
-    });
-  }, [state.letters, go]);
-
   const logout = useCallback(async () => {
     await signOutEverywhere();
   }, []);
@@ -443,10 +439,12 @@ export function useLetterStudio() {
     openProject,
     logout,
     updateNickname,
-    setProjTab: (t: ProjectTab) => patch({ projTab: t }),
     setEdTab: (t: EditorTab) => patch({ edTab: t }),
+    openSettings: (tab: SettingsTab = "general") => patch({ settingsTab: tab }),
+    closeSettings: () => patch({ settingsTab: null }),
+    setSettingsTab: (tab: SettingsTab) => patch({ settingsTab: tab }),
     updateProject,
-    setCard,
+    saveSettings,
     setDraft,
     letterUrl,
     saveLetter,
@@ -461,11 +459,9 @@ export function useLetterStudio() {
     creatingProject,
     newLetter,
     editLetter,
-    goCardSettings,
     cardNameFor: (l: Draft | Letter | null | undefined) =>
       cardConf ? cardNameFor(l, cardConf) : "お名前",
     geom,
-    projTab: state.projTab,
     edTab: state.edTab,
     setQrModal: (l: Letter | null) => patch({ qrModal: l }),
     setModalShown: (v: boolean) =>

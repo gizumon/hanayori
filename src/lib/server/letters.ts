@@ -2,7 +2,7 @@ import { cache } from "react";
 import { ulid } from "ulid";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { eventsCollection, lettersCollection } from "./collections";
-import { requireEventMembership } from "./events";
+import { normalizeEventDoc, requireEventMembership } from "./events";
 import { HttpError } from "./http-error";
 import type { FontKey, Honor, LetterDoc, LetterPhoto, ThemeKey } from "./schema";
 
@@ -176,7 +176,7 @@ export const getLetterForGuest = cache(
       photo: primary?.dataUrl ?? null,
       photoRatio: primary?.ratio ?? undefined,
       date: eventData.date,
-      font: eventData.font,
+      font: normalizeEventDoc(eventData).letterConfig.font,
     };
   }
 );
