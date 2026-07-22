@@ -1,6 +1,7 @@
 "use client";
 
 import { fieldStyle } from "./controls";
+import { isoToJaDate, jaDateToIso } from "@/lib/date";
 import styles from "./letter-studio.module.css";
 
 interface NewEventModalProps {
@@ -67,7 +68,7 @@ export function NewEventModal({
             onChange={(e) => onChangeName(e.target.value)}
             placeholder="ゆい & 蓮 の結婚式"
             className={styles.field}
-            style={fieldStyle({ padding: "12px 14px", fontSize: 15 })}
+            style={fieldStyle({ padding: "12px 14px", fontSize: 16 })}
             autoFocus
           />
         </label>
@@ -83,11 +84,11 @@ export function NewEventModal({
         >
           挙式日
           <input
-            value={date}
-            onChange={(e) => onChangeDate(e.target.value)}
-            placeholder="2026年10月24日(土)"
+            type="date"
+            value={jaDateToIso(date)}
+            onChange={(e) => onChangeDate(isoToJaDate(e.target.value))}
             className={styles.field}
-            style={fieldStyle({ padding: "12px 14px", fontSize: 15 })}
+            style={fieldStyle({ padding: "12px 14px", fontSize: 16 })}
           />
         </label>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>

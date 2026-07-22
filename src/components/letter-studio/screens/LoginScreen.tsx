@@ -208,7 +208,7 @@ export function LoginScreen() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={styles.field}
-                style={fieldStyle({ padding: "12px 14px", fontSize: 15 })}
+                style={fieldStyle({ padding: "12px 14px", fontSize: 16 })}
               />
             </label>
             <label
@@ -222,7 +222,7 @@ export function LoginScreen() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={styles.field}
-                style={fieldStyle({ padding: "12px 14px", fontSize: 15 })}
+                style={fieldStyle({ padding: "12px 14px", fontSize: 16 })}
               />
             </label>
             <button

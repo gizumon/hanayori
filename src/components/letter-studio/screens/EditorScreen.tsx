@@ -152,7 +152,7 @@ export function EditorScreen({
                 className={styles.field}
                 style={fieldStyle({
                   padding: "12px 14px",
-                  fontSize: 15,
+                  fontSize: 16,
                   background: "#FFFCF8",
                   letterSpacing: "0.05em",
                 })}
@@ -185,7 +185,7 @@ export function EditorScreen({
                   className={styles.field}
                   style={fieldStyle({
                     padding: "12px 14px",
-                    fontSize: 15,
+                    fontSize: 16,
                     background: "#FFFCF8",
                     letterSpacing: "0.05em",
                   })}
@@ -307,7 +307,7 @@ export function EditorScreen({
                   className={styles.field}
                   style={fieldStyle({
                     padding: 14,
-                    fontSize: 15.5,
+                    fontSize: 16,
                     lineHeight: 1.9,
                     letterSpacing: "0.04em",
                     resize: "vertical",
