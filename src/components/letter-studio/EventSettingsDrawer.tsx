@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { FONTS, THEMES } from "./constants";
 import { FontOptionRow, PillButton, Toggle, fieldStyle } from "./controls";
+import { isoToJaDate, jaDateToIso } from "@/lib/date";
 import { cardNameFor, geom } from "./geometry";
 import { QrCardFace } from "./QrCardFace";
 import styles from "./letter-studio.module.css";
@@ -229,22 +230,24 @@ export function EventSettingsDrawer({
                   value={local.name}
                   onChange={(e) => setLocal((s) => ({ ...s, name: e.target.value }))}
                   className={styles.field}
-                  style={fieldStyle({ fontSize: 14.5 })}
+                  style={fieldStyle({ fontSize: 16 })}
                 />
               </label>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <span style={sectionLabel}>挙式日</span>
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   <input
-                    value={local.date ?? ""}
-                    onChange={(e) => setLocal((s) => ({ ...s, date: e.target.value }))}
+                    type="date"
+                    value={jaDateToIso(local.date)}
+                    onChange={(e) =>
+                      setLocal((s) => ({ ...s, date: isoToJaDate(e.target.value) }))
+                    }
                     disabled={!hasDate}
-                    placeholder="2026年10月24日(土)"
                     className={styles.field}
                     style={fieldStyle({
                       flex: 1,
                       minWidth: 160,
-                      fontSize: 14.5,
+                      fontSize: 16,
                       background: hasDate ? "#FFFFFF" : "#F2ECEC",
                     })}
                   />
@@ -410,7 +413,7 @@ export function EventSettingsDrawer({
                       onChange={(e) => setCard({ note: e.target.value })}
                       rows={2}
                       className={styles.field}
-                      style={fieldStyle({ fontSize: 13.5, lineHeight: 1.7, resize: "vertical" })}
+                      style={fieldStyle({ fontSize: 16, lineHeight: 1.7, resize: "vertical" })}
                     />
                   </label>
                 </>

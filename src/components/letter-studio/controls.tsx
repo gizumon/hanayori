@@ -175,7 +175,7 @@ export function fieldStyle(extra?: CSSProperties): CSSProperties {
     borderRadius: 10,
     border: "1px solid #EBD9DF",
     background: "#FFFFFF",
-    fontSize: 14,
+    fontSize: 16,
     color: "#5C4A4A",
     outline: "none",
     ...extra,

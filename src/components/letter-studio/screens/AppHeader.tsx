@@ -180,7 +180,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                   onKeyDown={handleKeyDown}
                   maxLength={30}
                   className={styles.field}
-                  style={fieldStyle({ padding: "8px 10px", fontSize: 13.5 })}
+                  style={fieldStyle({ padding: "8px 10px", fontSize: 16 })}
                 />
                 <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
                   <button
