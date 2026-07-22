@@ -1,0 +1,238 @@
+"use client";
+
+import { ArrowUpRight, Link2, MoreVertical, QrCode, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { THEMES } from "../constants";
+import styles from "../letter-studio.module.css";
+import type { Letter } from "../types";
+
+interface LetterRowProps {
+  letter: Letter;
+  cardEnabled: boolean;
+  pFont: string;
+  cFont: string;
+  cardName: string;
+  letterUrl: string;
+  deletingLetter: boolean;
+  onEdit: () => void;
+  onShowQr: () => void;
+  onCopyLink: () => void;
+  onDelete: () => void;
+}
+
+const pillStyle = {
+  padding: "8px 16px",
+  borderRadius: 999,
+  border: "1px solid #EBD9DF",
+  background: "#FFFFFF",
+  color: "#5C4A4A",
+  fontSize: 12.5,
+  letterSpacing: "0.06em",
+};
+
+const menuItemStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  width: "100%",
+  padding: "10px 14px",
+  border: "none",
+  background: "none",
+  textAlign: "left" as const,
+  fontSize: 13,
+  letterSpacing: "0.04em",
+  color: "#5C4A4A",
+  cursor: "pointer",
+};
+
+export function LetterRow({
+  letter: l,
+  cardEnabled,
+  pFont,
+  cFont,
+  cardName,
+  letterUrl,
+  deletingLetter,
+  onEdit,
+  onShowQr,
+  onCopyLink,
+  onDelete,
+}: LetterRowProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [menuOpen]);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 16,
+        background: "#FFFCF8",
+        borderRadius: 14,
+        padding: "16px 20px",
+        boxShadow: "0 6px 20px rgba(150,110,130,0.12)",
+        flexWrap: "wrap",
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: "46% 54% 51% 49% / 53% 47% 55% 45%",
+          background: THEMES[l.theme].accent,
+          flex: "none",
+          boxShadow: "inset 0 1px 2px rgba(255,255,255,0.4)",
+        }}
+      />
+      <div style={{ flex: 1, minWidth: 160 }}>
+        <div style={{ fontSize: 16.5, fontWeight: 600, letterSpacing: "0.08em", fontFamily: pFont }}>
+          {l.to}
+        </div>
+        <div
+          style={{
+            fontSize: 13,
+            color: "#8C7676",
+            letterSpacing: "0.04em",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            maxWidth: 420,
+            fontFamily: pFont,
+          }}
+        >
+          {l.body.replace(/\n+/g, " ").slice(0, 40)}
+        </div>
+        {cardEnabled && (
+          <div
+            style={{
+              fontSize: 11.5,
+              color: "#B08A99",
+              letterSpacing: "0.06em",
+              marginTop: 3,
+              fontFamily: cFont,
+            }}
+          >
+            席札: {cardName}
+          </div>
+        )}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <button type="button" onClick={onEdit} className={styles.btnOutline} style={pillStyle}>
+          編集
+        </button>
+        <a
+          href={letterUrl}
+          target="_blank"
+          rel="noreferrer"
+          className={styles.btnSolid}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 16px",
+            borderRadius: 999,
+            border: "none",
+            background: "#D3A5B4",
+            color: "#FFF9F5",
+            fontSize: 12.5,
+            letterSpacing: "0.06em",
+            textDecoration: "none",
+          }}
+        >
+          お手紙を開く
+          <ArrowUpRight size={12} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
+        </a>
+        <div ref={menuRef} style={{ position: "relative" }}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="その他の操作"
+            aria-expanded={menuOpen}
+            className={styles.btnOutline}
+            style={{ ...pillStyle, padding: "8px 10px", display: "flex", alignItems: "center" }}
+          >
+            <MoreVertical size={15} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+          {menuOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                right: 0,
+                zIndex: 10,
+                minWidth: 168,
+                background: "#FFFFFF",
+                border: "1px solid #EBD9DF",
+                borderRadius: 12,
+                boxShadow: "0 10px 30px rgba(150,110,130,0.22)",
+                padding: 6,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {cardEnabled && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onShowQr();
+                    setMenuOpen(false);
+                  }}
+                  className={styles.optionRow}
+                  style={{ ...menuItemStyle, borderRadius: 8 }}
+                >
+                  <QrCode size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
+                  QRカード
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  onCopyLink();
+                  setMenuOpen(false);
+                }}
+                className={styles.optionRow}
+                style={{ ...menuItemStyle, borderRadius: 8 }}
+              >
+                <Link2 size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
+                リンクをコピー
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`「${l.to}」を削除しますか？この操作は取り消せません。`)) {
+                    onDelete();
+                  }
+                  setMenuOpen(false);
+                }}
+                disabled={deletingLetter}
+                className={styles.optionRow}
+                style={{
+                  ...menuItemStyle,
+                  borderRadius: 8,
+                  color: "#B5555F",
+                  opacity: deletingLetter ? 0.6 : 1,
+                  cursor: deletingLetter ? "default" : "pointer",
+                }}
+              >
+                <Trash2 size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
+                削除
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

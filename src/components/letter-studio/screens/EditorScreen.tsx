@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Settings } from "lucide-react";
 import { FONTS, THEMES } from "../constants";
 import { fieldStyle } from "../controls";
 import { QrCardFace } from "../QrCardFace";
@@ -24,6 +24,7 @@ interface EditorScreenProps {
   onChangeCardName: (v: string) => void;
   onSetHonor: (h: Honor | null) => void;
   onSetTheme: (theme: Draft["theme"]) => void;
+  onOpenSettings: () => void;
   onOpenCardSettings: () => void;
   onSave: () => void;
   saving: boolean;
@@ -45,6 +46,7 @@ export function EditorScreen({
   onChangeCardName,
   onSetHonor,
   onSetTheme,
+  onOpenSettings,
   onOpenCardSettings,
   onSave,
   saving,
@@ -90,9 +92,32 @@ export function EditorScreen({
             gap: 18,
           }}
         >
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: "0.12em" }}>
-            お手紙をつくる
-          </h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: "0.12em" }}>
+              お手紙をつくる
+            </h2>
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className={styles.btnOutline}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 16px",
+                borderRadius: 999,
+                border: "1px solid #EBD9DF",
+                background: "#FFFFFF",
+                color: "#5C4A4A",
+                fontSize: 12.5,
+                letterSpacing: "0.06em",
+                flex: "none",
+              }}
+            >
+              <Settings size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: "#B08A99" }} />
+              共通設定
+            </button>
+          </div>
           {cardEnabled && (
             <div
               style={{

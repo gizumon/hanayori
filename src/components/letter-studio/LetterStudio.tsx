@@ -41,6 +41,7 @@ export function LetterStudio() {
           {state.screen === "home" && (
             <HomeScreen
               projects={state.projects}
+              loading={api.loadingEvents}
               onOpen={(id) => api.openProject(id)}
               onNew={() => api.setModalShown(true)}
             />
@@ -50,6 +51,7 @@ export function LetterStudio() {
             <ProjectScreen
               project={curProject}
               letters={state.letters}
+              loadingLetters={api.loadingLetters}
               onBack={api.goHome}
               onOpenSettings={() => api.openSettings("general")}
               onNewLetter={api.newLetter}
@@ -79,6 +81,7 @@ export function LetterStudio() {
               onChangeCardName={(cardName) => api.setDraft({ cardName })}
               onSetHonor={(honor) => api.setDraft({ honor })}
               onSetTheme={(theme) => api.setDraft({ theme })}
+              onOpenSettings={() => api.openSettings("general")}
               onOpenCardSettings={() => api.openSettings("card")}
               onSave={api.saveLetter}
               saving={api.savingLetter}

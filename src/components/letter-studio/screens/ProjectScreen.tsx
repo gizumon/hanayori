@@ -1,13 +1,15 @@
 "use client";
 
-import { ArrowUpRight, Link, Settings } from "lucide-react";
-import { FONTS, THEMES } from "../constants";
+import { Settings } from "lucide-react";
+import { FONTS } from "../constants";
 import styles from "../letter-studio.module.css";
 import type { Letter, Project } from "../types";
+import { LetterRow } from "./LetterRow";
 
 interface ProjectScreenProps {
   project: Project;
   letters: Letter[];
+  loadingLetters: boolean;
   onBack: () => void;
   onOpenSettings: () => void;
   onNewLetter: () => void;
@@ -23,6 +25,7 @@ interface ProjectScreenProps {
 export function ProjectScreen({
   project,
   letters,
+  loadingLetters,
   onBack,
   onOpenSettings,
   onNewLetter,
@@ -121,175 +124,47 @@ export function ProjectScreen({
           <span style={{ fontSize: 20, fontWeight: 300, lineHeight: 1 }}>+</span>
           新しいお手紙を書く
         </button>
-        {letters.map((l) => (
-          <div
-            key={l.id}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-              background: "#FFFCF8",
-              borderRadius: 14,
-              padding: "16px 20px",
-              boxShadow: "0 6px 20px rgba(150,110,130,0.12)",
-              flexWrap: "wrap",
-            }}
-          >
-            <span
-              aria-hidden="true"
+        {loadingLetters &&
+          Array.from({ length: 2 }).map((_, i) => (
+            <div
+              key={i}
               style={{
-                width: 34,
-                height: 34,
-                borderRadius: "46% 54% 51% 49% / 53% 47% 55% 45%",
-                background: THEMES[l.theme].accent,
-                flex: "none",
-                boxShadow: "inset 0 1px 2px rgba(255,255,255,0.4)",
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                background: "#FFFCF8",
+                borderRadius: 14,
+                padding: "16px 20px",
+                boxShadow: "0 6px 20px rgba(150,110,130,0.12)",
               }}
+            >
+              <div
+                className={styles.skeleton}
+                style={{ width: 34, height: 34, borderRadius: "50%", flex: "none" }}
+              />
+              <div style={{ flex: 1, minWidth: 160, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className={styles.skeleton} style={{ height: 16, width: "30%" }} />
+                <div className={styles.skeleton} style={{ height: 12, width: "55%" }} />
+              </div>
+            </div>
+          ))}
+        {!loadingLetters &&
+          letters.map((l) => (
+            <LetterRow
+              key={l.id}
+              letter={l}
+              cardEnabled={cardEnabled}
+              pFont={pFont}
+              cFont={cFont}
+              cardName={cardNameFor(l)}
+              letterUrl={letterUrl(l.id)}
+              deletingLetter={deletingLetter}
+              onEdit={() => onEditLetter(l)}
+              onShowQr={() => onShowQr(l)}
+              onCopyLink={() => onCopyLink(l.id)}
+              onDelete={() => onDeleteLetter(l)}
             />
-            <div style={{ flex: 1, minWidth: 160 }}>
-              <div
-                style={{
-                  fontSize: 16.5,
-                  fontWeight: 600,
-                  letterSpacing: "0.08em",
-                  fontFamily: pFont,
-                }}
-              >
-                {l.to}
-              </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: "#8C7676",
-                  letterSpacing: "0.04em",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  maxWidth: 420,
-                  fontFamily: pFont,
-                }}
-              >
-                {l.body.replace(/\n+/g, " ").slice(0, 40)}
-              </div>
-              {cardEnabled && (
-                <div
-                  style={{
-                    fontSize: 11.5,
-                    color: "#B08A99",
-                    letterSpacing: "0.06em",
-                    marginTop: 3,
-                    fontFamily: cFont,
-                  }}
-                >
-                  席札: {cardNameFor(l)}
-                </div>
-              )}
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => onEditLetter(l)}
-                className={styles.btnOutline}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 999,
-                  border: "1px solid #EBD9DF",
-                  background: "#FFFFFF",
-                  color: "#5C4A4A",
-                  fontSize: 12.5,
-                  letterSpacing: "0.06em",
-                }}
-              >
-                編集
-              </button>
-              {cardEnabled && (
-                <button
-                  type="button"
-                  onClick={() => onShowQr(l)}
-                  className={styles.btnOutline}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: 999,
-                    border: "1px solid #EBD9DF",
-                    background: "#FFFFFF",
-                    color: "#5C4A4A",
-                    fontSize: 12.5,
-                    letterSpacing: "0.06em",
-                  }}
-                >
-                  QRカード
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => onCopyLink(l.id)}
-                title="お手紙のリンクをコピー"
-                className={styles.btnOutline}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 999,
-                  border: "1px solid #EBD9DF",
-                  background: "#FFFFFF",
-                  color: "#5C4A4A",
-                  fontSize: 12.5,
-                  letterSpacing: "0.06em",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <Link size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
-                リンク
-              </button>
-              <a
-                href={letterUrl(l.id)}
-                target="_blank"
-                rel="noreferrer"
-                className={styles.btnSolid}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "8px 16px",
-                  borderRadius: 999,
-                  border: "none",
-                  background: "#D3A5B4",
-                  color: "#FFF9F5",
-                  fontSize: 12.5,
-                  letterSpacing: "0.06em",
-                  textDecoration: "none",
-                }}
-              >
-                お手紙を開く
-                <ArrowUpRight size={12} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
-              </a>
-              <button
-                type="button"
-                onClick={() => {
-                  if (window.confirm(`「${l.to}」を削除しますか？この操作は取り消せません。`)) {
-                    onDeleteLetter(l);
-                  }
-                }}
-                disabled={deletingLetter}
-                title="お手紙を削除"
-                className={styles.btnOutline}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 999,
-                  border: "1px solid #EBD9DF",
-                  background: "#FFFFFF",
-                  color: "#B5555F",
-                  fontSize: 12.5,
-                  letterSpacing: "0.06em",
-                  opacity: deletingLetter ? 0.6 : 1,
-                  cursor: deletingLetter ? "default" : "pointer",
-                }}
-              >
-                削除
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
       </div>
 
       <h4

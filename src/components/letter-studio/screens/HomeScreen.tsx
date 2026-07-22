@@ -5,11 +5,12 @@ import type { EventSummary } from "../types";
 
 interface HomeScreenProps {
   projects: EventSummary[];
+  loading: boolean;
   onOpen: (id: string) => void;
   onNew: () => void;
 }
 
-export function HomeScreen({ projects, onOpen, onNew }: HomeScreenProps) {
+export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps) {
   return (
     <main
       className={styles.fadeup}
@@ -32,52 +33,75 @@ export function HomeScreen({ projects, onOpen, onNew }: HomeScreenProps) {
           gap: 18,
         }}
       >
-        {projects.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => onOpen(p.id)}
-            className={styles.cardTile}
-            style={{
-              textAlign: "left",
-              background: "#FFFCF8",
-              border: "none",
-              borderRadius: 16,
-              padding: "24px 22px",
-              boxShadow: "0 8px 28px rgba(150,110,130,0.14)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            <span
+        {loading &&
+          Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
               style={{
-                fontSize: 16.5,
-                fontWeight: 600,
-                letterSpacing: "0.08em",
-                color: "#5C4A4A",
+                background: "#FFFCF8",
+                borderRadius: 16,
+                padding: "24px 22px",
+                boxShadow: "0 8px 28px rgba(150,110,130,0.14)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
               }}
             >
-              {p.name}
-            </span>
-            <span style={{ fontSize: 12, color: "#8C7676", letterSpacing: "0.08em" }}>
-              {p.date}
-            </span>
-            <span
+              <div className={styles.skeleton} style={{ height: 18, width: "65%" }} />
+              <div className={styles.skeleton} style={{ height: 12, width: "35%" }} />
+              <div
+                className={styles.skeleton}
+                style={{ height: 12, width: "45%", marginTop: 12 }}
+              />
+            </div>
+          ))}
+        {!loading &&
+          projects.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onOpen(p.id)}
+              className={styles.cardTile}
               style={{
-                marginTop: 8,
-                fontSize: 12,
-                color: "#B08A99",
-                letterSpacing: "0.06em",
-                borderTop: "1px dashed #F0E2E7",
-                paddingTop: 10,
-                width: "100%",
+                textAlign: "left",
+                background: "#FFFCF8",
+                border: "none",
+                borderRadius: 16,
+                padding: "24px 22px",
+                boxShadow: "0 8px 28px rgba(150,110,130,0.14)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
               }}
             >
-              お手紙 {p.letterCount} 通
-            </span>
-          </button>
-        ))}
+              <span
+                style={{
+                  fontSize: 16.5,
+                  fontWeight: 600,
+                  letterSpacing: "0.08em",
+                  color: "#5C4A4A",
+                }}
+              >
+                {p.name}
+              </span>
+              <span style={{ fontSize: 12, color: "#8C7676", letterSpacing: "0.08em" }}>
+                {p.date}
+              </span>
+              <span
+                style={{
+                  marginTop: 8,
+                  fontSize: 12,
+                  color: "#B08A99",
+                  letterSpacing: "0.06em",
+                  borderTop: "1px dashed #F0E2E7",
+                  paddingTop: 10,
+                  width: "100%",
+                }}
+              >
+                お手紙 {p.letterCount} 通
+              </span>
+            </button>
+          ))}
         <button
           type="button"
           onClick={onNew}

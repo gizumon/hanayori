@@ -70,6 +70,8 @@ export function useLetterStudio() {
   const [creatingProject, setCreatingProject] = useState(false);
   const deletingLetterRef = useRef(false);
   const [deletingLetter, setDeletingLetter] = useState(false);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [loadingLetters, setLoadingLetters] = useState(false);
 
   const patch = useCallback((p: Partial<StudioState>) => {
     setState((s) => ({ ...s, ...p }));
@@ -85,16 +87,23 @@ export function useLetterStudio() {
   );
 
   const refreshEvents = useCallback(async () => {
-    const data = await api<{ events: EventSummary[] }>("/api/events");
-    patch({ projects: data.events });
-    return data.events;
+    setLoadingEvents(true);
+    try {
+      const data = await api<{ events: EventSummary[] }>("/api/events");
+      patch({ projects: data.events });
+      return data.events;
+    } finally {
+      setLoadingEvents(false);
+    }
   }, [patch]);
 
   // Firebase Auth is the source of truth for sign-in state; the httpOnly
   // session cookie backs every /api/* call. Both server-rendered and
   // first-client-rendered HTML show the neutral `initialState` (screen:
   // "login") so they never mismatch — the `hydrated` gate hides the
-  // one-frame transition once onAuthStateChanged resolves.
+  // one-frame transition once onAuthStateChanged resolves. Once we know the
+  // user is signed in we move to the "home" screen right away and let
+  // HomeScreen render its own skeleton while refreshEvents is in flight.
   useEffect(() => {
     const unsub = onAuthStateChanged(getFirebaseAuth(), async (user) => {
       if (!user) {
@@ -111,19 +120,18 @@ export function useLetterStudio() {
         return;
       }
       const userName = user.displayName || user.email?.split("@")[0] || "";
+      setState((s) => ({ ...s, screen: "home", userName }));
+      setHydrated(true);
       try {
-        const events = await refreshEvents();
-        setState((s) => ({ ...s, projects: events, screen: "home", userName }));
+        await refreshEvents();
       } catch {
         try {
           await establishSession(user);
-          const events = await refreshEvents();
-          setState((s) => ({ ...s, projects: events, screen: "home", userName }));
+          await refreshEvents();
         } catch {
           setState((s) => ({ ...s, screen: "login" }));
         }
       }
-      setHydrated(true);
     });
     return unsub;
   }, [refreshEvents]);
@@ -145,12 +153,15 @@ export function useLetterStudio() {
 
   const openProject = useCallback(
     async (id: string) => {
-      patch({ curP: id, screen: "project" });
+      patch({ curP: id, screen: "project", letters: [] });
+      setLoadingLetters(true);
       try {
         const data = await api<{ letters: Letter[] }>(`/api/events/${id}/letters`);
         patch({ letters: data.letters });
       } catch {
         toast("お手紙の読み込みに失敗しました");
+      } finally {
+        setLoadingLetters(false);
       }
     },
     [patch, toast]
@@ -431,6 +442,8 @@ export function useLetterStudio() {
   return {
     state,
     hydrated,
+    loadingEvents,
+    loadingLetters,
     curProject,
     cardConf,
     cardRef,

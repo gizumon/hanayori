@@ -41,6 +41,22 @@
   animation: fadeup 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0e2e7 25%, #faf2f5 50%, #f0e2e7 75%);
+  background-size: 400% 100%;
+  animation: skeletonShimmer 1.6s ease-in-out infinite;
+}
+
 /* white pill with hairline border */
 .btnOutline {
   cursor: pointer;
