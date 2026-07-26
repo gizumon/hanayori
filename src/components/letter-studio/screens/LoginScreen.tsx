@@ -10,6 +10,7 @@ import {
 import { BrandMark } from "../BrandMark";
 import { fieldStyle } from "../controls";
 import styles from "../letter-studio.module.css";
+import { FONT_SIZE } from "@/lib/typography";
 
 type Mode = "closed" | "signin" | "signup";
 
@@ -75,7 +76,7 @@ export function LoginScreen() {
           style={{
             margin: "0 0 6px",
             fontFamily: "'Shippori Mincho', serif",
-            fontSize: 30,
+            fontSize: FONT_SIZE.display,
             fontWeight: 500,
             letterSpacing: "0.2em",
             color: "#5C4A4A",
@@ -100,7 +101,7 @@ export function LoginScreen() {
               background: "linear-gradient(90deg, transparent, #D3A5B4)",
             }}
           />
-          <span aria-hidden="true" style={{ fontSize: 11, color: "#D3A5B4" }}>
+          <span aria-hidden="true" style={{ fontSize: FONT_SIZE.overline, color: "#D3A5B4" }}>
             ◈
           </span>
           <span
@@ -112,13 +113,13 @@ export function LoginScreen() {
             }}
           />
         </div>
-        <p style={{ margin: "0 0 4px", fontSize: 12, letterSpacing: "0.32em", color: "#B08A99" }}>
+        <p style={{ margin: "0 0 4px", fontSize: FONT_SIZE.caption, letterSpacing: "0.32em", color: "#B08A99" }}>
           花嫁のお便り
         </p>
         <p
           style={{
             margin: "0 0 28px",
-            fontSize: 13,
+            fontSize: FONT_SIZE.bodySm,
             letterSpacing: "0.1em",
             color: "#8C7676",
             lineHeight: 1.8,
@@ -146,7 +147,7 @@ export function LoginScreen() {
                 border: "1px solid #EBD9DF",
                 background: "#FFFFFF",
                 color: "#5C4A4A",
-                fontSize: 14,
+                fontSize: FONT_SIZE.body,
                 letterSpacing: "0.06em",
               }}
             >
@@ -183,7 +184,7 @@ export function LoginScreen() {
                 border: "none",
                 background: "#D3A5B4",
                 color: "#FFF9F5",
-                fontSize: 14,
+                fontSize: FONT_SIZE.body,
                 letterSpacing: "0.06em",
               }}
             >
@@ -198,7 +199,7 @@ export function LoginScreen() {
             style={{ display: "flex", flexDirection: "column", gap: 10, textAlign: "left" }}
           >
             <label
-              style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, letterSpacing: "0.1em", color: "#8C7676" }}
+              style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: FONT_SIZE.label, letterSpacing: "0.1em", color: "#8C7676" }}
             >
               メールアドレス
               <input
@@ -208,11 +209,11 @@ export function LoginScreen() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={styles.field}
-                style={fieldStyle({ padding: "12px 14px", fontSize: 16 })}
+                style={fieldStyle({ padding: "12px 14px", fontSize: FONT_SIZE.input })}
               />
             </label>
             <label
-              style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, letterSpacing: "0.1em", color: "#8C7676" }}
+              style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: FONT_SIZE.label, letterSpacing: "0.1em", color: "#8C7676" }}
             >
               パスワード
               <input
@@ -222,7 +223,7 @@ export function LoginScreen() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={styles.field}
-                style={fieldStyle({ padding: "12px 14px", fontSize: 16 })}
+                style={fieldStyle({ padding: "12px 14px", fontSize: FONT_SIZE.input })}
               />
             </label>
             <button
@@ -235,14 +236,14 @@ export function LoginScreen() {
                 border: "none",
                 background: "#D3A5B4",
                 color: "#FFF9F5",
-                fontSize: 14,
+                fontSize: FONT_SIZE.body,
                 letterSpacing: "0.06em",
                 marginTop: 4,
               }}
             >
               {mode === "signup" ? "登録する" : "ログインする"}
             </button>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: FONT_SIZE.caption }}>
               <button
                 type="button"
                 onClick={() => {
@@ -268,7 +269,7 @@ export function LoginScreen() {
         )}
 
         {error && (
-          <p style={{ margin: "16px 0 0", fontSize: 12.5, color: "#B5555F", letterSpacing: "0.04em" }}>
+          <p style={{ margin: "16px 0 0", fontSize: FONT_SIZE.label, color: "#B5555F", letterSpacing: "0.04em" }}>
             {error}
           </p>
         )}

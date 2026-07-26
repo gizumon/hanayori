@@ -2,6 +2,7 @@
 
 import styles from "../letter-studio.module.css";
 import { fieldStyle } from "../controls";
+import { FONT_SIZE } from "@/lib/typography";
 
 export interface SortOption<T extends string> {
   value: T;
@@ -36,7 +37,7 @@ export function ListToolbar<T extends string>({
     border: "1px solid #EBD9DF",
     background: "#FFFFFF",
     color: "#5C4A4A",
-    fontSize: 13,
+    fontSize: FONT_SIZE.bodySm,
     lineHeight: "1",
     opacity: disabled ? 0.4 : 1,
     cursor: disabled ? "default" : "pointer",
@@ -53,7 +54,7 @@ export function ListToolbar<T extends string>({
         margin: "2px 0 16px",
       }}
     >
-      <span style={{ fontSize: 12, color: "#8C7676", letterSpacing: "0.06em" }}>
+      <span style={{ fontSize: FONT_SIZE.caption, color: "#8C7676", letterSpacing: "0.06em" }}>
         全 {totalCount} {countUnit}
       </span>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -64,7 +65,7 @@ export function ListToolbar<T extends string>({
           className={styles.field}
           style={fieldStyle({
             padding: "7px 12px",
-            fontSize: 12.5,
+            fontSize: FONT_SIZE.label,
             borderRadius: 999,
             width: "auto",
           })}
@@ -89,7 +90,7 @@ export function ListToolbar<T extends string>({
             </button>
             <span
               style={{
-                fontSize: 12,
+                fontSize: FONT_SIZE.caption,
                 color: "#8C7676",
                 letterSpacing: "0.04em",
                 minWidth: 40,

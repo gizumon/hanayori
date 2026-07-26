@@ -16,6 +16,8 @@ import {
   type User,
 } from "@/lib/firebase/auth";
 import { cardNameFor, escortGeom, escortNameFor, geom } from "./geometry";
+import { uploadIfDataUrl } from "./uploadImage";
+import { IMAGE_MAX_WIDTH, encodeCanvas } from "./imageEncode";
 import type {
   CardConfig,
   Draft,
@@ -351,24 +353,35 @@ export function useLetterStudio() {
       toast("宛名を入力してください");
       return;
     }
-    const payload = {
-      to: draft.to,
-      body: draft.body || "",
-      theme: draft.theme || "rose",
-      photo: draft.photo ?? null,
-      photoRatio: draft.photoRatio,
-      cardName: draft.cardName ?? null,
-      honor: draft.honor ?? null,
-      tableNo: draft.tableNo ?? null,
-      escortName: draft.escortName ?? null,
-      escortMessage: draft.escortMessage ?? null,
-      escortHonor: draft.escortHonor ?? null,
-      escortPhoto: draft.escortPhoto ?? null,
-      escortPhotoRatio: draft.escortPhotoRatio,
-    };
     savingLetterRef.current = true;
     setSavingLetter(true);
     try {
+      // 画像は data: URL のままドラフトで保持している。保存時にだけ Storage へ
+      // アップロードして URL 化する(Firestore には URL のみ保存)。すでに URL の
+      // 場合(既存手紙の再編集)は再アップロードしない。
+      const [photo, escortPhoto] = await Promise.all([
+        uploadIfDataUrl(draft.photo),
+        uploadIfDataUrl(draft.escortPhoto),
+      ]);
+      // アップ済み URL をドラフトへ反映して、再保存時の二重アップを防ぐ。
+      if (photo !== (draft.photo ?? null) || escortPhoto !== (draft.escortPhoto ?? null)) {
+        setDraftState((prev) => ({ ...prev, photo, escortPhoto }));
+      }
+      const payload = {
+        to: draft.to,
+        body: draft.body || "",
+        theme: draft.theme || "rose",
+        photo,
+        photoRatio: draft.photoRatio,
+        cardName: draft.cardName ?? null,
+        honor: draft.honor ?? null,
+        tableNo: draft.tableNo ?? null,
+        escortName: draft.escortName ?? null,
+        escortMessage: draft.escortMessage ?? null,
+        escortHonor: draft.escortHonor ?? null,
+        escortPhoto,
+        escortPhotoRatio: draft.escortPhotoRatio,
+      };
       const data = draft.id
         ? await api<{ letter: Letter }>(`/api/letters/${draft.id}`, {
             method: "PATCH",
@@ -429,7 +442,7 @@ export function useLetterStudio() {
       reader.onload = () => {
         const img = new Image();
         img.onload = () => {
-          const w = Math.min(900, img.width);
+          const w = Math.min(IMAGE_MAX_WIDTH, img.width);
           const h = Math.round((img.height * w) / img.width);
           const canvas = document.createElement("canvas");
           canvas.width = w;
@@ -437,7 +450,7 @@ export function useLetterStudio() {
           const ctx = canvas.getContext("2d");
           ctx?.drawImage(img, 0, 0, w, h);
           setDraft({
-            photo: canvas.toDataURL("image/jpeg", 0.82),
+            photo: encodeCanvas(canvas),
             photoRatio: +(w / h).toFixed(4),
           });
         };

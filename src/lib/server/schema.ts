@@ -1,7 +1,14 @@
 import type { Timestamp } from "firebase-admin/firestore";
 
 export type ThemeKey = "rose" | "blue" | "sage" | "kinari";
-export type FontKey = "yomogi" | "klee" | "mincho" | "gothic" | "maru";
+export type FontKey =
+  | "yomogi"
+  | "klee"
+  | "mincho"
+  | "gothic"
+  | "maru"
+  | "anzumoji"
+  | "fuiji";
 export type CardOrient = "landscape" | "portrait" | "tent-l" | "tent-p";
 export type CardFrame = "line" | "frame" | "minimal";
 export type EscortStyle = "ticket" | "card";
@@ -22,6 +29,8 @@ export interface CardConfigDoc {
   frame: CardFrame;
   heading: string;
   note: string;
+  /** 席札のフッターに載せる名前。空欄ならイベント名を使う。 */
+  nameOverride: string;
 }
 
 /** エスコートカードのイベント共通設定 */
@@ -30,11 +39,15 @@ export interface EscortConfigDoc {
   style: EscortStyle;
   font: FontKey;
   honor: Honor;
-  /** QR コード(お手紙へのリンク)をカードに載せるか */
-  qr: boolean;
   heading: string;
   /** 卓番のラベル。例 "YOUR TABLE" / "Table" */
   tableLabel: string;
+  /** エスコートカードのフッターに載せる名前。空欄ならイベント名を使う。 */
+  nameOverride: string;
+  /** 手紙側でエスコート写真を設定しなかったときに使う既定写真(URL)。null = なし。 */
+  defaultPhoto: string | null;
+  /** 既定写真の縦横比。 */
+  defaultPhotoRatio: number | null;
 }
 
 /**
@@ -68,7 +81,11 @@ export interface EscortFieldsDoc {
   photo: LetterPhoto | null;
 }
 
-/** 写真 1 枚分。将来 Cloud Storage 移行時は dataUrl を storagePath + 署名付き URL に置き換える。 */
+/**
+ * 写真 1 枚分。dataUrl は表示にそのまま使える文字列で、
+ * 新規保存分は Cloud Storage の公開ダウンロード URL(`uploadImage` が発行)。
+ * 旧データは base64 の data: URL を保持しており、どちらも `url(...)` で表示できる。
+ */
 export interface LetterPhoto {
   id: string;
   dataUrl: string;

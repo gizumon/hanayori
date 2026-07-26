@@ -6,6 +6,7 @@ import { FONTS, THEMES } from "@/components/letter-studio/constants";
 import type { FontKey, ThemeKey } from "@/components/letter-studio/types";
 import { Petals } from "@/components/wedding-letter/Petals";
 import styles from "./landing.module.css";
+import { FONT_SIZE } from "@/lib/typography";
 
 const FEATURES = [
   {
@@ -91,8 +92,8 @@ export function Landing() {
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span aria-hidden="true" className={styles.logoMark} />
-            <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.12em" }}>Hanayori</span>
-            <span style={{ fontSize: 10.5, letterSpacing: "0.22em", color: "#B08A99" }}>花嫁のお便り</span>
+            <span style={{ fontSize: FONT_SIZE.heading, fontWeight: 600, letterSpacing: "0.12em" }}>Hanayori</span>
+            <span style={{ fontSize: FONT_SIZE.overline, letterSpacing: "0.22em", color: "#B08A99" }}>花嫁のお便り</span>
           </div>
           <Link href="/events" className={styles.navCta}>
             はじめる
@@ -113,7 +114,7 @@ export function Landing() {
           }}
         >
           <div className={styles.heroCopy} style={{ flex: 1.2, minWidth: 290 }}>
-            <p style={{ margin: "0 0 14px", fontSize: 12.5, letterSpacing: "0.34em", color: "#B08A99" }}>
+            <p style={{ margin: "0 0 14px", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: "#B08A99" }}>
               花嫁のお便り — WEDDING LETTER SERVICE
             </p>
             <h1
@@ -233,7 +234,7 @@ export function Landing() {
       </div>
 
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "clamp(50px, 7vw, 90px) clamp(18px, 4vw, 40px)" }}>
-        <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: 12, letterSpacing: "0.34em", color: "#B08A99" }}>
+        <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: "#B08A99" }}>
           FEATURES
         </p>
         <h2
@@ -263,8 +264,8 @@ export function Landing() {
                   {f.icon}
                 </svg>
               </div>
-              <h3 style={{ margin: "0 0 10px", fontSize: 16.5, fontWeight: 600, letterSpacing: "0.1em" }}>{f.title}</h3>
-              <p style={{ margin: 0, fontSize: 13.5, lineHeight: 2, letterSpacing: "0.04em", color: "#8C7676" }}>{f.body}</p>
+              <h3 style={{ margin: "0 0 10px", fontSize: FONT_SIZE.heading, fontWeight: 600, letterSpacing: "0.1em" }}>{f.title}</h3>
+              <p style={{ margin: 0, fontSize: FONT_SIZE.body, lineHeight: 2, letterSpacing: "0.04em", color: "#8C7676" }}>{f.body}</p>
             </div>
           ))}
         </div>
@@ -272,7 +273,7 @@ export function Landing() {
 
       <section style={{ background: "#FFFCF8", padding: "clamp(50px, 7vw, 90px) clamp(18px, 4vw, 40px)" }}>
         <div style={{ maxWidth: 1080, margin: "0 auto" }}>
-          <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: 12, letterSpacing: "0.34em", color: "#B08A99" }}>
+          <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: "#B08A99" }}>
             HOW IT WORKS
           </p>
           <h2
@@ -300,14 +301,14 @@ export function Landing() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 14,
+                    fontSize: FONT_SIZE.body,
                     letterSpacing: "0.05em",
                   }}
                 >
                   {st.n}
                 </div>
-                <h3 style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 600, letterSpacing: "0.1em" }}>{st.title}</h3>
-                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.95, letterSpacing: "0.04em", color: "#8C7676" }}>
+                <h3 style={{ margin: "0 0 8px", fontSize: FONT_SIZE.subheading, fontWeight: 600, letterSpacing: "0.1em" }}>{st.title}</h3>
+                <p style={{ margin: 0, fontSize: FONT_SIZE.bodySm, lineHeight: 1.95, letterSpacing: "0.04em", color: "#8C7676" }}>
                   {st.body}
                 </p>
               </div>
@@ -320,7 +321,7 @@ export function Landing() {
         id="letter-styles"
         style={{ maxWidth: 1080, margin: "0 auto", padding: "clamp(50px, 7vw, 90px) clamp(18px, 4vw, 40px)" }}
       >
-        <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: 12, letterSpacing: "0.34em", color: "#B08A99" }}>
+        <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: "#B08A99" }}>
           LETTER STYLES
         </p>
         <h2
@@ -334,7 +335,7 @@ export function Landing() {
         >
           選べる便箋と書体
         </h2>
-        <p style={{ margin: "0 0 36px", textAlign: "center", fontSize: 13.5, letterSpacing: "0.06em", color: "#8C7676" }}>
+        <p style={{ margin: "0 0 36px", textAlign: "center", fontSize: FONT_SIZE.body, letterSpacing: "0.06em", color: "#8C7676" }}>
           4色の便箋と、5つの書体。おふたりらしい組み合わせを。
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 18 }}>
@@ -378,14 +379,14 @@ export function Landing() {
                     本当にありがとう。
                   </div>
                 </div>
-                <div style={{ marginTop: 12, textAlign: "center", fontSize: 11.5, letterSpacing: "0.14em", color: theme.inkSoft }}>
+                <div style={{ marginTop: 12, textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.14em", color: theme.inkSoft }}>
                   {theme.label}
                 </div>
                 <div
                   style={{
                     marginTop: 2,
                     textAlign: "center",
-                    fontSize: 10,
+                    fontSize: FONT_SIZE.micro,
                     letterSpacing: "0.1em",
                     color: theme.inkSoft,
                     opacity: 0.75,
@@ -401,7 +402,7 @@ export function Landing() {
 
       <section style={{ background: "#FFFCF8", padding: "clamp(50px, 7vw, 90px) clamp(18px, 4vw, 40px)" }}>
         <div style={{ maxWidth: 1080, margin: "0 auto" }}>
-          <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: 12, letterSpacing: "0.34em", color: "#B08A99" }}>
+          <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: "#B08A99" }}>
             PLACE CARDS
           </p>
           <h2
@@ -415,7 +416,7 @@ export function Landing() {
           >
             席札が、お手紙の入り口に
           </h2>
-          <p style={{ margin: "0 0 40px", textAlign: "center", fontSize: 13.5, letterSpacing: "0.06em", color: "#8C7676" }}>
+          <p style={{ margin: "0 0 40px", textAlign: "center", fontSize: FONT_SIZE.body, letterSpacing: "0.06em", color: "#8C7676" }}>
             名刺サイズから二つ折りまで。QRコードを読み取ると、その方宛のお手紙がひらきます。
           </p>
           <div style={{ display: "flex", gap: "clamp(20px, 4vw, 40px)", alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
@@ -450,7 +451,7 @@ export function Landing() {
                 <div style={{ position: "absolute", inset: 0, display: "flex", padding: "5%" }}>
                   <div style={{ flex: 1.4, display: "flex", flexDirection: "column", justifyContent: "center", gap: 5, padding: "3% 2% 12% 7%" }}>
                     <div style={{ fontSize: 8.5, letterSpacing: "0.3em", color: "#8C7676" }}>WEDDING RECEPTION</div>
-                    <div style={{ fontSize: 21, fontWeight: 600, letterSpacing: "0.14em", color: "#5C4A4A" }}>さくら 様</div>
+                    <div style={{ fontSize: 21, fontWeight: 600, letterSpacing: "0.14em", color: "#5C4A4A" }}>山田花子 様</div>
                   </div>
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5 }}>
                     <div
@@ -479,7 +480,7 @@ export function Landing() {
                   ゆい &amp; 蓮 の結婚式 ・ 2026年10月24日(土)
                 </div>
               </div>
-              <div style={{ fontSize: 11.5, letterSpacing: "0.14em", color: "#9D6F83" }}>名刺サイズ 91×55mm</div>
+              <div style={{ fontSize: FONT_SIZE.caption, letterSpacing: "0.14em", color: "#9D6F83" }}>名刺サイズ 91×55mm</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
               <div
@@ -530,11 +531,11 @@ export function Landing() {
                   }}
                 >
                   <div style={{ fontSize: 8.5, letterSpacing: "0.3em", color: "#8C7676" }}>WEDDING RECEPTION</div>
-                  <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: "0.14em", color: "#5C4A4A" }}>さくら 様</div>
+                  <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: "0.14em", color: "#5C4A4A" }}>山田花子 様</div>
                   <div style={{ fontSize: 7.5, letterSpacing: "0.1em", color: "#8C7676" }}>ゆい &amp; 蓮 の結婚式 ・ 2026年10月24日(土)</div>
                 </div>
               </div>
-              <div style={{ fontSize: 11.5, letterSpacing: "0.14em", color: "#9D6F83" }}>二つ折りタイプ 91×110mm</div>
+              <div style={{ fontSize: FONT_SIZE.caption, letterSpacing: "0.14em", color: "#9D6F83" }}>二つ折りタイプ 91×110mm</div>
             </div>
           </div>
         </div>
@@ -560,7 +561,7 @@ export function Landing() {
           <br />
           お手紙にのせて。
         </h2>
-        <p style={{ margin: "0 0 30px", fontSize: 13.5, letterSpacing: "0.08em", color: "#8C7676" }}>
+        <p style={{ margin: "0 0 30px", fontSize: FONT_SIZE.body, letterSpacing: "0.08em", color: "#8C7676" }}>
           登録は無料。今日から書きはじめられます。
         </p>
         <Link href="/events" className={styles.ctaFinal}>
@@ -568,7 +569,7 @@ export function Landing() {
         </Link>
       </section>
 
-      <footer style={{ background: "#5C4A4A", color: "#D9C6CB", padding: "26px clamp(18px, 4vw, 40px)", textAlign: "center", fontSize: 11.5, letterSpacing: "0.14em" }}>
+      <footer style={{ background: "#5C4A4A", color: "#D9C6CB", padding: "26px clamp(18px, 4vw, 40px)", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.14em" }}>
         Hanayori — 花嫁のお便り、結婚式のお手紙サービス
       </footer>
     </div>

@@ -9,6 +9,7 @@ import type { CardGeometry, EscortGeometry } from "../geometry";
 import { withAlpha } from "@/lib/color";
 import styles from "../letter-studio.module.css";
 import type { CardConfig, Draft, EditorTab, EscortConfig, Honor, Project } from "../types";
+import { FONT_SIZE } from "@/lib/typography";
 
 interface EditorScreenProps {
   project: Project;
@@ -82,7 +83,7 @@ export function EditorScreen({
   const showCardFields = edTab === "card" && cardEnabled;
   const showEscortFields = edTab === "escort" && escortEnabled;
   const showLetterFields = !showCardFields && !showEscortFields;
-  const footText = project.name + (project.date ? ` ・ ${project.date}` : "");
+  const footText = cardConf.nameOverride.trim() || project.name;
 
   return (
     <main
@@ -97,7 +98,7 @@ export function EditorScreen({
           border: "none",
           background: "none",
           color: "#B08A99",
-          fontSize: 12.5,
+          fontSize: FONT_SIZE.label,
           letterSpacing: "0.08em",
           padding: 0,
           marginBottom: 14,
@@ -117,7 +118,7 @@ export function EditorScreen({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: "0.12em" }}>
+            <h2 style={{ margin: 0, fontSize: FONT_SIZE.title, fontWeight: 600, letterSpacing: "0.12em" }}>
               お手紙をつくる
             </h2>
             <button
@@ -133,7 +134,7 @@ export function EditorScreen({
                 border: "1px solid #EBD9DF",
                 background: "#FFFFFF",
                 color: "#5C4A4A",
-                fontSize: 12.5,
+                fontSize: FONT_SIZE.label,
                 letterSpacing: "0.06em",
                 flex: "none",
               }}
@@ -170,7 +171,7 @@ export function EditorScreen({
                     borderRadius: 999,
                     border: "none",
                     cursor: "pointer",
-                    fontSize: 13,
+                    fontSize: FONT_SIZE.bodySm,
                     letterSpacing: "0.08em",
                     background: edTab === k ? "#FFFCF8" : "transparent",
                     color: edTab === k ? "#5C4A4A" : "#A38A93",
@@ -190,7 +191,7 @@ export function EditorScreen({
                 display: "flex",
                 flexDirection: "column",
                 gap: 6,
-                fontSize: 12.5,
+                fontSize: FONT_SIZE.label,
                 letterSpacing: "0.1em",
                 color: "#8C7676",
               }}
@@ -199,11 +200,11 @@ export function EditorScreen({
               <input
                 value={draft.to || ""}
                 onChange={(e) => onChangeTo(e.target.value)}
-                placeholder="さくらへ"
+                placeholder="山田花子へ"
                 className={styles.field}
                 style={fieldStyle({
                   padding: "12px 14px",
-                  fontSize: 16,
+                  fontSize: FONT_SIZE.input,
                   background: "#FFFCF8",
                   letterSpacing: "0.05em",
                 })}
@@ -211,7 +212,7 @@ export function EditorScreen({
             </label>
           )}
           {showLetterFields && (
-            <div style={{ fontSize: 12, color: "#B4A2A2", letterSpacing: "0.06em" }}>
+            <div style={{ fontSize: FONT_SIZE.caption, color: "#B4A2A2", letterSpacing: "0.06em" }}>
               日付はイベントの挙式日({project.date ?? ""})が使われます
             </div>
           )}
@@ -223,7 +224,7 @@ export function EditorScreen({
                   display: "flex",
                   flexDirection: "column",
                   gap: 6,
-                  fontSize: 12.5,
+                  fontSize: FONT_SIZE.label,
                   letterSpacing: "0.1em",
                   color: "#8C7676",
                 }}
@@ -232,21 +233,21 @@ export function EditorScreen({
                 <input
                   value={draft.cardName || ""}
                   onChange={(e) => onChangeCardName(e.target.value)}
-                  placeholder="さくら"
+                  placeholder="山田花子"
                   className={styles.field}
                   style={fieldStyle({
                     padding: "12px 14px",
-                    fontSize: 16,
+                    fontSize: FONT_SIZE.input,
                     background: "#FFFCF8",
                     letterSpacing: "0.05em",
                   })}
                 />
               </label>
-              <div style={{ fontSize: 11.5, color: "#B4A2A2", letterSpacing: "0.05em", marginTop: -8 }}>
+              <div style={{ fontSize: FONT_SIZE.caption, color: "#B4A2A2", letterSpacing: "0.05em", marginTop: -8 }}>
                 空欄の場合は宛名から自動で作られます
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <span style={{ fontSize: 12.5, letterSpacing: "0.1em", color: "#8C7676" }}>敬称</span>
+                <span style={{ fontSize: FONT_SIZE.label, letterSpacing: "0.1em", color: "#8C7676" }}>敬称</span>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {(
                     [
@@ -264,7 +265,7 @@ export function EditorScreen({
                       style={{
                         padding: "8px 14px",
                         borderRadius: 999,
-                        fontSize: 12,
+                        fontSize: FONT_SIZE.caption,
                         letterSpacing: "0.05em",
                         background: (draft.honor ?? null) === value ? "#D3A5B4" : "#FFFFFF",
                         color: (draft.honor ?? null) === value ? "#FFF9F5" : "#5C4A4A",
@@ -288,7 +289,7 @@ export function EditorScreen({
                   gap: 8,
                 }}
               >
-                <span style={{ fontSize: 12, color: "#8C7676", letterSpacing: "0.06em", lineHeight: 1.7 }}>
+                <span style={{ fontSize: FONT_SIZE.caption, color: "#8C7676", letterSpacing: "0.06em", lineHeight: 1.7 }}>
                   向き・デザイン・フォント・見出しはイベント共通の設定です
                 </span>
                 <button
@@ -302,7 +303,7 @@ export function EditorScreen({
                     border: "1px solid #D3A5B4",
                     background: "transparent",
                     color: "#B08A99",
-                    fontSize: 12.5,
+                    fontSize: FONT_SIZE.label,
                     letterSpacing: "0.06em",
                   }}
                 >
@@ -319,7 +320,7 @@ export function EditorScreen({
                   display: "flex",
                   flexDirection: "column",
                   gap: 6,
-                  fontSize: 12.5,
+                  fontSize: FONT_SIZE.label,
                   letterSpacing: "0.1em",
                   color: "#8C7676",
                 }}
@@ -332,7 +333,7 @@ export function EditorScreen({
                   className={styles.field}
                   style={fieldStyle({
                     padding: "12px 14px",
-                    fontSize: 16,
+                    fontSize: FONT_SIZE.input,
                     background: "#FFFCF8",
                     letterSpacing: "0.05em",
                   })}
@@ -343,7 +344,7 @@ export function EditorScreen({
                   display: "flex",
                   flexDirection: "column",
                   gap: 6,
-                  fontSize: 12.5,
+                  fontSize: FONT_SIZE.label,
                   letterSpacing: "0.1em",
                   color: "#8C7676",
                 }}
@@ -352,17 +353,17 @@ export function EditorScreen({
                 <input
                   value={draft.escortName || ""}
                   onChange={(e) => onChangeEscortName(e.target.value)}
-                  placeholder="Aoi Yamada"
+                  placeholder="Yamada Hanako"
                   className={styles.field}
                   style={fieldStyle({
                     padding: "12px 14px",
-                    fontSize: 16,
+                    fontSize: FONT_SIZE.input,
                     background: "#FFFCF8",
                     letterSpacing: "0.05em",
                   })}
                 />
               </label>
-              <div style={{ fontSize: 11.5, color: "#B4A2A2", letterSpacing: "0.05em", marginTop: -8 }}>
+              <div style={{ fontSize: FONT_SIZE.caption, color: "#B4A2A2", letterSpacing: "0.05em", marginTop: -8 }}>
                 空欄の場合は席札の名前・宛名から自動で作られます
               </div>
               <label
@@ -370,7 +371,7 @@ export function EditorScreen({
                   display: "flex",
                   flexDirection: "column",
                   gap: 6,
-                  fontSize: 12.5,
+                  fontSize: FONT_SIZE.label,
                   letterSpacing: "0.1em",
                   color: "#8C7676",
                 }}
@@ -384,7 +385,7 @@ export function EditorScreen({
                   className={styles.field}
                   style={fieldStyle({
                     padding: 12,
-                    fontSize: 16,
+                    fontSize: FONT_SIZE.input,
                     lineHeight: 1.7,
                     letterSpacing: "0.04em",
                     resize: "vertical",
@@ -393,7 +394,7 @@ export function EditorScreen({
                 />
               </label>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span style={{ fontSize: 12.5, letterSpacing: "0.1em", color: "#8C7676" }}>
+                <span style={{ fontSize: FONT_SIZE.label, letterSpacing: "0.1em", color: "#8C7676" }}>
                   写真(任意)
                 </span>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -421,7 +422,7 @@ export function EditorScreen({
                       border: "1px solid #EBD9DF",
                       background: "#FFFFFF",
                       color: "#5C4A4A",
-                      fontSize: 12.5,
+                      fontSize: FONT_SIZE.label,
                       letterSpacing: "0.06em",
                       cursor: "pointer",
                     }}
@@ -449,7 +450,7 @@ export function EditorScreen({
                         border: "none",
                         background: "transparent",
                         color: "#B5555F",
-                        fontSize: 12.5,
+                        fontSize: FONT_SIZE.label,
                         letterSpacing: "0.06em",
                       }}
                     >
@@ -457,12 +458,12 @@ export function EditorScreen({
                     </button>
                   )}
                 </div>
-                <div style={{ fontSize: 11, color: "#B4A2A2", letterSpacing: "0.05em" }}>
+                <div style={{ fontSize: FONT_SIZE.overline, color: "#B4A2A2", letterSpacing: "0.05em" }}>
                   アップロード時に切り取り位置を選べます。やり直す場合は再度アップロードしてください。
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <span style={{ fontSize: 12.5, letterSpacing: "0.1em", color: "#8C7676" }}>敬称</span>
+                <span style={{ fontSize: FONT_SIZE.label, letterSpacing: "0.1em", color: "#8C7676" }}>敬称</span>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {(
                     [
@@ -480,7 +481,7 @@ export function EditorScreen({
                       style={{
                         padding: "8px 14px",
                         borderRadius: 999,
-                        fontSize: 12,
+                        fontSize: FONT_SIZE.caption,
                         letterSpacing: "0.05em",
                         background: (draft.escortHonor ?? null) === value ? "#D3A5B4" : "#FFFFFF",
                         color: (draft.escortHonor ?? null) === value ? "#FFF9F5" : "#5C4A4A",
@@ -504,7 +505,7 @@ export function EditorScreen({
                   gap: 8,
                 }}
               >
-                <span style={{ fontSize: 12, color: "#8C7676", letterSpacing: "0.06em", lineHeight: 1.7 }}>
+                <span style={{ fontSize: FONT_SIZE.caption, color: "#8C7676", letterSpacing: "0.06em", lineHeight: 1.7 }}>
                   スタイル・QR・フォント・見出しはイベント共通の設定です
                 </span>
                 <button
@@ -518,7 +519,7 @@ export function EditorScreen({
                     border: "1px solid #D3A5B4",
                     background: "transparent",
                     color: "#B08A99",
-                    fontSize: 12.5,
+                    fontSize: FONT_SIZE.label,
                     letterSpacing: "0.06em",
                   }}
                 >
@@ -531,7 +532,7 @@ export function EditorScreen({
           {showLetterFields && (
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span style={{ fontSize: 12.5, letterSpacing: "0.1em", color: "#8C7676" }}>
+                <span style={{ fontSize: FONT_SIZE.label, letterSpacing: "0.1em", color: "#8C7676" }}>
                   お手紙の色
                 </span>
                 <div style={{ display: "flex", gap: 12 }}>
@@ -560,7 +561,7 @@ export function EditorScreen({
                   display: "flex",
                   flexDirection: "column",
                   gap: 6,
-                  fontSize: 12.5,
+                  fontSize: FONT_SIZE.label,
                   letterSpacing: "0.1em",
                   color: "#8C7676",
                 }}
@@ -574,7 +575,7 @@ export function EditorScreen({
                   className={styles.field}
                   style={fieldStyle({
                     padding: 14,
-                    fontSize: 16,
+                    fontSize: FONT_SIZE.input,
                     lineHeight: 1.9,
                     letterSpacing: "0.04em",
                     resize: "vertical",
@@ -584,7 +585,7 @@ export function EditorScreen({
                 />
               </label>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span style={{ fontSize: 12.5, letterSpacing: "0.1em", color: "#8C7676" }}>
+                <span style={{ fontSize: FONT_SIZE.label, letterSpacing: "0.1em", color: "#8C7676" }}>
                   写真(本文のあとに1枚)
                 </span>
                 <div
@@ -597,7 +598,7 @@ export function EditorScreen({
                     maxWidth: 260,
                   }}
                 >
-                  <div style={{ fontSize: 13, letterSpacing: "0.08em" }}>Coming soon</div>
+                  <div style={{ fontSize: FONT_SIZE.bodySm, letterSpacing: "0.08em" }}>Coming soon</div>
                 </div>
               </div>
             </>
@@ -615,7 +616,7 @@ export function EditorScreen({
                 border: "none",
                 background: "#D3A5B4",
                 color: "#FFF9F5",
-                fontSize: 14,
+                fontSize: FONT_SIZE.body,
                 letterSpacing: "0.08em",
                 boxShadow: "0 6px 16px rgba(150,110,130,0.28)",
                 opacity: saving ? 0.6 : 1,
@@ -638,7 +639,7 @@ export function EditorScreen({
                 border: "1px solid #EBD9DF",
                 background: "#FFFFFF",
                 color: "#5C4A4A",
-                fontSize: 13.5,
+                fontSize: FONT_SIZE.body,
                 letterSpacing: "0.08em",
                 textDecoration: "none",
               }}
@@ -647,13 +648,13 @@ export function EditorScreen({
               <ArrowUpRight size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
             </a>
           </div>
-          <p style={{ margin: 0, fontSize: 11.5, color: "#B4A2A2", letterSpacing: "0.05em" }}>
+          <p style={{ margin: 0, fontSize: FONT_SIZE.caption, color: "#B4A2A2", letterSpacing: "0.05em" }}>
             「お手紙を開く」の前に保存してください。開封アニメーション付きで表示されます。
           </p>
         </div>
 
         <div style={{ flex: 1.2, minWidth: 300, position: "sticky", top: 20 }}>
-          <div style={{ fontSize: 12.5, letterSpacing: "0.14em", color: "#8C7676", marginBottom: 10 }}>
+          <div style={{ fontSize: FONT_SIZE.label, letterSpacing: "0.14em", color: "#8C7676", marginBottom: 10 }}>
             {showCardFields
               ? "席札プレビュー"
               : showEscortFields
@@ -721,7 +722,7 @@ export function EditorScreen({
                 <div
                   style={{
                     fontFamily: pFont,
-                    fontSize: 20,
+                    fontSize: FONT_SIZE.title,
                     letterSpacing: "0.16em",
                     color: theme.ink,
                     textAlign: "center",
@@ -733,7 +734,7 @@ export function EditorScreen({
                 <div
                   style={{
                     fontFamily: pFont,
-                    fontSize: 13.5,
+                    fontSize: FONT_SIZE.body,
                     lineHeight: "2.3em",
                     letterSpacing: "0.06em",
                     color: theme.ink,
@@ -769,7 +770,7 @@ export function EditorScreen({
                 <div
                   style={{
                     fontFamily: pFont,
-                    fontSize: 12.5,
+                    fontSize: FONT_SIZE.label,
                     letterSpacing: "0.18em",
                     color: theme.inkSoft,
                     textAlign: "center",
@@ -808,11 +809,12 @@ export function EditorScreen({
                   heading={cardConf.heading}
                   note={cardConf.note}
                   footText={footText}
+                  date={project.date || ""}
                   qrUrl={qrUrl}
                   boxShadow="0 14px 40px rgba(150,110,130,0.22)"
                 />
               </div>
-              <p style={{ margin: "10px 0 0", fontSize: 11.5, color: "#B4A2A2", letterSpacing: "0.05em", textAlign: "center" }}>
+              <p style={{ margin: "10px 0 0", fontSize: FONT_SIZE.caption, color: "#B4A2A2", letterSpacing: "0.05em", textAlign: "center" }}>
                 実寸 {g.sizeLabel}
               </p>
             </>
@@ -844,14 +846,12 @@ export function EditorScreen({
                   tableLabel={escortConf.tableLabel}
                   heading={escortConf.heading}
                   message={draft.escortMessage || ""}
-                  photo={draft.escortPhoto || ""}
-                  footText={footText}
-                  showQr={escortConf.qr}
-                  qrUrl={qrUrl}
+                  photo={draft.escortPhoto || escortConf.defaultPhoto || ""}
+                  footText={escortConf.nameOverride.trim() || project.name}
                   boxShadow="0 14px 40px rgba(150,110,130,0.22)"
                 />
               </div>
-              <p style={{ margin: "10px 0 0", fontSize: 11.5, color: "#B4A2A2", letterSpacing: "0.05em", textAlign: "center" }}>
+              <p style={{ margin: "10px 0 0", fontSize: FONT_SIZE.caption, color: "#B4A2A2", letterSpacing: "0.05em", textAlign: "center" }}>
                 実寸 {eg.sizeLabel}
               </p>
             </>

@@ -7,6 +7,7 @@ import styles from "../letter-studio.module.css";
 import type { Letter, Project } from "../types";
 import { LetterRow } from "./LetterRow";
 import { ListToolbar, type SortOption } from "./ListToolbar";
+import { FONT_SIZE } from "@/lib/typography";
 
 type SortKey = "createdDesc" | "createdAsc" | "nameAsc";
 
@@ -99,7 +100,7 @@ export function ProjectScreen({
           border: "none",
           background: "none",
           color: "#B08A99",
-          fontSize: 12.5,
+          fontSize: FONT_SIZE.label,
           letterSpacing: "0.08em",
           padding: 0,
           marginBottom: 14,
@@ -118,10 +119,10 @@ export function ProjectScreen({
         }}
       >
         <div>
-          <h2 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 600, letterSpacing: "0.12em" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: FONT_SIZE.title, fontWeight: 600, letterSpacing: "0.12em" }}>
             {project.name}
           </h2>
-          <p style={{ margin: 0, fontSize: 12.5, color: "#8C7676", letterSpacing: "0.08em" }}>
+          <p style={{ margin: 0, fontSize: FONT_SIZE.label, color: "#8C7676", letterSpacing: "0.08em" }}>
             {project.date}
           </p>
         </div>
@@ -138,7 +139,7 @@ export function ProjectScreen({
             border: "1px solid #EBD9DF",
             background: "#FFFFFF",
             color: "#5C4A4A",
-            fontSize: 13,
+            fontSize: FONT_SIZE.bodySm,
             letterSpacing: "0.08em",
           }}
         >
@@ -157,7 +158,7 @@ export function ProjectScreen({
             border: "1.5px dashed #D3A5B4",
             borderRadius: 14,
             color: "#B08A99",
-            fontSize: 13.5,
+            fontSize: FONT_SIZE.body,
             letterSpacing: "0.1em",
             padding: "18px 20px",
             display: "flex",
@@ -166,7 +167,7 @@ export function ProjectScreen({
             gap: 8,
           }}
         >
-          <span style={{ fontSize: 20, fontWeight: 300, lineHeight: 1 }}>+</span>
+          <span style={{ fontSize: FONT_SIZE.title, fontWeight: 300, lineHeight: 1 }}>+</span>
           新しいお手紙を書く
         </button>
         {!loadingLetters && letters.length > 0 && (
@@ -229,7 +230,7 @@ export function ProjectScreen({
       <h4
         style={{
           margin: "36px 0 4px",
-          fontSize: 13.5,
+          fontSize: FONT_SIZE.body,
           fontWeight: 600,
           letterSpacing: "0.12em",
           color: "#8C7676",
@@ -237,7 +238,7 @@ export function ProjectScreen({
       >
         全手紙共通ページ
       </h4>
-      <p style={{ margin: "0 0 14px", fontSize: 12, color: "#B4A2A2", letterSpacing: "0.05em" }}>
+      <p style={{ margin: "0 0 14px", fontSize: FONT_SIZE.caption, color: "#B4A2A2", letterSpacing: "0.05em" }}>
         お手紙の最後からリンクできる共通コンテンツ(近日公開)
       </p>
       <div
@@ -259,8 +260,8 @@ export function ProjectScreen({
               color: "#B4A2A2",
             }}
           >
-            <div style={{ fontSize: 14, letterSpacing: "0.1em", marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: 11, letterSpacing: "0.08em" }}>Coming soon</div>
+            <div style={{ fontSize: FONT_SIZE.body, letterSpacing: "0.1em", marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: FONT_SIZE.overline, letterSpacing: "0.08em" }}>Coming soon</div>
           </div>
         ))}
       </div>

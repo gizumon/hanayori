@@ -21,6 +21,7 @@ const DEFAULT_CARD_CONFIG: CardConfigDoc = {
   frame: "line",
   heading: "WEDDING RECEPTION",
   note: "スマホで読み取ると\nあなた宛のお手紙が届きます",
+  nameOverride: "",
 };
 
 const DEFAULT_ESCORT_CONFIG: EscortConfigDoc = {
@@ -28,9 +29,11 @@ const DEFAULT_ESCORT_CONFIG: EscortConfigDoc = {
   style: "ticket",
   font: "gothic",
   honor: "様",
-  qr: false,
   heading: "WELCOME TO OUR WEDDING",
   tableLabel: "TABLE",
+  nameOverride: "",
+  defaultPhoto: null,
+  defaultPhotoRatio: null,
 };
 
 /** 旧形式ドキュメントに残っているトップレベルのフィールド。 */

@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { THEMES } from "@/components/letter-studio/constants";
 import { getLetterForGuest } from "@/lib/server/letters";
@@ -16,6 +18,14 @@ const OG_FONT: Record<FontKey, { family: string; weight: number }> = {
   mincho: { family: "Shippori Mincho", weight: 600 },
   gothic: { family: "Zen Kaku Gothic New", weight: 500 },
   maru: { family: "Zen Maru Gothic", weight: 500 },
+  anzumoji: { family: "Anzumoji", weight: 400 },
+  fuiji: { family: "FuiJi", weight: 400 },
+};
+
+/** Google Fonts に無い自前フォント。public/fonts 配下の実ファイルから読む。 */
+const LOCAL_FONT_FILE: Partial<Record<FontKey, string>> = {
+  anzumoji: "anzumoji.ttf",
+  fuiji: "fuiji.ttf",
 };
 
 /**
@@ -73,11 +83,17 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const glyphs = `${name}${date}${label}${brand}あいうえお`;
 
   const { family, weight } = OG_FONT[fontKey];
+  const localFile = LOCAL_FONT_FILE[fontKey];
   const fonts: { name: string; data: ArrayBuffer; weight: 400 | 500 | 600; style: "normal" }[] = [];
   try {
+    const data = localFile
+      ? await readFile(join(process.cwd(), "public/fonts", localFile)).then(
+          (buf) => buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
+        )
+      : await loadGoogleFont(family, weight, glyphs);
     fonts.push({
       name: family,
-      data: await loadGoogleFont(family, weight, glyphs),
+      data,
       weight: weight as 400 | 500 | 600,
       style: "normal",
     });

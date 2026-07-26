@@ -5,6 +5,7 @@ import { Download, Printer } from "lucide-react";
 import { EscortCardFace } from "./EscortCardFace";
 import type { EscortGeometry } from "./geometry";
 import type { EscortStyle } from "./types";
+import { FONT_SIZE } from "@/lib/typography";
 
 interface EscortModalProps {
   style: EscortStyle;
@@ -22,8 +23,6 @@ interface EscortModalProps {
   message: string;
   photo: string;
   footText: string;
-  showQr: boolean;
-  qrUrl: string;
   cardRef: RefObject<HTMLDivElement | null>;
   onSaveImage: () => void;
   onPrint: () => void;
@@ -50,8 +49,6 @@ export function EscortModal({
   message,
   photo,
   footText,
-  showQr,
-  qrUrl,
   cardRef,
   onSaveImage,
   onPrint,
@@ -68,7 +65,7 @@ export function EscortModal({
     border: "none",
     background: "rgba(255,249,245,0.9)",
     color: "#5C4A4A",
-    fontSize: 12.5,
+    fontSize: FONT_SIZE.label,
     letterSpacing: "0.06em",
     cursor: "pointer",
   } as const;
@@ -110,8 +107,6 @@ export function EscortModal({
           message={message}
           photo={photo}
           footText={footText}
-          showQr={showQr}
-          qrUrl={qrUrl}
           boxShadow="0 22px 60px rgba(0,0,0,0.3)"
         />
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>

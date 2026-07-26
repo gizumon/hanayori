@@ -76,4 +76,6 @@ export const FONTS: Record<FontKey, { label: string; family: string }> = {
   mincho: { label: "明朝体", family: "'Shippori Mincho', serif" },
   gothic: { label: "ゴシック体", family: "'Zen Kaku Gothic New', sans-serif" },
   maru: { label: "丸ゴシック", family: "'Zen Maru Gothic', sans-serif" },
+  anzumoji: { label: "あんずもじ", family: "'Anzumoji', sans-serif" },
+  fuiji: { label: "ふい字", family: "'FuiJi', sans-serif" },
 };

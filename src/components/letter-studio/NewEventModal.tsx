@@ -1,8 +1,10 @@
 "use client";
 
+import { DatePicker } from "@/components/DatePicker";
 import { fieldStyle } from "./controls";
 import { isoToJaDate, jaDateToIso } from "@/lib/date";
 import styles from "./letter-studio.module.css";
+import { FONT_SIZE } from "@/lib/typography";
 
 interface NewEventModalProps {
   name: string;
@@ -49,7 +51,7 @@ export function NewEventModal({
           gap: 16,
         }}
       >
-        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, letterSpacing: "0.12em" }}>
+        <h3 style={{ margin: 0, fontSize: FONT_SIZE.heading, fontWeight: 600, letterSpacing: "0.12em" }}>
           新しいイベント
         </h3>
         <label
@@ -57,7 +59,7 @@ export function NewEventModal({
             display: "flex",
             flexDirection: "column",
             gap: 6,
-            fontSize: 12.5,
+            fontSize: FONT_SIZE.label,
             letterSpacing: "0.1em",
             color: "#8C7676",
           }}
@@ -68,7 +70,7 @@ export function NewEventModal({
             onChange={(e) => onChangeName(e.target.value)}
             placeholder="ゆい & 蓮 の結婚式"
             className={styles.field}
-            style={fieldStyle({ padding: "12px 14px", fontSize: 16 })}
+            style={fieldStyle({ padding: "12px 14px", fontSize: FONT_SIZE.input })}
             autoFocus
           />
         </label>
@@ -77,18 +79,15 @@ export function NewEventModal({
             display: "flex",
             flexDirection: "column",
             gap: 6,
-            fontSize: 12.5,
+            fontSize: FONT_SIZE.label,
             letterSpacing: "0.1em",
             color: "#8C7676",
           }}
         >
           挙式日
-          <input
-            type="date"
+          <DatePicker
             value={jaDateToIso(date)}
-            onChange={(e) => onChangeDate(isoToJaDate(e.target.value))}
-            className={styles.field}
-            style={fieldStyle({ padding: "12px 14px", fontSize: 16 })}
+            onChange={(iso) => onChangeDate(isoToJaDate(iso))}
           />
         </label>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -101,7 +100,7 @@ export function NewEventModal({
               border: "1px solid #EBD9DF",
               background: "transparent",
               color: "#8C7676",
-              fontSize: 13,
+              fontSize: FONT_SIZE.bodySm,
               cursor: "pointer",
             }}
           >
@@ -118,7 +117,7 @@ export function NewEventModal({
               border: "none",
               background: "#D3A5B4",
               color: "#FFF9F5",
-              fontSize: 13,
+              fontSize: FONT_SIZE.bodySm,
               letterSpacing: "0.06em",
               opacity: creating ? 0.6 : 1,
               cursor: creating ? "default" : "pointer",

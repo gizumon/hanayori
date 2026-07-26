@@ -39,6 +39,7 @@ locals {
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN         = data.terraform_remote_state.shared.outputs.firebase_auth_domain
     NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET      = data.terraform_remote_state.shared.outputs.firebase_storage_bucket
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = data.terraform_remote_state.shared.outputs.firebase_messaging_sender_id
+    STORAGE_UPLOADS_BUCKET                   = data.terraform_remote_state.shared.outputs.uploads_bucket
   }
 }
 

@@ -80,7 +80,8 @@ export function StudioShell({ children }: { children: ReactNode }) {
             cardName={api.cardNameFor(state.qrModal)}
             heading={cardConf.heading}
             note={cardConf.note}
-            footText={curProject.name + (curProject.date ? ` ・ ${curProject.date}` : "")}
+            footText={cardConf.nameOverride.trim() || curProject.name}
+            date={curProject.date || ""}
             qrUrl={api.letterUrl(state.qrModal.id)}
             cardRef={api.cardRef}
             onSaveImage={api.saveCard}
@@ -104,10 +105,8 @@ export function StudioShell({ children }: { children: ReactNode }) {
             tableLabel={escortConf.tableLabel}
             heading={escortConf.heading}
             message={state.escortModal.escortMessage || ""}
-            photo={state.escortModal.escortPhoto || ""}
-            footText={curProject.name + (curProject.date ? ` ・ ${curProject.date}` : "")}
-            showQr={escortConf.qr}
-            qrUrl={api.letterUrl(state.escortModal.id)}
+            photo={state.escortModal.escortPhoto || escortConf.defaultPhoto || ""}
+            footText={escortConf.nameOverride.trim() || curProject.name}
             cardRef={api.escortCardRef}
             onSaveImage={api.saveEscortCard}
             onPrint={api.printEscortCard}

@@ -1,5 +1,12 @@
 export type ThemeKey = "rose" | "blue" | "sage" | "kinari";
-export type FontKey = "yomogi" | "klee" | "mincho" | "gothic" | "maru";
+export type FontKey =
+  | "yomogi"
+  | "klee"
+  | "mincho"
+  | "gothic"
+  | "maru"
+  | "anzumoji"
+  | "fuiji";
 export type Screen = "login" | "home" | "project" | "editor";
 export type CardOrient = "landscape" | "portrait" | "tent-l" | "tent-p";
 export type CardFrame = "line" | "frame" | "minimal";
@@ -45,6 +52,8 @@ export interface CardConfig {
   frame: CardFrame;
   heading: string;
   note: string;
+  /** 席札のフッターに載せる名前。空欄ならイベント名を使う。 */
+  nameOverride: string;
 }
 
 /** エスコートカードのイベント共通設定 */
@@ -53,11 +62,15 @@ export interface EscortConfig {
   style: EscortStyle;
   font: FontKey;
   honor: Honor;
-  /** QR コード(お手紙へのリンク)をカードに載せるか */
-  qr: boolean;
   heading: string;
   /** 卓番のラベル。例 "YOUR TABLE" / "Table" */
   tableLabel: string;
+  /** エスコートカードのフッターに載せる名前。空欄ならイベント名を使う。 */
+  nameOverride: string;
+  /** 手紙側でエスコート写真を設定しなかったときに使う既定写真(URL)。null = なし。 */
+  defaultPhoto: string | null;
+  /** 既定写真の縦横比。 */
+  defaultPhotoRatio: number | null;
 }
 
 /** イベント本体。手紙は別途 letters state で保持する(サーバー上も別コレクション)。 */

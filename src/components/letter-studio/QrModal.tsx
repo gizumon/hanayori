@@ -5,6 +5,7 @@ import { Download, Printer } from "lucide-react";
 import { QrCardFace } from "./QrCardFace";
 import type { CardGeometry } from "./geometry";
 import type { CardConfig } from "./types";
+import { FONT_SIZE } from "@/lib/typography";
 
 interface QrModalProps {
   paper: string;
@@ -19,6 +20,7 @@ interface QrModalProps {
   heading: string;
   note: string;
   footText: string;
+  date: string;
   qrUrl: string;
   cardRef: RefObject<HTMLDivElement | null>;
   onSaveImage: () => void;
@@ -46,6 +48,7 @@ export function QrModal({
   heading,
   note,
   footText,
+  date,
   qrUrl,
   cardRef,
   onSaveImage,
@@ -63,7 +66,7 @@ export function QrModal({
     border: "none",
     background: "rgba(255,249,245,0.9)",
     color: "#5C4A4A",
-    fontSize: 12.5,
+    fontSize: FONT_SIZE.label,
     letterSpacing: "0.06em",
     cursor: "pointer",
   } as const;
@@ -103,6 +106,7 @@ export function QrModal({
           heading={heading}
           note={note}
           footText={footText}
+          date={date}
           qrUrl={qrUrl}
           boxShadow="0 22px 60px rgba(0,0,0,0.3)"
         />

@@ -1,7 +1,6 @@
 "use client";
 
 import { forwardRef } from "react";
-import { QrCode } from "./QrCode";
 import { withAlpha } from "@/lib/color";
 import type { EscortStyle } from "./types";
 
@@ -24,9 +23,6 @@ interface EscortCardFaceProps {
   /** 切り取り済み写真の dataUrl。空文字/未指定なら非表示。 */
   photo: string;
   footText: string;
-  /** QR を表示するか。 */
-  showQr: boolean;
-  qrUrl: string;
   boxShadow: string;
 }
 
@@ -72,8 +68,6 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
       message,
       photo,
       footText,
-      showQr,
-      qrUrl,
       boxShadow,
     },
     ref
@@ -116,13 +110,16 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
           <div
             style={{
               position: "absolute",
-              inset: 11,
+              top: 11,
+              left: 11,
+              right: 11,
+              bottom: 11,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
               gap: "2.5%",
-              padding: "9% 10%",
+              padding: "9% 10% 0",
               textAlign: "center",
             }}
           >
@@ -189,35 +186,6 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
                 {message}
               </div>
             )}
-            {showQr && (
-              <div
-                style={{
-                  width: "30%",
-                  aspectRatio: 1,
-                  background: "#FFFFFF",
-                  borderRadius: 10,
-                  padding: 6,
-                  marginTop: "3%",
-                  boxShadow: "0 3px 10px rgba(150,110,130,0.14)",
-                }}
-              >
-                <QrCode url={qrUrl} color={ink} />
-              </div>
-            )}
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              left: "12%",
-              right: "12%",
-              bottom: "6.5%",
-              fontSize: "clamp(7.5px,2.4vw,9.5px)",
-              letterSpacing: "0.18em",
-              color: inkSoft,
-              textAlign: "center",
-            }}
-          >
-            {footText}
           </div>
         </div>
       );
@@ -249,146 +217,125 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
             zIndex: 1,
           }}
         />
-        {photo && (
-          <div
-            style={{
-              width: "31%",
-              flex: "none",
-              backgroundImage: `url('${photo}')`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          />
-        )}
-        {/* 本体(ミシン目の内側) */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            gap: "3%",
-            padding: photo ? "5% 3% 5% 4%" : "5% 3% 5% 5%",
-            minWidth: 0,
-          }}
-        >
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              gap: "3.5%",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "clamp(8px,1.9vw,10.5px)",
-                letterSpacing: "0.3em",
-                color: inkSoft,
-                textTransform: "uppercase",
-              }}
-            >
-              {heading}
-            </div>
-            {footText && (
+        {/* 半券より左側(写真+本体+日付フッター) */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <div style={{ flex: 1, display: "flex", minWidth: 0 }}>
+            {photo && (
               <div
                 style={{
-                  fontSize: "clamp(7.5px,1.7vw,9.5px)",
-                  letterSpacing: "0.16em",
-                  color: withAlpha(inkSoft, 85),
+                  width: "31%",
+                  flex: "none",
+                  backgroundImage: `url('${photo}')`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
                 }}
-              >
-                {footText}
-              </div>
+              />
             )}
-            {/* 全角10文字 / 半角20文字が1行に収まるサイズ */}
+            {/* 本体(ミシン目の内側) */}
             <div
               style={{
-                fontSize: "clamp(13px,3.2vw,20px)",
-                fontWeight: 700,
-                letterSpacing: "0.04em",
-                color: ink,
-                lineHeight: 1.2,
-                margin: "3.5% 0",
-                overflowWrap: "anywhere",
-              }}
-            >
-              {name}
-            </div>
-            <div
-              aria-hidden="true"
-              style={{ width: "38%", height: 1, background: withAlpha(gold, 60) }}
-            />
-            <div
-              style={{
+                flex: 1,
                 display: "flex",
-                alignItems: "baseline",
-                gap: "clamp(12px,3vw,24px)",
-                marginTop: "1.5%",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "clamp(9px,2.1vw,12.5px)",
-                  letterSpacing: "0.22em",
-                  color: inkSoft,
-                  textTransform: "uppercase",
-                }}
-              >
-                {tableLabel}
-              </span>
-              <span
-                style={{
-                  fontSize: "clamp(25px,7.6vw,42px)",
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  color: ink,
-                }}
-              >
-                {table}
-              </span>
-            </div>
-            {message && (
-              <div
-                style={{
-                  fontSize: "clamp(8px,1.8vw,10.5px)",
-                  letterSpacing: "0.05em",
-                  color: inkSoft,
-                  lineHeight: 1.7,
-                  whiteSpace: "pre-line",
-                  marginTop: "2.5%",
-                }}
-              >
-                {message}
-              </div>
-            )}
-          </div>
-          {/* QR はミシン目の内側(本体側)に置く */}
-          {showQr && (
-            <div
-              style={{
-                flex: "none",
-                display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
-                gap: 5,
+                padding: photo ? "5% 3% 0 4%" : "5% 3% 0 5%",
+                minWidth: 0,
               }}
             >
               <div
                 style={{
-                  width: "clamp(52px,13vw,86px)",
-                  aspectRatio: 1,
-                  background: "#FFFFFF",
-                  borderRadius: 8,
-                  padding: 5,
-                  boxShadow: "0 3px 10px rgba(150,110,130,0.14)",
+                  flex: 1,
+                  minWidth: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  gap: "3.5%",
                 }}
               >
-                <QrCode url={qrUrl} color={ink} />
+                <div
+                  style={{
+                    fontSize: "clamp(8px,1.9vw,10.5px)",
+                    letterSpacing: "0.3em",
+                    color: inkSoft,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {heading}
+                </div>
+                {footText && (
+                  <div
+                    style={{
+                      fontSize: "clamp(7.5px,1.7vw,9.5px)",
+                      letterSpacing: "0.16em",
+                      color: withAlpha(inkSoft, 85),
+                    }}
+                  >
+                    {footText}
+                  </div>
+                )}
+                {/* 全角10文字 / 半角20文字が1行に収まるサイズ */}
+                <div
+                  style={{
+                    fontSize: "clamp(13px,3.2vw,20px)",
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                    color: ink,
+                    lineHeight: 1.2,
+                    margin: "3.5% 0",
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {name}
+                </div>
+                <div
+                  aria-hidden="true"
+                  style={{ width: "38%", height: 1, background: withAlpha(gold, 60) }}
+                />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "baseline",
+                    gap: "clamp(12px,3vw,24px)",
+                    marginTop: "1.5%",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "clamp(9px,2.1vw,12.5px)",
+                      letterSpacing: "0.22em",
+                      color: inkSoft,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {tableLabel}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "clamp(25px,7.6vw,42px)",
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      color: ink,
+                    }}
+                  >
+                    {table}
+                  </span>
+                </div>
+                {message && (
+                  <div
+                    style={{
+                      fontSize: "clamp(8px,1.8vw,10.5px)",
+                      letterSpacing: "0.05em",
+                      color: inkSoft,
+                      lineHeight: 1.7,
+                      whiteSpace: "pre-line",
+                      marginTop: "2.5%",
+                    }}
+                  >
+                    {message}
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          </div>
         </div>
         {/* 半券(stub) */}
         <div

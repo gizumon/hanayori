@@ -21,3 +21,18 @@ export function collectionPrefix(): string {
       return "dev_";
   }
 }
+
+/**
+ * Cloud Storage 上でアップロード画像を環境ごとに分けるフォルダ名。
+ * Firestore の collectionPrefix と同じ発想で dev/stg/prod を分離する。
+ */
+export function storageEnvFolder(): string {
+  switch (getAppEnv()) {
+    case "production":
+      return "prod";
+    case "staging":
+      return "stg";
+    default:
+      return "dev";
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import styles from "./letter-studio.module.css";
+import { FONT_SIZE } from "@/lib/typography";
 
 interface ConfirmDialogProps {
   message: string;
@@ -46,7 +47,7 @@ export function ConfirmDialog({
         <p
           style={{
             margin: 0,
-            fontSize: 13.5,
+            fontSize: FONT_SIZE.body,
             lineHeight: 1.7,
             color: "#5C4A4A",
             letterSpacing: "0.04em",
@@ -64,7 +65,7 @@ export function ConfirmDialog({
               border: "1px solid #EBD9DF",
               background: "transparent",
               color: "#8C7676",
-              fontSize: 13,
+              fontSize: FONT_SIZE.bodySm,
               cursor: "pointer",
             }}
           >
@@ -80,7 +81,7 @@ export function ConfirmDialog({
               border: "none",
               background: "#D3A5B4",
               color: "#FFF9F5",
-              fontSize: 13,
+              fontSize: FONT_SIZE.bodySm,
               letterSpacing: "0.06em",
               cursor: "pointer",
             }}

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { THEMES } from "../constants";
 import styles from "../letter-studio.module.css";
 import type { Letter } from "../types";
+import { FONT_SIZE } from "@/lib/typography";
 
 interface LetterRowProps {
   letter: Letter;
@@ -28,7 +29,7 @@ const pillStyle = {
   border: "1px solid #EBD9DF",
   background: "#FFFFFF",
   color: "#5C4A4A",
-  fontSize: 12.5,
+  fontSize: FONT_SIZE.label,
   letterSpacing: "0.06em",
 };
 
@@ -41,7 +42,7 @@ const menuItemStyle = {
   border: "none",
   background: "none",
   textAlign: "left" as const,
-  fontSize: 13,
+  fontSize: FONT_SIZE.bodySm,
   letterSpacing: "0.04em",
   color: "#5C4A4A",
   cursor: "pointer",
@@ -107,12 +108,12 @@ export function LetterRow({
         <Mail size={19} strokeWidth={1.6} color={accent} />
       </span>
       <div style={{ flex: 1, minWidth: 160 }}>
-        <div style={{ fontSize: 16.5, fontWeight: 600, letterSpacing: "0.08em", fontFamily: pFont }}>
+        <div style={{ fontSize: FONT_SIZE.heading, fontWeight: 600, letterSpacing: "0.08em", fontFamily: pFont }}>
           {l.to}
         </div>
         <div
           style={{
-            fontSize: 13,
+            fontSize: FONT_SIZE.bodySm,
             color: "#8C7676",
             letterSpacing: "0.04em",
             overflow: "hidden",
@@ -127,7 +128,7 @@ export function LetterRow({
         {cardEnabled && (
           <div
             style={{
-              fontSize: 11.5,
+              fontSize: FONT_SIZE.caption,
               color: "#B08A99",
               letterSpacing: "0.06em",
               marginTop: 3,
@@ -156,7 +157,7 @@ export function LetterRow({
             border: "none",
             background: "#D3A5B4",
             color: "#FFF9F5",
-            fontSize: 12.5,
+            fontSize: FONT_SIZE.label,
             letterSpacing: "0.06em",
             textDecoration: "none",
           }}

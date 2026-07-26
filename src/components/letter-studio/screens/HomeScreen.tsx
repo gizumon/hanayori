@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import styles from "../letter-studio.module.css";
 import type { EventSummary } from "../types";
 import { ListToolbar, type SortOption } from "./ListToolbar";
+import { FONT_SIZE } from "@/lib/typography";
 
 interface HomeScreenProps {
   projects: EventSummary[];
@@ -72,10 +73,10 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
         padding: "36px clamp(16px,4vw,40px) 80px",
       }}
     >
-      <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 600, letterSpacing: "0.14em" }}>
+      <h2 style={{ margin: "0 0 4px", fontSize: FONT_SIZE.title, fontWeight: 600, letterSpacing: "0.14em" }}>
         イベント
       </h2>
-      <p style={{ margin: "0 0 24px", fontSize: 12.5, color: "#8C7676", letterSpacing: "0.05em" }}>
+      <p style={{ margin: "0 0 24px", fontSize: FONT_SIZE.label, color: "#8C7676", letterSpacing: "0.05em" }}>
         イベントごとのお手紙をまとめて管理できます
       </p>
 
@@ -89,7 +90,7 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
           border: "1.5px dashed #D3A5B4",
           borderRadius: 14,
           color: "#B08A99",
-          fontSize: 13.5,
+          fontSize: FONT_SIZE.body,
           letterSpacing: "0.1em",
           padding: "18px 20px",
           display: "flex",
@@ -99,7 +100,7 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
           marginBottom: 20,
         }}
       >
-        <span style={{ fontSize: 20, fontWeight: 300, lineHeight: 1 }}>+</span>
+        <span style={{ fontSize: FONT_SIZE.title, fontWeight: 300, lineHeight: 1 }}>+</span>
         新しいイベント
       </button>
 
@@ -187,7 +188,7 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
                 </span>
                 <span
                   style={{
-                    fontSize: 10.5,
+                    fontSize: FONT_SIZE.micro,
                     fontWeight: 600,
                     letterSpacing: "0.24em",
                     color: "#C6A5B2",
@@ -198,7 +199,7 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
               </div>
               <span
                 style={{
-                  fontSize: 16.5,
+                  fontSize: FONT_SIZE.heading,
                   fontWeight: 600,
                   letterSpacing: "0.08em",
                   color: "#5C4A4A",
@@ -211,7 +212,7 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  fontSize: 12,
+                  fontSize: FONT_SIZE.caption,
                   color: "#8C7676",
                   letterSpacing: "0.08em",
                 }}
@@ -231,7 +232,7 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  fontSize: 12,
+                  fontSize: FONT_SIZE.caption,
                   color: "#B08A99",
                   letterSpacing: "0.06em",
                   borderTop: "1px dashed #F0E2E7",

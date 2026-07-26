@@ -1,4 +1,5 @@
 import { BrandMark } from "@/components/letter-studio/BrandMark";
+import { FONT_SIZE } from "@/lib/typography";
 
 export default function LetterNotFound() {
   return (
@@ -29,7 +30,7 @@ export default function LetterNotFound() {
           style={{
             margin: "0 0 12px",
             fontFamily: "'Shippori Mincho', serif",
-            fontSize: 20,
+            fontSize: FONT_SIZE.title,
             fontWeight: 500,
             letterSpacing: "0.08em",
             color: "#5C4A4A",
@@ -37,7 +38,7 @@ export default function LetterNotFound() {
         >
           お手紙が見つかりませんでした
         </h1>
-        <p style={{ margin: 0, fontSize: 13, letterSpacing: "0.05em", color: "#8C7676", lineHeight: 1.8 }}>
+        <p style={{ margin: 0, fontSize: FONT_SIZE.bodySm, letterSpacing: "0.05em", color: "#8C7676", lineHeight: 1.8 }}>
           URL が正しいかご確認ください。
           <br />
           お手紙の送り主にもう一度リンクを確認してもらいましょう。

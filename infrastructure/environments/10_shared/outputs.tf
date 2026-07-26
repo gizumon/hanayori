@@ -37,3 +37,8 @@ output "firebase_messaging_sender_id" {
   description = "Firebase Messaging Sender ID = GCP project number (NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID)"
   value       = data.google_project.main.number
 }
+
+output "uploads_bucket" {
+  description = "画像アップロード用バケット名 (STORAGE_UPLOADS_BUCKET)"
+  value       = google_storage_bucket.uploads.name
+}

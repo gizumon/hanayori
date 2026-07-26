@@ -1,7 +1,12 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import { FONTS } from "./constants";
 import styles from "./letter-studio.module.css";
+import type { FontKey } from "./types";
+import { FONT_SIZE } from "@/lib/typography";
 
 interface PillButtonProps {
   label: string;
@@ -30,7 +35,7 @@ export function PillButton({
       style={{
         padding: size === "sm" ? "8px 14px" : "8px 18px",
         borderRadius: 999,
-        fontSize: size === "sm" ? 12 : 12.5,
+        fontSize: size === "sm" ? FONT_SIZE.caption : FONT_SIZE.label,
         letterSpacing: "0.06em",
         cursor: "pointer",
         background: active ? "#D3A5B4" : "#FFFFFF",
@@ -43,89 +48,141 @@ export function PillButton({
   );
 }
 
-interface FontOptionRowProps {
-  label: string;
-  family: string;
+interface FontSelectProps {
+  value: FontKey;
+  onChange: (key: FontKey) => void;
   sample: string;
-  active: boolean;
-  onClick: () => void;
-  compact?: boolean;
 }
 
-export function FontOptionRow({
-  label,
-  family,
-  sample,
-  active,
-  onClick,
-  compact = false,
-}: FontOptionRowProps) {
+export function FontSelect({ value, onChange, sample }: FontSelectProps) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointer = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={styles.optionRow}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: compact ? 10 : 14,
-        padding: compact ? "11px 14px" : "14px 16px",
-        background: active ? "#FBF1F4" : "#FFFFFF",
-        border: "none",
-        borderBottom: "1px solid #F3E8EC",
-        textAlign: "left",
-      }}
-    >
-      <span
-        aria-hidden="true"
-        style={{
-          width: compact ? 14 : 16,
-          height: compact ? 14 : 16,
-          borderRadius: "50%",
-          flex: "none",
-          border: active ? "5px solid #D3A5B4" : "1.5px solid #D9C3CA",
-          background: active ? "#D3A5B4" : "transparent",
+    <div ref={rootRef} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={styles.field}
+        style={fieldStyle({
+          width: "100%",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-        }}
+          justifyContent: "space-between",
+          gap: 10,
+          cursor: "pointer",
+        })}
       >
         <span
           style={{
-            width: compact ? 6 : 7,
-            height: compact ? 6 : 7,
-            borderRadius: "50%",
-            background: "#FFF9F5",
-            display: active ? "block" : "none",
+            fontFamily: FONTS[value].family,
+            fontSize: FONT_SIZE.input,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
           }}
-        />
-      </span>
-      <span
-        style={{
-          fontSize: compact ? 11 : 11.5,
-          color: "#8C7676",
-          letterSpacing: "0.06em",
-          flex: "none",
-          width: compact ? 88 : 110,
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          fontFamily: family,
-          fontSize: compact ? 15 : 17,
-          color: "#5C4A4A",
-          letterSpacing: "0.04em",
-          flex: 1,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {sample}
-      </span>
-    </button>
+        >
+          {sample}
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 8, flex: "none" }}>
+          <span style={{ fontSize: FONT_SIZE.micro, color: "#B08A99", letterSpacing: "0.04em" }}>
+            {FONTS[value].label}
+          </span>
+          <ChevronDown
+            size={15}
+            style={{
+              color: "#B08A99",
+              transition: "transform 0.15s",
+              transform: open ? "rotate(180deg)" : undefined,
+            }}
+          />
+        </span>
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: 0,
+            right: 0,
+            zIndex: 20,
+            background: "#FFFFFF",
+            border: "1px solid #EBD9DF",
+            borderRadius: 12,
+            boxShadow: "0 12px 30px rgba(80,50,60,0.18)",
+            overflow: "hidden",
+          }}
+        >
+          {(Object.keys(FONTS) as FontKey[]).map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="option"
+              aria-selected={value === k}
+              onClick={() => {
+                onChange(k);
+                setOpen(false);
+              }}
+              style={{
+                display: "flex",
+                width: "100%",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                padding: "10px 14px",
+                border: "none",
+                borderBottom: "1px solid #F3E8EC",
+                background: value === k ? "#FBF1F4" : "#FFFFFF",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: FONTS[k].family,
+                  fontSize: FONT_SIZE.input,
+                  color: "#5C4A4A",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {sample}
+              </span>
+              <span
+                style={{
+                  fontSize: FONT_SIZE.micro,
+                  color: "#B08A99",
+                  letterSpacing: "0.04em",
+                  flex: "none",
+                }}
+              >
+                {FONTS[k].label}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -142,7 +199,7 @@ export function Toggle({ checked, onChange, label }: ToggleProps) {
         display: "flex",
         alignItems: "center",
         gap: 9,
-        fontSize: 12.5,
+        fontSize: FONT_SIZE.label,
         color: "#8C7676",
         letterSpacing: "0.06em",
         cursor: "pointer",
@@ -171,11 +228,11 @@ export function Toggle({ checked, onChange, label }: ToggleProps) {
 
 export function fieldStyle(extra?: CSSProperties): CSSProperties {
   return {
-    padding: "11px 13px",
+    padding: "9px 12px",
     borderRadius: 10,
     border: "1px solid #EBD9DF",
     background: "#FFFFFF",
-    fontSize: 16,
+    fontSize: FONT_SIZE.input,
     color: "#5C4A4A",
     outline: "none",
     ...extra,

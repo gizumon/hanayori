@@ -20,6 +20,8 @@ interface QrCardFaceProps {
   heading: string;
   note: string;
   footText: string;
+  /** 日付。footText の下に改行して小さく表示する。 */
+  date: string;
   qrUrl: string;
   boxShadow: string;
 }
@@ -41,6 +43,7 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
       heading,
       note,
       footText,
+      date,
       qrUrl,
       boxShadow,
     },
@@ -141,6 +144,18 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
               >
                 {footText}
               </div>
+              {date && (
+                <div
+                  style={{
+                    fontSize: "clamp(7px,1.4vw,8.5px)",
+                    letterSpacing: "0.1em",
+                    color: inkSoft,
+                    marginTop: 2,
+                  }}
+                >
+                  {date}
+                </div>
+              )}
             </div>
             <div
               style={{
@@ -298,13 +313,24 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
                 left: g.footLeft,
                 right: g.footRight,
                 bottom: "5.5%",
-                fontSize: "clamp(8.5px,1.8vw,10.5px)",
-                letterSpacing: "0.12em",
                 color: inkSoft,
                 textAlign: g.textAlign,
               }}
             >
-              {footText}
+              <div style={{ fontSize: "clamp(8.5px,1.8vw,10.5px)", letterSpacing: "0.12em" }}>
+                {footText}
+              </div>
+              {date && (
+                <div
+                  style={{
+                    fontSize: "clamp(7px,1.5vw,8.5px)",
+                    letterSpacing: "0.1em",
+                    marginTop: 2,
+                  }}
+                >
+                  {date}
+                </div>
+              )}
             </div>
           </>
         )}

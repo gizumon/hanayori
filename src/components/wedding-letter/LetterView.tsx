@@ -359,6 +359,29 @@ export function LetterView({ to, body, theme: themeKey, photo, photoRatio, date,
       )}
 
       {saveShown && (
+        <a
+          href="/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            position: "fixed",
+            left: "50%",
+            bottom: 12,
+            transform: "translateX(-50%)",
+            zIndex: 30,
+            fontFamily: "'Shippori Mincho', serif",
+            fontSize: 11,
+            letterSpacing: "0.1em",
+            color: theme.inkSoft,
+            opacity: 0.45,
+            textDecoration: "none",
+          }}
+        >
+          Hanayori
+        </a>
+      )}
+
+      {saveShown && (
         <button
           type="button"
           onClick={saveImage}

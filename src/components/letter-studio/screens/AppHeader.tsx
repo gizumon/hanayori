@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { LogOut, Pencil } from "lucide-react";
+import { Download, LogOut, Pencil } from "lucide-react";
 import { fieldStyle } from "../controls";
 import styles from "../letter-studio.module.css";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
+import { PWAInstallModal } from "@/components/pwa/PWAInstallModal";
+import { FONT_SIZE } from "@/lib/typography";
 
 interface AppHeaderProps {
   userName: string;
@@ -15,7 +18,10 @@ interface AppHeaderProps {
 export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [iosGuideOpen, setIosGuideOpen] = useState(false);
   const [draftName, setDraftName] = useState(userName);
+  const { isInstalled, platform, canPrompt, promptInstall } = usePWAInstall();
+  const canInstall = !isInstalled && (canPrompt || platform === "ios");
   const submittedRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const initial = userName ? userName.charAt(0) : "結";
@@ -59,6 +65,16 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
     }
   };
 
+  const handleInstall = async () => {
+    if (canPrompt) {
+      closeAll();
+      await promptInstall();
+    } else if (platform === "ios") {
+      setMenuOpen(false);
+      setIosGuideOpen(true);
+    }
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -97,7 +113,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
         <span
           style={{
             fontFamily: "'Shippori Mincho', serif",
-            fontSize: 17,
+            fontSize: FONT_SIZE.heading,
             fontWeight: 500,
             letterSpacing: "0.1em",
             color: "#5C4A4A",
@@ -105,7 +121,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
         >
           Hanayori
         </span>
-        <span style={{ fontSize: 11, letterSpacing: "0.28em", color: "#B08A99" }}>
+        <span style={{ fontSize: FONT_SIZE.overline, letterSpacing: "0.28em", color: "#B08A99" }}>
           花嫁のお便り
         </span>
       </button>
@@ -124,7 +140,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
             borderRadius: 999,
             padding: "4px 10px 4px 4px",
             cursor: "pointer",
-            fontSize: 12.5,
+            fontSize: FONT_SIZE.label,
             color: "#8C7676",
             letterSpacing: "0.05em",
           }}
@@ -139,7 +155,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
               alignItems: "center",
               justifyContent: "center",
               color: "#FFF9F5",
-              fontSize: 12,
+              fontSize: FONT_SIZE.caption,
               flexShrink: 0,
             }}
           >
@@ -169,7 +185,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
             {editing ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "6px 8px" }}>
                 <label
-                  style={{ fontSize: 11.5, letterSpacing: "0.08em", color: "#8C7676" }}
+                  style={{ fontSize: FONT_SIZE.caption, letterSpacing: "0.08em", color: "#8C7676" }}
                 >
                   ニックネーム
                 </label>
@@ -180,7 +196,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                   onKeyDown={handleKeyDown}
                   maxLength={30}
                   className={styles.field}
-                  style={fieldStyle({ padding: "8px 10px", fontSize: 16 })}
+                  style={fieldStyle({ padding: "8px 10px", fontSize: FONT_SIZE.input })}
                 />
                 <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
                   <button
@@ -194,7 +210,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                       border: "none",
                       background: "#D3A5B4",
                       color: "#FFF9F5",
-                      fontSize: 12.5,
+                      fontSize: FONT_SIZE.label,
                       letterSpacing: "0.06em",
                       cursor: "pointer",
                     }}
@@ -211,7 +227,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                       border: "1px solid #EBD9DF",
                       background: "transparent",
                       color: "#8C7676",
-                      fontSize: 12.5,
+                      fontSize: FONT_SIZE.label,
                       letterSpacing: "0.06em",
                       cursor: "pointer",
                     }}
@@ -235,7 +251,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                     borderRadius: 8,
                     padding: "9px 8px",
                     cursor: "pointer",
-                    fontSize: 13,
+                    fontSize: FONT_SIZE.bodySm,
                     color: "#5C4A4A",
                     letterSpacing: "0.04em",
                   }}
@@ -250,6 +266,36 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                   />
                   ニックネームを変更
                 </button>
+                {canInstall && (
+                  <button
+                    type="button"
+                    onClick={handleInstall}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      textAlign: "left",
+                      border: "none",
+                      background: "transparent",
+                      borderRadius: 8,
+                      padding: "9px 8px",
+                      cursor: "pointer",
+                      fontSize: FONT_SIZE.bodySm,
+                      color: "#5C4A4A",
+                      letterSpacing: "0.04em",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(211,165,180,0.12)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <Download
+                      size={13}
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                      style={{ color: "#B08A99", flex: "none" }}
+                    />
+                    アプリをインストール
+                  </button>
+                )}
                 <div style={{ height: 1, background: "#F0E2E7", margin: "4px 2px" }} />
                 <button
                   type="button"
@@ -267,7 +313,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                     borderRadius: 8,
                     padding: "9px 8px",
                     cursor: "pointer",
-                    fontSize: 13,
+                    fontSize: FONT_SIZE.bodySm,
                     color: "#8C7676",
                     letterSpacing: "0.04em",
                   }}
@@ -287,6 +333,8 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
           </div>
         )}
       </div>
+
+      {iosGuideOpen && <PWAInstallModal onClose={() => setIosGuideOpen(false)} />}
     </header>
   );
 }
