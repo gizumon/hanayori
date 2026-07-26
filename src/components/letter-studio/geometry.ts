@@ -1,4 +1,4 @@
-import type { CardConfig, Draft, Letter } from "./types";
+import type { CardConfig, Draft, EscortConfig, EscortStyle, Letter } from "./types";
 
 export interface CardGeometry {
   w: string;
@@ -101,5 +101,44 @@ export function cardNameFor(
     (letter?.to ? letter.to.replace(/(さん)?へ$/, "") : "") ||
     "お名前";
   const honor = letter?.honor ?? cc.honor;
+  return honor === "" ? base : `${base} ${honor}`;
+}
+
+export interface EscortGeometry {
+  w: string;
+  aspect: string;
+  sizeLabel: string;
+  printDims: string;
+}
+
+/** エスコートカードの寸法。ticket = 横長チケット、card = 縦長カード。 */
+export function escortGeom(style: EscortStyle): EscortGeometry {
+  if (style === "card") {
+    return {
+      w: "min(300px,100%)",
+      aspect: "55 / 91",
+      sizeLabel: "55×91mm",
+      printDims: "width:55mm;height:91mm",
+    };
+  }
+  return {
+    w: "min(560px,100%)",
+    aspect: "180 / 80",
+    sizeLabel: "180×80mm",
+    printDims: "width:180mm;height:80mm",
+  };
+}
+
+/** エスコートカードに表示する名前(敬称適用済み)。 */
+export function escortNameFor(
+  letter: Draft | Letter | null | undefined,
+  ec: EscortConfig
+): string {
+  const base =
+    letter?.escortName ||
+    letter?.cardName ||
+    (letter?.to ? letter.to.replace(/(さん)?へ$/, "") : "") ||
+    "お名前";
+  const honor = letter?.escortHonor ?? ec.honor;
   return honor === "" ? base : `${base} ${honor}`;
 }

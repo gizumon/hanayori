@@ -4,7 +4,14 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { eventsCollection, lettersCollection } from "./collections";
 import { normalizeEventDoc, requireEventMembership } from "./events";
 import { HttpError } from "./http-error";
-import type { FontKey, Honor, LetterDoc, LetterPhoto, ThemeKey } from "./schema";
+import type {
+  EscortFieldsDoc,
+  FontKey,
+  Honor,
+  LetterDoc,
+  LetterPhoto,
+  ThemeKey,
+} from "./schema";
 
 export interface LetterJson {
   id: string;
@@ -15,6 +22,12 @@ export interface LetterJson {
   photoRatio?: number;
   cardName: string | null;
   honor: Honor | null;
+  tableNo: string | null;
+  escortName: string | null;
+  escortMessage: string | null;
+  escortHonor: Honor | null;
+  escortPhoto: string | null;
+  escortPhotoRatio?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,16 +36,36 @@ function toIso(ts: Timestamp | undefined): string {
   return (ts ?? Timestamp.now()).toDate().toISOString();
 }
 
+function photoFromInput(
+  photo: string | null | undefined,
+  photoRatio: number | undefined,
+  id: string
+): LetterPhoto | null {
+  if (!photo) return null;
+  return { id, dataUrl: photo, ratio: photoRatio ?? null };
+}
+
 function photosFromInput(
   photo: string | null | undefined,
   photoRatio: number | undefined
 ): LetterPhoto[] {
-  if (!photo) return [];
-  return [{ id: "primary", dataUrl: photo, ratio: photoRatio ?? null }];
+  const p = photoFromInput(photo, photoRatio, "primary");
+  return p ? [p] : [];
+}
+
+function escortFromInput(input: EscortInput): EscortFieldsDoc {
+  return {
+    tableNo: input.tableNo ?? null,
+    name: input.escortName ?? null,
+    message: input.escortMessage ?? null,
+    honor: input.escortHonor ?? null,
+    photo: photoFromInput(input.escortPhoto, input.escortPhotoRatio, "escort"),
+  };
 }
 
 function serializeLetter(id: string, data: LetterDoc): LetterJson {
   const primary = data.photos[0];
+  const escort = data.escort;
   return {
     id,
     to: data.to,
@@ -42,9 +75,25 @@ function serializeLetter(id: string, data: LetterDoc): LetterJson {
     photoRatio: primary?.ratio ?? undefined,
     cardName: data.cardName,
     honor: data.honor,
+    tableNo: escort?.tableNo ?? null,
+    escortName: escort?.name ?? null,
+    escortMessage: escort?.message ?? null,
+    escortHonor: escort?.honor ?? null,
+    escortPhoto: escort?.photo?.dataUrl ?? null,
+    escortPhotoRatio: escort?.photo?.ratio ?? undefined,
     createdAt: toIso(data.createdAt),
     updatedAt: toIso(data.updatedAt),
   };
+}
+
+/** create/update 双方で使うエスコート系の入力。 */
+interface EscortInput {
+  tableNo?: string | null;
+  escortName?: string | null;
+  escortMessage?: string | null;
+  escortHonor?: Honor | null;
+  escortPhoto?: string | null;
+  escortPhotoRatio?: number;
 }
 
 async function requireLetterMembership(uid: string, letterId: string) {
@@ -67,7 +116,7 @@ export async function listLettersForEvent(
   return snap.docs.map((doc) => serializeLetter(doc.id, doc.data()));
 }
 
-export interface CreateLetterInput {
+export interface CreateLetterInput extends EscortInput {
   to: string;
   body: string;
   theme: ThemeKey;
@@ -98,6 +147,7 @@ export async function createLetter(
     photos: photosFromInput(input.photo, input.photoRatio),
     cardName: input.cardName ?? null,
     honor: input.honor ?? null,
+    escort: escortFromInput(input),
     createdAt: now,
     updatedAt: now,
   };
@@ -106,7 +156,7 @@ export async function createLetter(
   return serializeLetter(snap.id, snap.data()!);
 }
 
-export interface UpdateLetterInput {
+export interface UpdateLetterInput extends EscortInput {
   to?: string;
   body?: string;
   theme?: ThemeKey;
@@ -116,12 +166,24 @@ export interface UpdateLetterInput {
   honor?: Honor | null;
 }
 
+/** patch にエスコート系フィールドが 1 つでも含まれるか。 */
+function hasEscortPatch(patch: UpdateLetterInput): boolean {
+  return (
+    patch.tableNo !== undefined ||
+    patch.escortName !== undefined ||
+    patch.escortMessage !== undefined ||
+    patch.escortHonor !== undefined ||
+    patch.escortPhoto !== undefined ||
+    patch.escortPhotoRatio !== undefined
+  );
+}
+
 export async function updateLetter(
   uid: string,
   letterId: string,
   patch: UpdateLetterInput
 ): Promise<LetterJson> {
-  const { ref } = await requireLetterMembership(uid, letterId);
+  const { ref, data } = await requireLetterMembership(uid, letterId);
 
   const update: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
   if (patch.to !== undefined) update.to = patch.to;
@@ -131,6 +193,21 @@ export async function updateLetter(
   if (patch.honor !== undefined) update.honor = patch.honor;
   if (patch.photo !== undefined) {
     update.photos = photosFromInput(patch.photo, patch.photoRatio);
+  }
+  // エスコート系は既存値をベースにパッチをマージして書き戻す。
+  if (hasEscortPatch(patch)) {
+    const cur = data.escort;
+    const curPhoto = { photo: cur?.photo?.dataUrl ?? null, ratio: cur?.photo?.ratio ?? undefined };
+    update.escort = escortFromInput({
+      tableNo: patch.tableNo !== undefined ? patch.tableNo : cur?.tableNo ?? null,
+      escortName: patch.escortName !== undefined ? patch.escortName : cur?.name ?? null,
+      escortMessage:
+        patch.escortMessage !== undefined ? patch.escortMessage : cur?.message ?? null,
+      escortHonor: patch.escortHonor !== undefined ? patch.escortHonor : cur?.honor ?? null,
+      escortPhoto: patch.escortPhoto !== undefined ? patch.escortPhoto : curPhoto.photo,
+      escortPhotoRatio:
+        patch.escortPhoto !== undefined ? patch.escortPhotoRatio : curPhoto.ratio,
+    });
   }
 
   await ref.update(update);
@@ -152,6 +229,12 @@ export interface GuestLetterView {
   /** イベント側の値を都度解決する(手紙には複製しない)。 */
   date: string | null;
   font: FontKey;
+  /** 席札用の宛名(OGP 等で使用)。未設定なら null。 */
+  cardName: string | null;
+  /** この手紙の敬称。null = イベント既定に従う。 */
+  honor: Honor | null;
+  /** イベント既定の敬称。 */
+  eventHonor: Honor;
 }
 
 /**
@@ -169,6 +252,7 @@ export const getLetterForGuest = cache(
     if (!eventSnap.exists || !eventData) return null;
 
     const primary = letterData.photos[0];
+    const normalized = normalizeEventDoc(eventData);
     return {
       to: letterData.to,
       body: letterData.body,
@@ -176,7 +260,10 @@ export const getLetterForGuest = cache(
       photo: primary?.dataUrl ?? null,
       photoRatio: primary?.ratio ?? undefined,
       date: eventData.date,
-      font: normalizeEventDoc(eventData).letterConfig.font,
+      font: normalized.letterConfig.font,
+      cardName: letterData.cardName,
+      honor: letterData.honor,
+      eventHonor: normalized.cardConfig.honor,
     };
   }
 );

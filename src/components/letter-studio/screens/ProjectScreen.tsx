@@ -1,10 +1,39 @@
 "use client";
 
 import { Settings } from "lucide-react";
+import { useMemo, useState } from "react";
 import { FONTS } from "../constants";
 import styles from "../letter-studio.module.css";
 import type { Letter, Project } from "../types";
 import { LetterRow } from "./LetterRow";
+import { ListToolbar, type SortOption } from "./ListToolbar";
+
+type SortKey = "createdDesc" | "createdAsc" | "nameAsc";
+
+const SORT_OPTIONS: SortOption<SortKey>[] = [
+  { value: "createdDesc", label: "追加が新しい順" },
+  { value: "createdAsc", label: "追加が古い順" },
+  { value: "nameAsc", label: "宛名順" },
+];
+
+const PAGE_SIZE = 8;
+
+function sortLetters(letters: Letter[], sort: SortKey): Letter[] {
+  const sorted = [...letters];
+  switch (sort) {
+    case "createdAsc":
+      sorted.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      break;
+    case "nameAsc":
+      sorted.sort((a, b) => a.to.localeCompare(b.to, "ja"));
+      break;
+    case "createdDesc":
+    default:
+      sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      break;
+  }
+  return sorted;
+}
 
 interface ProjectScreenProps {
   project: Project;
@@ -15,6 +44,7 @@ interface ProjectScreenProps {
   onNewLetter: () => void;
   onEditLetter: (letter: Letter) => void;
   onShowQr: (letter: Letter) => void;
+  onShowEscort: (letter: Letter) => void;
   onCopyLink: (id: string) => void;
   onDeleteLetter: (letter: Letter) => void;
   deletingLetter: boolean;
@@ -31,6 +61,7 @@ export function ProjectScreen({
   onNewLetter,
   onEditLetter,
   onShowQr,
+  onShowEscort,
   onCopyLink,
   onDeleteLetter,
   deletingLetter,
@@ -38,8 +69,22 @@ export function ProjectScreen({
   cardNameFor,
 }: ProjectScreenProps) {
   const cardEnabled = project.cardConfig.enabled;
+  const escortEnabled = project.escortConfig.enabled;
   const pFont = FONTS[project.letterConfig.font].family;
   const cFont = FONTS[project.cardConfig.font].family;
+
+  const [sort, setSort] = useState<SortKey>("createdDesc");
+  const [page, setPage] = useState(1);
+  const [prevSort, setPrevSort] = useState(sort);
+  if (prevSort !== sort) {
+    setPrevSort(sort);
+    setPage(1);
+  }
+
+  const sorted = useMemo(() => sortLetters(letters, sort), [letters, sort]);
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paged = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <main
@@ -124,6 +169,18 @@ export function ProjectScreen({
           <span style={{ fontSize: 20, fontWeight: 300, lineHeight: 1 }}>+</span>
           新しいお手紙を書く
         </button>
+        {!loadingLetters && letters.length > 0 && (
+          <ListToolbar
+            totalCount={letters.length}
+            countUnit="通"
+            sortValue={sort}
+            sortOptions={SORT_OPTIONS}
+            onSortChange={setSort}
+            page={currentPage}
+            pageCount={pageCount}
+            onPageChange={setPage}
+          />
+        )}
         {loadingLetters &&
           Array.from({ length: 2 }).map((_, i) => (
             <div
@@ -140,7 +197,7 @@ export function ProjectScreen({
             >
               <div
                 className={styles.skeleton}
-                style={{ width: 34, height: 34, borderRadius: "50%", flex: "none" }}
+                style={{ width: 42, height: 42, borderRadius: 12, flex: "none" }}
               />
               <div style={{ flex: 1, minWidth: 160, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div className={styles.skeleton} style={{ height: 16, width: "30%" }} />
@@ -149,11 +206,12 @@ export function ProjectScreen({
             </div>
           ))}
         {!loadingLetters &&
-          letters.map((l) => (
+          paged.map((l) => (
             <LetterRow
               key={l.id}
               letter={l}
               cardEnabled={cardEnabled}
+              escortEnabled={escortEnabled}
               pFont={pFont}
               cFont={cFont}
               cardName={cardNameFor(l)}
@@ -161,6 +219,7 @@ export function ProjectScreen({
               deletingLetter={deletingLetter}
               onEdit={() => onEditLetter(l)}
               onShowQr={() => onShowQr(l)}
+              onShowEscort={() => onShowEscort(l)}
               onCopyLink={() => onCopyLink(l.id)}
               onDelete={() => onDeleteLetter(l)}
             />

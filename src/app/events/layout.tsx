@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+import { StudioShell } from "@/components/letter-studio/StudioShell";
 
 export const metadata: Metadata = {
   title: "LetterStudio | Hanayori",
@@ -18,7 +19,11 @@ export default function EventsLayout({ children }: { children: ReactNode }) {
         href="https://fonts.googleapis.com/css2?family=Yomogi&family=Shippori+Mincho:wght@500;600&family=Klee+One&family=Zen+Kaku+Gothic+New&family=Zen+Maru+Gothic&display=swap"
         rel="stylesheet"
       />
-      {children}
+      {/* 共有シェル(ヘッダー・モーダル・設定ドロワー等)。各画面は children。
+          nuqs(useSearchParams)を使うため、静的生成時のために Suspense で包む。 */}
+      <Suspense>
+        <StudioShell>{children}</StudioShell>
+      </Suspense>
     </>
   );
 }

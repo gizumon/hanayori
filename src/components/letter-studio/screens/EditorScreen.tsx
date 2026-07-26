@@ -4,18 +4,22 @@ import { ArrowUpRight, Settings } from "lucide-react";
 import { FONTS, THEMES } from "../constants";
 import { fieldStyle } from "../controls";
 import { QrCardFace } from "../QrCardFace";
-import type { CardGeometry } from "../geometry";
+import { EscortCardFace } from "../EscortCardFace";
+import type { CardGeometry, EscortGeometry } from "../geometry";
 import { withAlpha } from "@/lib/color";
 import styles from "../letter-studio.module.css";
-import type { CardConfig, Draft, EditorTab, Honor, Project } from "../types";
+import type { CardConfig, Draft, EditorTab, EscortConfig, Honor, Project } from "../types";
 
 interface EditorScreenProps {
   project: Project;
   draft: Draft;
   edTab: EditorTab;
   cardConf: CardConfig;
+  escortConf: EscortConfig;
   geometry: CardGeometry;
+  escortGeometry: EscortGeometry;
   cardName: string;
+  escortName: string;
   qrUrl: string;
   onBack: () => void;
   onEdTabChange: (t: EditorTab) => void;
@@ -23,9 +27,16 @@ interface EditorScreenProps {
   onChangeBody: (v: string) => void;
   onChangeCardName: (v: string) => void;
   onSetHonor: (h: Honor | null) => void;
+  onChangeTableNo: (v: string) => void;
+  onChangeEscortName: (v: string) => void;
+  onChangeEscortMessage: (v: string) => void;
+  onSetEscortHonor: (h: Honor | null) => void;
+  onUploadEscortPhoto: (file: File) => void;
+  onRemoveEscortPhoto: () => void;
   onSetTheme: (theme: Draft["theme"]) => void;
   onOpenSettings: () => void;
   onOpenCardSettings: () => void;
+  onOpenEscortSettings: () => void;
   onSave: () => void;
   saving: boolean;
   letterUrl: string;
@@ -36,8 +47,11 @@ export function EditorScreen({
   draft,
   edTab,
   cardConf,
+  escortConf,
   geometry: g,
+  escortGeometry: eg,
   cardName,
+  escortName,
   qrUrl,
   onBack,
   onEdTabChange,
@@ -45,9 +59,16 @@ export function EditorScreen({
   onChangeBody,
   onChangeCardName,
   onSetHonor,
+  onChangeTableNo,
+  onChangeEscortName,
+  onChangeEscortMessage,
+  onSetEscortHonor,
+  onUploadEscortPhoto,
+  onRemoveEscortPhoto,
   onSetTheme,
   onOpenSettings,
   onOpenCardSettings,
+  onOpenEscortSettings,
   onSave,
   saving,
   letterUrl,
@@ -55,9 +76,12 @@ export function EditorScreen({
   const theme = THEMES[draft.theme || "rose"];
   const pFont = FONTS[project.letterConfig.font].family;
   const cFont = FONTS[cardConf.font].family;
+  const eFont = FONTS[escortConf.font].family;
   const cardEnabled = cardConf.enabled;
-  const showLetterFields = edTab !== "card" || !cardEnabled;
+  const escortEnabled = escortConf.enabled;
   const showCardFields = edTab === "card" && cardEnabled;
+  const showEscortFields = edTab === "escort" && escortEnabled;
+  const showLetterFields = !showCardFields && !showEscortFields;
   const footText = project.name + (project.date ? ` ・ ${project.date}` : "");
 
   return (
@@ -118,7 +142,7 @@ export function EditorScreen({
               共通設定
             </button>
           </div>
-          {cardEnabled && (
+          {(cardEnabled || escortEnabled) && (
             <div
               style={{
                 display: "flex",
@@ -127,12 +151,14 @@ export function EditorScreen({
                 borderRadius: 999,
                 padding: 4,
                 alignSelf: "flex-start",
+                flexWrap: "wrap",
               }}
             >
               {(
                 [
                   ["letter", "お手紙"],
-                  ["card", "席札"],
+                  ...(cardEnabled ? [["card", "席札"] as const] : []),
+                  ...(escortEnabled ? [["escort", "エスコート"] as const] : []),
                 ] as const
               ).map(([k, label]) => (
                 <button
@@ -286,6 +312,222 @@ export function EditorScreen({
             </>
           )}
 
+          {showEscortFields && (
+            <>
+              <label
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  fontSize: 12.5,
+                  letterSpacing: "0.1em",
+                  color: "#8C7676",
+                }}
+              >
+                卓番
+                <input
+                  value={draft.tableNo || ""}
+                  onChange={(e) => onChangeTableNo(e.target.value)}
+                  placeholder="A / 1 / さくら"
+                  className={styles.field}
+                  style={fieldStyle({
+                    padding: "12px 14px",
+                    fontSize: 16,
+                    background: "#FFFCF8",
+                    letterSpacing: "0.05em",
+                  })}
+                />
+              </label>
+              <label
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  fontSize: 12.5,
+                  letterSpacing: "0.1em",
+                  color: "#8C7676",
+                }}
+              >
+                エスコートカードの名前
+                <input
+                  value={draft.escortName || ""}
+                  onChange={(e) => onChangeEscortName(e.target.value)}
+                  placeholder="Aoi Yamada"
+                  className={styles.field}
+                  style={fieldStyle({
+                    padding: "12px 14px",
+                    fontSize: 16,
+                    background: "#FFFCF8",
+                    letterSpacing: "0.05em",
+                  })}
+                />
+              </label>
+              <div style={{ fontSize: 11.5, color: "#B4A2A2", letterSpacing: "0.05em", marginTop: -8 }}>
+                空欄の場合は席札の名前・宛名から自動で作られます
+              </div>
+              <label
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  fontSize: 12.5,
+                  letterSpacing: "0.1em",
+                  color: "#8C7676",
+                }}
+              >
+                一言(任意)
+                <textarea
+                  value={draft.escortMessage || ""}
+                  onChange={(e) => onChangeEscortMessage(e.target.value)}
+                  rows={2}
+                  placeholder="今日はよろしくね"
+                  className={styles.field}
+                  style={fieldStyle({
+                    padding: 12,
+                    fontSize: 16,
+                    lineHeight: 1.7,
+                    letterSpacing: "0.04em",
+                    resize: "vertical",
+                    background: "#FFFCF8",
+                  })}
+                />
+              </label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <span style={{ fontSize: 12.5, letterSpacing: "0.1em", color: "#8C7676" }}>
+                  写真(任意)
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  {draft.escortPhoto && (
+                    <div
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 10,
+                        backgroundImage: `url('${draft.escortPhoto}')`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                        flex: "none",
+                        boxShadow: "0 3px 10px rgba(150,110,130,0.18)",
+                      }}
+                    />
+                  )}
+                  <label
+                    className={styles.btnOutline}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      padding: "9px 18px",
+                      borderRadius: 999,
+                      border: "1px solid #EBD9DF",
+                      background: "#FFFFFF",
+                      color: "#5C4A4A",
+                      fontSize: 12.5,
+                      letterSpacing: "0.06em",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {draft.escortPhoto ? "写真を変更" : "写真を選ぶ"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) onUploadEscortPhoto(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {draft.escortPhoto && (
+                    <button
+                      type="button"
+                      onClick={onRemoveEscortPhoto}
+                      className={styles.btnGhost}
+                      style={{
+                        padding: "9px 14px",
+                        borderRadius: 999,
+                        border: "none",
+                        background: "transparent",
+                        color: "#B5555F",
+                        fontSize: 12.5,
+                        letterSpacing: "0.06em",
+                      }}
+                    >
+                      削除
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: "#B4A2A2", letterSpacing: "0.05em" }}>
+                  アップロード時に切り取り位置を選べます。やり直す場合は再度アップロードしてください。
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontSize: 12.5, letterSpacing: "0.1em", color: "#8C7676" }}>敬称</span>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {(
+                    [
+                      { value: null, label: `既定(${escortConf.honor || "なし"})` },
+                      { value: "様", label: "様" },
+                      { value: "さん", label: "さん" },
+                      { value: "", label: "なし" },
+                    ] as const
+                  ).map(({ value, label }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => onSetEscortHonor(value)}
+                      className={styles.btnOutline}
+                      style={{
+                        padding: "8px 14px",
+                        borderRadius: 999,
+                        fontSize: 12,
+                        letterSpacing: "0.05em",
+                        background: (draft.escortHonor ?? null) === value ? "#D3A5B4" : "#FFFFFF",
+                        color: (draft.escortHonor ?? null) === value ? "#FFF9F5" : "#5C4A4A",
+                        border:
+                          (draft.escortHonor ?? null) === value ? "1px solid #D3A5B4" : "1px solid #EBD9DF",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div
+                style={{
+                  background: "rgba(255,252,248,0.7)",
+                  border: "1px dashed #E3CBD4",
+                  borderRadius: 12,
+                  padding: "14px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <span style={{ fontSize: 12, color: "#8C7676", letterSpacing: "0.06em", lineHeight: 1.7 }}>
+                  スタイル・QR・フォント・見出しはイベント共通の設定です
+                </span>
+                <button
+                  type="button"
+                  onClick={onOpenEscortSettings}
+                  className={styles.btnGhost}
+                  style={{
+                    alignSelf: "flex-start",
+                    padding: "9px 18px",
+                    borderRadius: 999,
+                    border: "1px solid #D3A5B4",
+                    background: "transparent",
+                    color: "#B08A99",
+                    fontSize: 12.5,
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  エスコートカードの設定を開く
+                </button>
+              </div>
+            </>
+          )}
+
           {showLetterFields && (
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -412,7 +654,11 @@ export function EditorScreen({
 
         <div style={{ flex: 1.2, minWidth: 300, position: "sticky", top: 20 }}>
           <div style={{ fontSize: 12.5, letterSpacing: "0.14em", color: "#8C7676", marginBottom: 10 }}>
-            {showCardFields ? "席札プレビュー" : "お手紙プレビュー"}
+            {showCardFields
+              ? "席札プレビュー"
+              : showEscortFields
+                ? "エスコートカードプレビュー"
+                : "お手紙プレビュー"}
           </div>
 
           {showLetterFields && (
@@ -568,6 +814,45 @@ export function EditorScreen({
               </div>
               <p style={{ margin: "10px 0 0", fontSize: 11.5, color: "#B4A2A2", letterSpacing: "0.05em", textAlign: "center" }}>
                 実寸 {g.sizeLabel}
+              </p>
+            </>
+          )}
+
+          {showEscortFields && (
+            <>
+              <div
+                style={{
+                  borderRadius: 16,
+                  background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
+                  padding: "clamp(24px,4vw,40px) clamp(16px,3vw,30px)",
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <EscortCardFace
+                  style={escortConf.style}
+                  width={eg.w}
+                  aspect={eg.aspect}
+                  paper={theme.paper}
+                  accent={theme.accent}
+                  gold={theme.gold}
+                  ink={theme.ink}
+                  inkSoft={theme.inkSoft}
+                  font={eFont}
+                  name={escortName}
+                  tableNo={draft.tableNo || ""}
+                  tableLabel={escortConf.tableLabel}
+                  heading={escortConf.heading}
+                  message={draft.escortMessage || ""}
+                  photo={draft.escortPhoto || ""}
+                  footText={footText}
+                  showQr={escortConf.qr}
+                  qrUrl={qrUrl}
+                  boxShadow="0 14px 40px rgba(150,110,130,0.22)"
+                />
+              </div>
+              <p style={{ margin: "10px 0 0", fontSize: 11.5, color: "#B4A2A2", letterSpacing: "0.05em", textAlign: "center" }}>
+                実寸 {eg.sizeLabel}
               </p>
             </>
           )}

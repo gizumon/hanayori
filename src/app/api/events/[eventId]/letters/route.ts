@@ -33,6 +33,12 @@ export async function POST(
       photoRatio: body?.photoRatio,
       cardName: body?.cardName ?? null,
       honor: body?.honor ?? null,
+      tableNo: body?.tableNo ?? null,
+      escortName: body?.escortName ?? null,
+      escortMessage: body?.escortMessage ?? null,
+      escortHonor: body?.escortHonor ?? null,
+      escortPhoto: body?.escortPhoto ?? null,
+      escortPhotoRatio: body?.escortPhotoRatio,
     });
     return NextResponse.json({ letter }, { status: 201 });
   } catch (err) {

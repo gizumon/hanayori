@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Link2, MoreVertical, QrCode, Trash2 } from "lucide-react";
+import { ArrowUpRight, Link2, Mail, MoreVertical, QrCode, Ticket, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { THEMES } from "../constants";
 import styles from "../letter-studio.module.css";
@@ -9,6 +9,7 @@ import type { Letter } from "../types";
 interface LetterRowProps {
   letter: Letter;
   cardEnabled: boolean;
+  escortEnabled: boolean;
   pFont: string;
   cFont: string;
   cardName: string;
@@ -16,6 +17,7 @@ interface LetterRowProps {
   deletingLetter: boolean;
   onEdit: () => void;
   onShowQr: () => void;
+  onShowEscort: () => void;
   onCopyLink: () => void;
   onDelete: () => void;
 }
@@ -48,6 +50,7 @@ const menuItemStyle = {
 export function LetterRow({
   letter: l,
   cardEnabled,
+  escortEnabled,
   pFont,
   cFont,
   cardName,
@@ -55,11 +58,13 @@ export function LetterRow({
   deletingLetter,
   onEdit,
   onShowQr,
+  onShowEscort,
   onCopyLink,
   onDelete,
 }: LetterRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const accent = THEMES[l.theme].accent;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -88,14 +93,19 @@ export function LetterRow({
       <span
         aria-hidden="true"
         style={{
-          width: 34,
-          height: 34,
-          borderRadius: "46% 54% 51% 49% / 53% 47% 55% 45%",
-          background: THEMES[l.theme].accent,
+          width: 42,
+          height: 42,
+          borderRadius: 12,
+          background: `${accent}22`,
+          border: `1px solid ${accent}66`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           flex: "none",
-          boxShadow: "inset 0 1px 2px rgba(255,255,255,0.4)",
         }}
-      />
+      >
+        <Mail size={19} strokeWidth={1.6} color={accent} />
+      </span>
       <div style={{ flex: 1, minWidth: 160 }}>
         <div style={{ fontSize: 16.5, fontWeight: 600, letterSpacing: "0.08em", fontFamily: pFont }}>
           {l.to}
@@ -194,6 +204,20 @@ export function LetterRow({
                 >
                   <QrCode size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
                   QRカード
+                </button>
+              )}
+              {escortEnabled && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onShowEscort();
+                    setMenuOpen(false);
+                  }}
+                  className={styles.optionRow}
+                  style={{ ...menuItemStyle, borderRadius: 8 }}
+                >
+                  <Ticket size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
+                  エスコートカード
                 </button>
               )}
               <button

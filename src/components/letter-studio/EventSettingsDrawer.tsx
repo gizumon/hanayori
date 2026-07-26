@@ -6,13 +6,16 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { FONTS, THEMES } from "./constants";
 import { FontOptionRow, PillButton, Toggle, fieldStyle } from "./controls";
 import { isoToJaDate, jaDateToIso } from "@/lib/date";
-import { cardNameFor, geom } from "./geometry";
+import { cardNameFor, escortGeom, escortNameFor, geom } from "./geometry";
+import { EscortCardFace } from "./EscortCardFace";
 import { QrCardFace } from "./QrCardFace";
 import styles from "./letter-studio.module.css";
 import type {
   CardConfig,
   CardFrame,
   CardOrient,
+  EscortConfig,
+  EscortStyle,
   EventSettingsPatch,
   FontKey,
   Honor,
@@ -26,6 +29,7 @@ interface EventSettingsForm {
   date: string | null;
   letterFont: FontKey;
   card: CardConfig;
+  escort: EscortConfig;
 }
 
 function formOf(project: Project): EventSettingsForm {
@@ -34,6 +38,7 @@ function formOf(project: Project): EventSettingsForm {
     date: project.date,
     letterFont: project.letterConfig.font,
     card: { ...project.cardConfig },
+    escort: { ...project.escortConfig },
   };
 }
 
@@ -62,6 +67,11 @@ const HONOR_OPTS: { key: Honor; label: string }[] = [
   { key: "様", label: "様" },
   { key: "さん", label: "さん" },
   { key: "", label: "なし" },
+];
+
+const ESCORT_STYLE_OPTS: { key: EscortStyle; label: string }[] = [
+  { key: "ticket", label: "チケット風" },
+  { key: "card", label: "カード風" },
 ];
 
 const sectionLabel = {
@@ -100,6 +110,9 @@ export function EventSettingsDrawer({
   const setCard = (patch: Partial<CardConfig>) =>
     setLocal((s) => ({ ...s, card: { ...s.card, ...patch } }));
 
+  const setEscort = (patch: Partial<EscortConfig>) =>
+    setLocal((s) => ({ ...s, escort: { ...s.escort, ...patch } }));
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -108,6 +121,7 @@ export function EventSettingsDrawer({
         date: local.date,
         letterConfig: { font: local.letterFont },
         cardConfig: local.card,
+        escortConfig: local.escort,
       });
       if (ok) setSaved(local);
     } finally {
@@ -124,6 +138,9 @@ export function EventSettingsDrawer({
   const theme = THEMES.rose;
   const previewGeom = geom(local.card, theme.rule);
   const previewName = cardNameFor(null, local.card);
+  const escortPreviewGeom = escortGeom(local.escort.style);
+  const escortPreviewName = escortNameFor(null, local.escort);
+  const footText = local.name + (local.date ? ` ・ ${local.date}` : "");
   const hasDate = local.date !== null;
 
   return (
@@ -188,6 +205,7 @@ export function EventSettingsDrawer({
             [
               ["general", "基本"],
               ["card", "席札 / QRカード"],
+              ["escort", "エスコートカード"],
             ] as const
           ).map(([k, label]) => (
             <button
@@ -414,6 +432,135 @@ export function EventSettingsDrawer({
                       rows={2}
                       className={styles.field}
                       style={fieldStyle({ fontSize: 16, lineHeight: 1.7, resize: "vertical" })}
+                    />
+                  </label>
+                </>
+              )}
+            </>
+          )}
+
+          {tab === "escort" && (
+            <>
+              <Toggle
+                checked={local.escort.enabled}
+                onChange={(enabled) => setEscort({ enabled })}
+                label="エスコートカードを作成する"
+              />
+              {local.escort.enabled && (
+                <>
+                  <div
+                    style={{
+                      borderRadius: 14,
+                      background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
+                      padding: "18px 14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <EscortCardFace
+                      style={local.escort.style}
+                      width={`min(${local.escort.style === "card" ? 220 : 360}px,100%)`}
+                      aspect={escortPreviewGeom.aspect}
+                      paper={theme.paper}
+                      accent={theme.accent}
+                      gold={theme.gold}
+                      ink={theme.ink}
+                      inkSoft={theme.inkSoft}
+                      font={FONTS[local.escort.font].family}
+                      name={escortPreviewName}
+                      tableNo="A"
+                      tableLabel={local.escort.tableLabel}
+                      heading={local.escort.heading}
+                      message=""
+                      photo=""
+                      footText={footText}
+                      showQr={local.escort.qr}
+                      qrUrl=""
+                      boxShadow="0 10px 30px rgba(150,110,130,0.22)"
+                    />
+                    <span style={{ fontSize: 10.5, color: "#A38A93", letterSpacing: "0.05em" }}>
+                      プレビュー(卓番・名前はお手紙ごとに入ります) ・ 実寸 {escortPreviewGeom.sizeLabel}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <span style={sectionLabel}>スタイル</span>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {ESCORT_STYLE_OPTS.map((o) => (
+                        <PillButton
+                          key={o.key}
+                          label={o.label}
+                          size="sm"
+                          active={local.escort.style === o.key}
+                          onClick={() => setEscort({ style: o.key })}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <Toggle
+                    checked={local.escort.qr}
+                    onChange={(qr) => setEscort({ qr })}
+                    label="QRコード(お手紙へのリンク)を載せる"
+                  />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <span style={sectionLabel}>敬称(お手紙ごとに変更できます)</span>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {HONOR_OPTS.map((o) => (
+                        <PillButton
+                          key={o.key}
+                          label={o.label}
+                          size="sm"
+                          active={local.escort.honor === o.key}
+                          onClick={() => setEscort({ honor: o.key })}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <span style={sectionLabel}>エスコートカードのフォント</span>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 2,
+                        border: "1px solid #EBD9DF",
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        background: "#FFFFFF",
+                      }}
+                    >
+                      {(Object.keys(FONTS) as FontKey[]).map((k) => (
+                        <FontOptionRow
+                          key={k}
+                          label={FONTS[k].label}
+                          family={FONTS[k].family}
+                          sample="Aoi Yamada"
+                          active={local.escort.font === k}
+                          onClick={() => setEscort({ font: k })}
+                          compact
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 6, ...sectionLabel }}>
+                    見出し(チケット風で表示)
+                    <input
+                      value={local.escort.heading}
+                      onChange={(e) => setEscort({ heading: e.target.value })}
+                      placeholder="WELCOME TO OUR WEDDING"
+                      className={styles.field}
+                      style={fieldStyle()}
+                    />
+                  </label>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 6, ...sectionLabel }}>
+                    卓番ラベル
+                    <input
+                      value={local.escort.tableLabel}
+                      onChange={(e) => setEscort({ tableLabel: e.target.value })}
+                      placeholder="TABLE"
+                      className={styles.field}
+                      style={fieldStyle()}
                     />
                   </label>
                 </>

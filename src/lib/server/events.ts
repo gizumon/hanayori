@@ -3,6 +3,7 @@ import { eventsCollection, lettersCollection } from "./collections";
 import { HttpError } from "./http-error";
 import type {
   CardConfigDoc,
+  EscortConfigDoc,
   EventDoc,
   FontKey,
   LetterConfigDoc,
@@ -20,6 +21,16 @@ const DEFAULT_CARD_CONFIG: CardConfigDoc = {
   frame: "line",
   heading: "WEDDING RECEPTION",
   note: "スマホで読み取ると\nあなた宛のお手紙が届きます",
+};
+
+const DEFAULT_ESCORT_CONFIG: EscortConfigDoc = {
+  enabled: false,
+  style: "ticket",
+  font: "gothic",
+  honor: "様",
+  qr: false,
+  heading: "WELCOME TO OUR WEDDING",
+  tableLabel: "TABLE",
 };
 
 /** 旧形式ドキュメントに残っているトップレベルのフィールド。 */
@@ -49,6 +60,10 @@ export function normalizeEventDoc(data: EventDoc): EventDoc {
       ...(legacy.cardEnabled !== undefined ? { enabled: legacy.cardEnabled } : {}),
       ...data.cardConfig,
     },
+    escortConfig: {
+      ...DEFAULT_ESCORT_CONFIG,
+      ...data.escortConfig,
+    },
   };
 }
 
@@ -58,6 +73,7 @@ export interface EventJson {
   date: string | null;
   letterConfig: LetterConfigDoc;
   cardConfig: CardConfigDoc;
+  escortConfig: EscortConfigDoc;
   letterCount: number;
   createdAt: string;
   updatedAt: string;
@@ -82,6 +98,7 @@ async function serializeEvent(
     date: data.date,
     letterConfig: data.letterConfig,
     cardConfig: data.cardConfig,
+    escortConfig: data.escortConfig,
     letterCount: countSnap.data().count,
     createdAt: toIso(data.createdAt),
     updatedAt: toIso(data.updatedAt),
@@ -124,6 +141,7 @@ export async function createEvent(
     inviteToken: null,
     letterConfig: DEFAULT_LETTER_CONFIG,
     cardConfig: DEFAULT_CARD_CONFIG,
+    escortConfig: DEFAULT_ESCORT_CONFIG,
     createdAt: now,
     updatedAt: now,
   };
@@ -137,6 +155,7 @@ export interface UpdateEventInput {
   date?: string | null;
   letterConfig?: Partial<LetterConfigDoc>;
   cardConfig?: Partial<CardConfigDoc>;
+  escortConfig?: Partial<EscortConfigDoc>;
 }
 
 export async function updateEvent(
@@ -160,6 +179,9 @@ export async function updateEvent(
     update.cardConfig = { ...current.cardConfig, ...patch.cardConfig };
     update.cardFont = FieldValue.delete();
     update.cardEnabled = FieldValue.delete();
+  }
+  if (patch.escortConfig !== undefined) {
+    update.escortConfig = { ...current.escortConfig, ...patch.escortConfig };
   }
 
   await ref.update(update);

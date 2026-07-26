@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams, usePathname, useRouter } from "next/navigation";
+import {
+  parseAsBoolean,
+  parseAsString,
+  parseAsStringLiteral,
+  useQueryState,
+} from "nuqs";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getFirebaseAuth,
   onAuthStateChanged,
@@ -8,35 +15,22 @@ import {
   updateDisplayName,
   type User,
 } from "@/lib/firebase/auth";
-import { cardNameFor, geom } from "./geometry";
+import { cardNameFor, escortGeom, escortNameFor, geom } from "./geometry";
 import type {
   CardConfig,
   Draft,
   EditorTab,
+  EscortConfig,
   EventSettingsPatch,
   EventSummary,
   Letter,
   Screen,
   SettingsTab,
-  StudioState,
 } from "./types";
 
-const initialState: StudioState = {
-  screen: "login",
-  userName: "",
-  projects: [],
-  curP: null,
-  curL: null,
-  letters: [],
-  draft: {},
-  modalShown: false,
-  newName: "",
-  newDate: "",
-  toastMsg: "",
-  qrModal: null,
-  settingsTab: null,
-  edTab: "letter",
-};
+const EDITOR_TABS = ["letter", "card", "escort"] as const;
+const SETTINGS_TABS = ["general", "card", "escort"] as const;
+const PREVIEW_KINDS = ["qr", "escort"] as const;
 
 async function api<T>(input: string, init?: RequestInit): Promise<T> {
   const res = await fetch(input, {
@@ -60,67 +54,98 @@ async function establishSession(user: User) {
 }
 
 export function useLetterStudio() {
-  const [state, setState] = useState<StudioState>(initialState);
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useParams<{ eventId?: string; letterId?: string }>();
+
+  // --- URL がナビゲーションの source of truth ---
+  const curP = params.eventId ?? null;
+  const curL = params.letterId && params.letterId !== "new" ? params.letterId : null;
+  const isNew = pathname?.endsWith("/letters/new") ?? false;
+  const isEditor = isNew || curL !== null;
+
+  // --- Query パラメータ(nuqs)---
+  const [edTab, setTab] = useQueryState(
+    "tab",
+    parseAsStringLiteral(EDITOR_TABS).withDefault("letter").withOptions({ history: "replace" })
+  );
+  const [settingsTab, setSettings] = useQueryState(
+    "settings",
+    parseAsStringLiteral(SETTINGS_TABS)
+  );
+  const [preview, setPreview] = useQueryState("preview", parseAsString);
+  const [previewKind, setPreviewKind] = useQueryState(
+    "kind",
+    parseAsStringLiteral(PREVIEW_KINDS)
+  );
+  const [newModal, setNewModal] = useQueryState("new", parseAsBoolean.withDefault(false));
+
+  // --- クライアント側データ(URL には載せない)---
+  const [authed, setAuthed] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [projects, setProjects] = useState<EventSummary[]>([]);
+  // 手紙一覧はイベント単位でスコープする。lettersFor が現在の eventId と一致
+  // するときだけ lettersRaw を採用し、切替時の「クリア」を synchronous な
+  // setState 無しで(派生で)表現する。
+  const [lettersFor, setLettersFor] = useState<string | null>(null);
+  const [lettersRaw, setLettersRaw] = useState<Letter[]>([]);
+  const [draft, setDraftState] = useState<Draft>({});
+  // draft を seed した対象("new:<eventId>" か letterId)。render 中に比較して
+  // 開くたび一度だけ seed する(HomeScreen の prevSort と同じパターン)。
+  const [seedKey, setSeedKey] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [newDate, setNewDate] = useState("");
+  const [toastMsg, setToastMsg] = useState("");
+  const [escortCropSrc, setEscortCropSrc] = useState<string | null>(null);
+
   const [hydrated, setHydrated] = useState(false);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cardRef = useRef<HTMLDivElement | null>(null);
-  const savingLetterRef = useRef(false);
-  const [savingLetter, setSavingLetter] = useState(false);
-  const creatingProjectRef = useRef(false);
-  const [creatingProject, setCreatingProject] = useState(false);
-  const deletingLetterRef = useRef(false);
-  const [deletingLetter, setDeletingLetter] = useState(false);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingLetters, setLoadingLetters] = useState(false);
+  const [savingLetter, setSavingLetter] = useState(false);
+  const [creatingProject, setCreatingProject] = useState(false);
+  const [deletingLetter, setDeletingLetter] = useState(false);
 
-  const patch = useCallback((p: Partial<StudioState>) => {
-    setState((s) => ({ ...s, ...p }));
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const escortCardRef = useRef<HTMLDivElement | null>(null);
+  const savingLetterRef = useRef(false);
+  const creatingProjectRef = useRef(false);
+  const deletingLetterRef = useRef(false);
+
+  const toast = useCallback((msg: string) => {
+    setToastMsg(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMsg(""), 2400);
   }, []);
-
-  const toast = useCallback(
-    (msg: string) => {
-      patch({ toastMsg: msg });
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-      toastTimer.current = setTimeout(() => patch({ toastMsg: "" }), 2400);
-    },
-    [patch]
-  );
 
   const refreshEvents = useCallback(async () => {
     setLoadingEvents(true);
     try {
       const data = await api<{ events: EventSummary[] }>("/api/events");
-      patch({ projects: data.events });
+      setProjects(data.events);
       return data.events;
     } finally {
       setLoadingEvents(false);
     }
-  }, [patch]);
+  }, []);
 
-  // Firebase Auth is the source of truth for sign-in state; the httpOnly
-  // session cookie backs every /api/* call. Both server-rendered and
-  // first-client-rendered HTML show the neutral `initialState` (screen:
-  // "login") so they never mismatch — the `hydrated` gate hides the
-  // one-frame transition once onAuthStateChanged resolves. Once we know the
-  // user is signed in we move to the "home" screen right away and let
-  // HomeScreen render its own skeleton while refreshEvents is in flight.
+  // Firebase Auth がサインイン状態の source of truth。httpOnly セッション
+  // クッキーが /api/* を裏で支える。認証が解決したら `hydrated` を立てて
+  // 画面のちらつきを隠す。画面(screen)は URL から導出するので、ここでは
+  // 認証フラグとイベント取得だけを行い、遷移はしない。
   useEffect(() => {
     const unsub = onAuthStateChanged(getFirebaseAuth(), async (user) => {
       if (!user) {
-        setState((s) => ({
-          ...s,
-          screen: "login",
-          userName: "",
-          projects: [],
-          letters: [],
-          curP: null,
-          curL: null,
-        }));
+        setAuthed(false);
+        setUserName("");
+        setProjects([]);
+        setLettersFor(null);
+        setLettersRaw([]);
         setHydrated(true);
         return;
       }
-      const userName = user.displayName || user.email?.split("@")[0] || "";
-      setState((s) => ({ ...s, screen: "home", userName }));
+      setAuthed(true);
+      setUserName(user.displayName || user.email?.split("@")[0] || "");
       setHydrated(true);
       try {
         await refreshEvents();
@@ -129,63 +154,179 @@ export function useLetterStudio() {
           await establishSession(user);
           await refreshEvents();
         } catch {
-          setState((s) => ({ ...s, screen: "login" }));
+          setAuthed(false);
         }
       }
     });
     return unsub;
   }, [refreshEvents]);
 
-  const curProject = state.projects.find((p) => p.id === state.curP) || null;
-  const cardConf: CardConfig | null = curProject?.cardConfig ?? null;
-
-  const go = useCallback(
-    (screen: Screen, extra?: Partial<StudioState>) => {
-      patch({ screen, ...extra });
-    },
-    [patch]
+  // 現在開いているイベントの手紙一覧(スコープ不一致なら空を派生)。参照を
+  // 安定させ、下流の effect / memo が毎レンダー再計算しないようにする。
+  const letters = useMemo(
+    () => (lettersFor === curP ? lettersRaw : []),
+    [lettersFor, curP, lettersRaw]
   );
 
-  const goHome = useCallback(() => {
-    patch({ screen: "home", curP: null, curL: null, letters: [] });
-    void refreshEvents();
-  }, [patch, refreshEvents]);
-
-  const openProject = useCallback(
-    async (id: string) => {
-      patch({ curP: id, screen: "project", letters: [] });
+  // イベントを開いたら手紙一覧を取得する。まだそのイベントを読み込んでいない
+  // ときだけ走る(project ↔ editor 間の行き来では再取得しない)。setState は
+  // async 関数内に閉じてあり、effect 本体からの synchronous な呼び出しは無い。
+  useEffect(() => {
+    if (!authed || !curP || lettersFor === curP) return;
+    let active = true;
+    (async () => {
       setLoadingLetters(true);
       try {
-        const data = await api<{ letters: Letter[] }>(`/api/events/${id}/letters`);
-        patch({ letters: data.letters });
+        const data = await api<{ letters: Letter[] }>(`/api/events/${curP}/letters`);
+        if (!active) return;
+        setLettersRaw(data.letters);
+        setLettersFor(curP);
       } catch {
-        toast("お手紙の読み込みに失敗しました");
+        if (active) toast("お手紙の読み込みに失敗しました");
       } finally {
-        setLoadingLetters(false);
+        if (active) setLoadingLetters(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [authed, curP, lettersFor, toast]);
+
+  const curProject = projects.find((p) => p.id === curP) || null;
+  const cardConf: CardConfig | null = curProject?.cardConfig ?? null;
+  const escortConf: EscortConfig | null = curProject?.escortConfig ?? null;
+
+  const setDraft = useCallback((d: Draft) => {
+    setDraftState((prev) => ({ ...prev, ...d }));
+  }, []);
+
+  // 編集画面に入ったら、対象の手紙(または新規の空)から draft を「開くたび
+  // 一度だけ」seed する。effect ではなく render 中に前回値(seedKey)と比較して
+  // 更新する(HomeScreen の prevSort と同じ、React 公認の派生パターン)。
+  // 条件付きなので無限ループにはならず、編集途中も上書きしない。
+  const seedTarget = !isEditor ? null : isNew ? `new:${curP}` : curL;
+  if (seedTarget !== seedKey) {
+    if (seedTarget === null) {
+      // 編集画面を離れた。次に同じ手紙を開いたとき再 seed できるよう解除。
+      setSeedKey(null);
+    } else if (isNew) {
+      setSeedKey(seedTarget);
+      setDraftState({ to: "", theme: "rose", body: "", photo: null });
+    } else {
+      // 一覧未取得なら letter が見つからず seedKey を進めない → 取得後に再試行。
+      const letter = lettersRaw.find((l) => l.id === curL);
+      if (letter) {
+        setSeedKey(seedTarget);
+        setDraftState({ ...letter });
+      }
+    }
+  }
+
+  // 不正な eventId / letterId(取得後に見つからない)は一覧へ戻す。
+  useEffect(() => {
+    if (!authed) return;
+    if (curP && !loadingEvents && !curProject) {
+      router.replace("/events");
+      return;
+    }
+    if (curL && !isNew && !loadingLetters && letters.length > 0 && !letters.some((l) => l.id === curL)) {
+      router.replace(`/events/${curP}`);
+    }
+  }, [authed, curP, curL, isNew, loadingEvents, loadingLetters, curProject, letters, router]);
+
+  // --- ナビゲーション(パスは router、オーバーレイは nuqs setter)---
+  const goHome = useCallback(() => {
+    void refreshEvents();
+    router.push("/events");
+  }, [refreshEvents, router]);
+
+  const openProject = useCallback(
+    (id: string) => {
+      router.push(`/events/${id}`);
+    },
+    [router]
+  );
+
+  const backToProject = useCallback(() => {
+    router.push(curP ? `/events/${curP}` : "/events");
+  }, [curP, router]);
+
+  const newLetter = useCallback(() => {
+    if (!curP) return;
+    router.push(`/events/${curP}/letters/new`);
+  }, [curP, router]);
+
+  const editLetter = useCallback(
+    (letter: Letter) => {
+      if (!curP) return;
+      router.push(`/events/${curP}/letters/${letter.id}`);
+    },
+    [curP, router]
+  );
+
+  const openSettings = useCallback(
+    (tab: SettingsTab = "general") => {
+      void setSettings(tab);
+    },
+    [setSettings]
+  );
+  const closeSettings = useCallback(() => {
+    void setSettings(null);
+  }, [setSettings]);
+
+  const setQrModal = useCallback(
+    (l: Letter | null) => {
+      if (l) {
+        void setPreview(l.id);
+        void setPreviewKind("qr");
+      } else {
+        void setPreview(null);
+        void setPreviewKind(null);
       }
     },
-    [patch, toast]
+    [setPreview, setPreviewKind]
+  );
+
+  const setEscortModal = useCallback(
+    (l: Letter | null) => {
+      if (l) {
+        void setPreview(l.id);
+        void setPreviewKind("escort");
+      } else {
+        void setPreview(null);
+        void setPreviewKind(null);
+      }
+    },
+    [setPreview, setPreviewKind]
+  );
+
+  const setModalShown = useCallback(
+    (v: boolean) => {
+      if (v) {
+        setNewName("");
+        setNewDate("");
+      }
+      void setNewModal(v ? true : null);
+    },
+    [setNewModal]
   );
 
   const updateProject = useCallback(
     async (projPatch: object): Promise<boolean> => {
-      if (!state.curP) return false;
+      if (!curP) return false;
       try {
-        const data = await api<{ event: EventSummary }>(`/api/events/${state.curP}`, {
+        const data = await api<{ event: EventSummary }>(`/api/events/${curP}`, {
           method: "PATCH",
           body: JSON.stringify(projPatch),
         });
-        setState((s) => ({
-          ...s,
-          projects: s.projects.map((p) => (p.id === data.event.id ? { ...p, ...data.event } : p)),
-        }));
+        setProjects((ps) => ps.map((p) => (p.id === data.event.id ? { ...p, ...data.event } : p)));
         return true;
       } catch {
         toast("更新に失敗しました");
         return false;
       }
     },
-    [state.curP, toast]
+    [curP, toast]
   );
 
   const saveSettings = useCallback(
@@ -197,10 +338,6 @@ export function useLetterStudio() {
     [updateProject, toast]
   );
 
-  const setDraft = useCallback((d: Draft) => {
-    setState((s) => ({ ...s, draft: { ...s.draft, ...d } }));
-  }, []);
-
   const letterUrl = useCallback((id: string | null | undefined) => {
     if (!id) return "#";
     if (typeof window === "undefined") return `/letter/${id}`;
@@ -208,41 +345,52 @@ export function useLetterStudio() {
   }, []);
 
   const saveLetter = useCallback(async () => {
-    if (!state.curP) return;
+    if (!curP) return;
     if (savingLetterRef.current) return;
-    const d = state.draft;
-    if (!d.to) {
+    if (!draft.to) {
       toast("宛名を入力してください");
       return;
     }
     const payload = {
-      to: d.to,
-      body: d.body || "",
-      theme: d.theme || "rose",
-      photo: d.photo ?? null,
-      photoRatio: d.photoRatio,
-      cardName: d.cardName ?? null,
-      honor: d.honor ?? null,
+      to: draft.to,
+      body: draft.body || "",
+      theme: draft.theme || "rose",
+      photo: draft.photo ?? null,
+      photoRatio: draft.photoRatio,
+      cardName: draft.cardName ?? null,
+      honor: draft.honor ?? null,
+      tableNo: draft.tableNo ?? null,
+      escortName: draft.escortName ?? null,
+      escortMessage: draft.escortMessage ?? null,
+      escortHonor: draft.escortHonor ?? null,
+      escortPhoto: draft.escortPhoto ?? null,
+      escortPhotoRatio: draft.escortPhotoRatio,
     };
     savingLetterRef.current = true;
     setSavingLetter(true);
     try {
-      const data = d.id
-        ? await api<{ letter: Letter }>(`/api/letters/${d.id}`, {
+      const data = draft.id
+        ? await api<{ letter: Letter }>(`/api/letters/${draft.id}`, {
             method: "PATCH",
             body: JSON.stringify(payload),
           })
-        : await api<{ letter: Letter }>(`/api/events/${state.curP}/letters`, {
+        : await api<{ letter: Letter }>(`/api/events/${curP}/letters`, {
             method: "POST",
             body: JSON.stringify(payload),
           });
-      setState((s) => ({
-        ...s,
-        draft: { ...s.draft, id: data.letter.id },
-        letters: s.letters.some((l) => l.id === data.letter.id)
-          ? s.letters.map((l) => (l.id === data.letter.id ? data.letter : l))
-          : s.letters.concat([data.letter]),
-      }));
+      const saved = data.letter;
+      setDraftState((prev) => ({ ...prev, id: saved.id }));
+      setLettersRaw((ls) =>
+        ls.some((l) => l.id === saved.id)
+          ? ls.map((l) => (l.id === saved.id ? saved : l))
+          : ls.concat([saved])
+      );
+      // 新規保存だった場合は URL を確定手紙に置き換える。seedKey を先に確定手紙
+      // に進めておき、URL 変化で draft が再 seed されない(＝ちらつかない)ように。
+      if (isNew) {
+        setSeedKey(saved.id);
+        router.replace(`/events/${curP}/letters/${saved.id}`);
+      }
       toast("保存しました");
     } catch {
       toast("保存に失敗しました");
@@ -250,7 +398,7 @@ export function useLetterStudio() {
       savingLetterRef.current = false;
       setSavingLetter(false);
     }
-  }, [state.curP, state.draft, toast]);
+  }, [curP, draft, isNew, router, toast]);
 
   const deleteLetter = useCallback(
     async (id: string) => {
@@ -259,11 +407,11 @@ export function useLetterStudio() {
       setDeletingLetter(true);
       try {
         await api(`/api/letters/${id}`, { method: "DELETE" });
-        setState((s) => ({
-          ...s,
-          letters: s.letters.filter((l) => l.id !== id),
-          ...(s.draft.id === id ? { draft: {}, screen: "project" as const } : {}),
-        }));
+        setLettersRaw((ls) => ls.filter((l) => l.id !== id));
+        if (draft.id === id) {
+          setDraftState({});
+          router.push(curP ? `/events/${curP}` : "/events");
+        }
         toast("削除しました");
       } catch {
         toast("削除に失敗しました");
@@ -272,7 +420,7 @@ export function useLetterStudio() {
         setDeletingLetter(false);
       }
     },
-    [toast]
+    [curP, draft.id, router, toast]
   );
 
   const upPhoto = useCallback(
@@ -323,12 +471,17 @@ export function useLetterStudio() {
     [letterUrl, toast]
   );
 
-  const captureCard = useCallback(async (): Promise<HTMLCanvasElement | null> => {
-    if (!cardRef.current) return null;
-    const { default: html2canvas } = await import("html2canvas");
-    if (document.fonts?.ready) await document.fonts.ready;
-    return html2canvas(cardRef.current, { scale: 3, useCORS: true, backgroundColor: null });
-  }, []);
+  const captureCard = useCallback(
+    async (
+      ref: React.RefObject<HTMLDivElement | null> = cardRef
+    ): Promise<HTMLCanvasElement | null> => {
+      if (!ref.current) return null;
+      const { default: html2canvas } = await import("html2canvas");
+      if (document.fonts?.ready) await document.fonts.ready;
+      return html2canvas(ref.current, { scale: 3, useCORS: true, backgroundColor: null });
+    },
+    []
+  );
 
   const saveCard = useCallback(async () => {
     toast("画像を作成しています…");
@@ -356,9 +509,7 @@ export function useLetterStudio() {
       toast("ポップアップがブロックされました");
       return;
     }
-    const dims = cardConf
-      ? geom(cardConf, "#ccc").printDims
-      : "width:91mm;height:55mm";
+    const dims = cardConf ? geom(cardConf, "#ccc").printDims : "width:91mm;height:55mm";
     w.document.write(
       `<html><head><title>QRカード印刷</title><style>@page{size:auto;margin:10mm}body{margin:0;display:flex;justify-content:center;padding-top:10mm}img{${dims}}</style></head><body><img src="${canvas.toDataURL(
         "image/png"
@@ -367,8 +518,57 @@ export function useLetterStudio() {
     w.document.close();
   }, [cardConf, captureCard, toast]);
 
+  const saveEscortCard = useCallback(async () => {
+    toast("画像を作成しています…");
+    const canvas = await captureCard(escortCardRef);
+    if (!canvas) {
+      toast("画像の作成に失敗しました");
+      return;
+    }
+    const a = document.createElement("a");
+    a.download = "escort-card.png";
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+    toast("保存しました");
+  }, [captureCard, toast]);
+
+  const printEscortCard = useCallback(async () => {
+    toast("印刷を準備しています…");
+    const canvas = await captureCard(escortCardRef);
+    if (!canvas) {
+      toast("印刷の準備に失敗しました");
+      return;
+    }
+    const w = window.open("", "_blank");
+    if (!w) {
+      toast("ポップアップがブロックされました");
+      return;
+    }
+    const dims = escortConf ? escortGeom(escortConf.style).printDims : "width:180mm;height:80mm";
+    w.document.write(
+      `<html><head><title>エスコートカード印刷</title><style>@page{size:auto;margin:10mm}body{margin:0;display:flex;justify-content:center;padding-top:10mm}img{${dims}}</style></head><body><img src="${canvas.toDataURL(
+        "image/png"
+      )}" onload="setTimeout(function(){window.print()},200)"></body></html>`
+    );
+    w.document.close();
+  }, [escortConf, captureCard, toast]);
+
+  // アップロードしたらまずクロップモーダルを開く。切り取り確定でドラフトに入る。
+  const upEscortPhoto = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => setEscortCropSrc(reader.result as string);
+    reader.readAsDataURL(file);
+  }, []);
+
+  const applyEscortCrop = useCallback((dataUrl: string, ratio: number) => {
+    setDraftState((prev) => ({ ...prev, escortPhoto: dataUrl, escortPhotoRatio: ratio }));
+    setEscortCropSrc(null);
+  }, []);
+
+  const cancelEscortCrop = useCallback(() => setEscortCropSrc(null), []);
+
   const createProject = useCallback(async () => {
-    if (!state.newName) {
+    if (!newName) {
       toast("イベント名を入力してください");
       return;
     }
@@ -378,43 +578,18 @@ export function useLetterStudio() {
     try {
       const data = await api<{ event: EventSummary }>("/api/events", {
         method: "POST",
-        body: JSON.stringify({ name: state.newName, date: state.newDate || null }),
+        body: JSON.stringify({ name: newName, date: newDate || null }),
       });
-      setState((s) => ({
-        ...s,
-        projects: s.projects.concat([data.event]),
-        modalShown: false,
-        curP: data.event.id,
-        screen: "project",
-        letters: [],
-      }));
+      setProjects((ps) => ps.concat([data.event]));
+      void setNewModal(null);
+      router.push(`/events/${data.event.id}`);
     } catch {
       toast("イベントの作成に失敗しました");
     } finally {
       creatingProjectRef.current = false;
       setCreatingProject(false);
     }
-  }, [state.newName, state.newDate, toast]);
-
-  const newLetter = useCallback(() => {
-    go("editor", {
-      curL: null,
-      edTab: "letter",
-      draft: {
-        to: "",
-        theme: "rose",
-        body: "",
-        photo: null,
-      },
-    });
-  }, [go]);
-
-  const editLetter = useCallback(
-    (letter: Letter) => {
-      go("editor", { curL: letter.id, draft: { ...letter }, edTab: "letter" });
-    },
-    [go]
-  );
+  }, [newName, newDate, router, setNewModal, toast]);
 
   const logout = useCallback(async () => {
     await signOutEverywhere();
@@ -423,20 +598,74 @@ export function useLetterStudio() {
   const updateNickname = useCallback(
     async (name: string) => {
       const trimmed = name.trim();
-      if (!trimmed || trimmed === state.userName) return;
-      const previous = state.userName;
+      if (!trimmed || trimmed === userName) return;
+      const previous = userName;
       // 反映待ちのラグをなくすため、確定を待たず先に表示だけ切り替える。
       // 失敗したら previous に戻す。
-      setState((s) => ({ ...s, userName: trimmed }));
+      setUserName(trimmed);
       try {
         await updateDisplayName(trimmed);
         toast("ニックネームを更新しました");
       } catch {
-        setState((s) => ({ ...s, userName: previous }));
+        setUserName(previous);
         toast("ニックネームの更新に失敗しました");
       }
     },
-    [state.userName, toast]
+    [userName, toast]
+  );
+
+  const screen: Screen = !authed
+    ? "login"
+    : isEditor
+      ? "editor"
+      : curP
+        ? "project"
+        : "home";
+
+  const qrModal = previewKind === "qr" && preview
+    ? letters.find((l) => l.id === preview) ?? null
+    : null;
+  const escortModal = previewKind === "escort" && preview
+    ? letters.find((l) => l.id === preview) ?? null
+    : null;
+
+  const state = useMemo(
+    () => ({
+      screen,
+      userName,
+      projects,
+      curP,
+      curL,
+      letters,
+      draft,
+      modalShown: newModal,
+      newName,
+      newDate,
+      toastMsg,
+      qrModal,
+      escortModal,
+      escortCropSrc,
+      settingsTab,
+      edTab,
+    }),
+    [
+      screen,
+      userName,
+      projects,
+      curP,
+      curL,
+      letters,
+      draft,
+      newModal,
+      newName,
+      newDate,
+      toastMsg,
+      qrModal,
+      escortModal,
+      escortCropSrc,
+      settingsTab,
+      edTab,
+    ]
   );
 
   return {
@@ -446,16 +675,22 @@ export function useLetterStudio() {
     loadingLetters,
     curProject,
     cardConf,
+    escortConf,
     cardRef,
-    go,
+    escortCardRef,
     goHome,
     openProject,
+    backToProject,
     logout,
     updateNickname,
-    setEdTab: (t: EditorTab) => patch({ edTab: t }),
-    openSettings: (tab: SettingsTab = "general") => patch({ settingsTab: tab }),
-    closeSettings: () => patch({ settingsTab: null }),
-    setSettingsTab: (tab: SettingsTab) => patch({ settingsTab: tab }),
+    setEdTab: (t: EditorTab) => {
+      void setTab(t);
+    },
+    openSettings,
+    closeSettings,
+    setSettingsTab: (tab: SettingsTab) => {
+      void setSettings(tab);
+    },
     updateProject,
     saveSettings,
     setDraft,
@@ -468,19 +703,27 @@ export function useLetterStudio() {
     copyLink,
     saveCard,
     printCard,
+    saveEscortCard,
+    printEscortCard,
+    upEscortPhoto,
+    applyEscortCrop,
+    cancelEscortCrop,
     createProject,
     creatingProject,
     newLetter,
     editLetter,
     cardNameFor: (l: Draft | Letter | null | undefined) =>
       cardConf ? cardNameFor(l, cardConf) : "お名前",
+    escortNameFor: (l: Draft | Letter | null | undefined) =>
+      escortConf ? escortNameFor(l, escortConf) : "お名前",
     geom,
-    edTab: state.edTab,
-    setQrModal: (l: Letter | null) => patch({ qrModal: l }),
-    setModalShown: (v: boolean) =>
-      patch({ modalShown: v, ...(v ? { newName: "", newDate: "" } : {}) }),
-    setNewName: (v: string) => patch({ newName: v }),
-    setNewDate: (v: string) => patch({ newDate: v }),
+    escortGeom,
+    edTab,
+    setQrModal,
+    setEscortModal,
+    setModalShown,
+    setNewName: (v: string) => setNewName(v),
+    setNewDate: (v: string) => setNewDate(v),
   };
 }
 
