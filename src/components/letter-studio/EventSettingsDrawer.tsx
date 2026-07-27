@@ -10,6 +10,7 @@ import { isoToJaDate, jaDateToIso } from "@/lib/date";
 import { escortGeom, geom } from "./geometry";
 import { EscortCardFace } from "./EscortCardFace";
 import { CropModal } from "./CropModal";
+import { useStudio } from "./StudioContext";
 import { uploadIfDataUrl } from "./uploadImage";
 import { QrCardFace } from "./QrCardFace";
 import { withAlpha } from "@/lib/color";
@@ -96,6 +97,7 @@ export function EventSettingsDrawer({
   onClose,
   onSave,
 }: EventSettingsDrawerProps) {
+  const { toast } = useStudio();
   const [local, setLocal] = useState<EventSettingsForm>(() => formOf(project));
   const [saved, setSaved] = useState<EventSettingsForm>(() => formOf(project));
   const [saving, setSaving] = useState(false);
@@ -152,6 +154,8 @@ export function EventSettingsDrawer({
         setLocal(next);
         setSaved(next);
       }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "保存に失敗しました");
     } finally {
       setSaving(false);
     }

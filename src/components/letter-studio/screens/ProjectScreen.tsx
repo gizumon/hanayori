@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings } from "lucide-react";
+import { Settings, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
 import { FONTS } from "../constants";
 import styles from "../letter-studio.module.css";
@@ -42,6 +42,7 @@ interface ProjectScreenProps {
   loadingLetters: boolean;
   onBack: () => void;
   onOpenSettings: () => void;
+  onBulkEdit: () => void;
   onNewLetter: () => void;
   onEditLetter: (letter: Letter) => void;
   onShowQr: (letter: Letter) => void;
@@ -59,6 +60,7 @@ export function ProjectScreen({
   loadingLetters,
   onBack,
   onOpenSettings,
+  onBulkEdit,
   onNewLetter,
   onEditLetter,
   onShowQr,
@@ -126,26 +128,55 @@ export function ProjectScreen({
             {project.date}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          className={styles.btnOutline}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-            padding: "10px 20px",
-            borderRadius: 999,
-            border: "1px solid #EBD9DF",
-            background: "#FFFFFF",
-            color: "#5C4A4A",
-            fontSize: FONT_SIZE.bodySm,
-            letterSpacing: "0.08em",
-          }}
-        >
-          <Settings size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: "#B08A99" }} />
-          共通設定
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          {letters.length > 0 && (
+            <button
+              type="button"
+              onClick={onBulkEdit}
+              className={styles.btnOutline}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                padding: "10px 20px",
+                borderRadius: 999,
+                border: "1px solid #EBD9DF",
+                background: "#FFFFFF",
+                color: "#5C4A4A",
+                fontSize: FONT_SIZE.bodySm,
+                letterSpacing: "0.08em",
+              }}
+            >
+              <SlidersHorizontal
+                size={14}
+                strokeWidth={1.8}
+                aria-hidden="true"
+                style={{ flex: "none", color: "#B08A99" }}
+              />
+              一括編集
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className={styles.btnOutline}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "10px 20px",
+              borderRadius: 999,
+              border: "1px solid #EBD9DF",
+              background: "#FFFFFF",
+              color: "#5C4A4A",
+              fontSize: FONT_SIZE.bodySm,
+              letterSpacing: "0.08em",
+            }}
+          >
+            <Settings size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: "#B08A99" }} />
+            共通設定
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

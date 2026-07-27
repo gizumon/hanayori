@@ -39,3 +39,31 @@ export function encodeCanvas(
   const type = supportsWebp() ? "image/webp" : "image/jpeg";
   return canvas.toDataURL(type, quality);
 }
+
+/**
+ * 画像ファイルを IMAGE_MAX_WIDTH に収まるよう縮小し、WebP/JPEG の data URL と
+ * 縦横比を返す。一括編集の写真セルなど、クロップを挟まない簡易アップロードで使う。
+ */
+export function encodeImageFile(
+  file: File
+): Promise<{ dataUrl: string; ratio: number }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
+      img.onload = () => {
+        const w = Math.min(IMAGE_MAX_WIDTH, img.width);
+        const h = Math.round((img.height * w) / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+        resolve({ dataUrl: encodeCanvas(canvas), ratio: +(w / h).toFixed(4) });
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}

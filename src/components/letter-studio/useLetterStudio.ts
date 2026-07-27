@@ -19,6 +19,7 @@ import { cardNameFor, escortGeom, escortNameFor, geom } from "./geometry";
 import { uploadIfDataUrl } from "./uploadImage";
 import { IMAGE_MAX_WIDTH, encodeCanvas } from "./imageEncode";
 import type {
+  BulkLetterPatch,
   CardConfig,
   Draft,
   EditorTab,
@@ -104,6 +105,7 @@ export function useLetterStudio() {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingLetters, setLoadingLetters] = useState(false);
   const [savingLetter, setSavingLetter] = useState(false);
+  const [savingBulk, setSavingBulk] = useState(false);
   const [creatingProject, setCreatingProject] = useState(false);
   const [deletingLetter, setDeletingLetter] = useState(false);
 
@@ -111,6 +113,7 @@ export function useLetterStudio() {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const escortCardRef = useRef<HTMLDivElement | null>(null);
   const savingLetterRef = useRef(false);
+  const savingBulkRef = useRef(false);
   const creatingProjectRef = useRef(false);
   const deletingLetterRef = useRef(false);
 
@@ -266,6 +269,11 @@ export function useLetterStudio() {
     [curP, router]
   );
 
+  const openBulkEdit = useCallback(() => {
+    if (!curP) return;
+    router.push(`/events/${curP}/bulk`);
+  }, [curP, router]);
+
   const openSettings = useCallback(
     (tab: SettingsTab = "general") => {
       void setSettings(tab);
@@ -323,8 +331,8 @@ export function useLetterStudio() {
         });
         setProjects((ps) => ps.map((p) => (p.id === data.event.id ? { ...p, ...data.event } : p)));
         return true;
-      } catch {
-        toast("更新に失敗しました");
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "更新に失敗しました");
         return false;
       }
     },
@@ -405,13 +413,49 @@ export function useLetterStudio() {
         router.replace(`/events/${curP}/letters/${saved.id}`);
       }
       toast("保存しました");
-    } catch {
-      toast("保存に失敗しました");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "保存に失敗しました");
     } finally {
       savingLetterRef.current = false;
       setSavingLetter(false);
     }
   }, [curP, draft, isNew, router, toast]);
+
+  const bulkSaveLetters = useCallback(
+    async (patches: BulkLetterPatch[]): Promise<boolean> => {
+      if (!curP || patches.length === 0) return false;
+      if (savingBulkRef.current) return false;
+      savingBulkRef.current = true;
+      setSavingBulk(true);
+      try {
+        // 個別保存と同じく、data: URL の写真は送信前に Storage へアップロードして
+        // URL 化する(すでに URL のものは uploadIfDataUrl がそのまま返す)。
+        const uploaded = await Promise.all(
+          patches.map(async (p) => {
+            const out: BulkLetterPatch = { ...p };
+            if ("photo" in p) out.photo = await uploadIfDataUrl(p.photo);
+            if ("escortPhoto" in p) out.escortPhoto = await uploadIfDataUrl(p.escortPhoto);
+            return out;
+          })
+        );
+        const data = await api<{ letters: Letter[] }>(`/api/events/${curP}/letters/bulk`, {
+          method: "PATCH",
+          body: JSON.stringify({ updates: uploaded }),
+        });
+        const saved = new Map(data.letters.map((l) => [l.id, l]));
+        setLettersRaw((ls) => ls.map((l) => saved.get(l.id) ?? l));
+        toast("保存しました");
+        return true;
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "保存に失敗しました");
+        return false;
+      } finally {
+        savingBulkRef.current = false;
+        setSavingBulk(false);
+      }
+    },
+    [curP, toast]
+  );
 
   const deleteLetter = useCallback(
     async (id: string) => {
@@ -710,6 +754,8 @@ export function useLetterStudio() {
     letterUrl,
     saveLetter,
     savingLetter,
+    bulkSaveLetters,
+    savingBulk,
     deleteLetter,
     deletingLetter,
     upPhoto,
@@ -725,6 +771,7 @@ export function useLetterStudio() {
     creatingProject,
     newLetter,
     editLetter,
+    openBulkEdit,
     cardNameFor: (l: Draft | Letter | null | undefined) =>
       cardConf ? cardNameFor(l, cardConf) : "お名前",
     escortNameFor: (l: Draft | Letter | null | undefined) =>
@@ -737,6 +784,7 @@ export function useLetterStudio() {
     setModalShown,
     setNewName: (v: string) => setNewName(v),
     setNewDate: (v: string) => setNewDate(v),
+    toast,
   };
 }
 

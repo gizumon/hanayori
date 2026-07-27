@@ -101,6 +101,25 @@ export interface EventSettingsPatch {
 
 export type Draft = Partial<Letter>;
 
+/** 一覧の一括編集で送る手紙 1 通分のパッチ。id で対象を指定し、残りは部分更新。 */
+export type BulkLetterPatch = { id: string } & Partial<
+  Pick<
+    Letter,
+    | "to"
+    | "theme"
+    | "photo"
+    | "photoRatio"
+    | "cardName"
+    | "honor"
+    | "tableNo"
+    | "escortName"
+    | "escortMessage"
+    | "escortHonor"
+    | "escortPhoto"
+    | "escortPhotoRatio"
+  >
+>;
+
 export interface StudioState {
   screen: Screen;
   userName: string;

@@ -17,6 +17,7 @@ export function ProjectConnected() {
       loadingLetters={api.loadingLetters}
       onBack={api.goHome}
       onOpenSettings={() => api.openSettings("general")}
+      onBulkEdit={api.openBulkEdit}
       onNewLetter={api.newLetter}
       onEditLetter={api.editLetter}
       onShowQr={(l) => api.setQrModal(l)}

@@ -178,13 +178,12 @@ function hasEscortPatch(patch: UpdateLetterInput): boolean {
   );
 }
 
-export async function updateLetter(
-  uid: string,
-  letterId: string,
-  patch: UpdateLetterInput
-): Promise<LetterJson> {
-  const { ref, data } = await requireLetterMembership(uid, letterId);
-
+/**
+ * パッチ 1 件から Firestore の update ペイロードを構築する。undefined の
+ * フィールドは触らない(部分更新)。エスコート系は既存 doc を土台にマージする。
+ * 単体更新・一括更新の共通ロジック。
+ */
+function buildLetterUpdate(patch: UpdateLetterInput, data: LetterDoc): Record<string, unknown> {
   const update: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
   if (patch.to !== undefined) update.to = patch.to;
   if (patch.body !== undefined) update.body = patch.body;
@@ -209,10 +208,54 @@ export async function updateLetter(
         patch.escortPhoto !== undefined ? patch.escortPhotoRatio : curPhoto.ratio,
     });
   }
+  return update;
+}
 
-  await ref.update(update);
+export async function updateLetter(
+  uid: string,
+  letterId: string,
+  patch: UpdateLetterInput
+): Promise<LetterJson> {
+  const { ref, data } = await requireLetterMembership(uid, letterId);
+  await ref.update(buildLetterUpdate(patch, data));
   const snap = await ref.get();
   return serializeLetter(snap.id, snap.data()!);
+}
+
+/** 一括更新のパッチ 1 件。id で対象を指定し、残りは部分更新。 */
+export interface BulkLetterPatch extends UpdateLetterInput {
+  id: string;
+}
+
+/**
+ * 手紙一覧の一括編集。変更のあった手紙だけをまとめて 1 つの WriteBatch で
+ * 更新する。イベントのメンバーシップは一度だけ確認し、各手紙が本当にその
+ * イベントに属するかを検証してから書き込む。
+ */
+export async function bulkUpdateLetters(
+  uid: string,
+  eventId: string,
+  patches: BulkLetterPatch[]
+): Promise<LetterJson[]> {
+  await requireEventMembership(uid, eventId);
+  if (patches.length === 0) return [];
+
+  const col = lettersCollection();
+  // 型付き ref.get() を使う(firestore.getAll は DocumentData に退化する)。
+  const refs = patches.map((p) => col.doc(p.id));
+  const snaps = await Promise.all(refs.map((r) => r.get()));
+
+  const batch = col.firestore.batch();
+  snaps.forEach((snap, i) => {
+    const data = snap.data();
+    if (!snap.exists || !data) throw new HttpError(404, "お手紙が見つかりません");
+    if (data.eventId !== eventId) throw new HttpError(403, "権限がありません");
+    batch.update(snap.ref, buildLetterUpdate(patches[i], data));
+  });
+  await batch.commit();
+
+  const updated = await Promise.all(refs.map((r) => r.get()));
+  return updated.map((s) => serializeLetter(s.id, s.data()!));
 }
 
 export async function deleteLetter(uid: string, letterId: string): Promise<void> {
