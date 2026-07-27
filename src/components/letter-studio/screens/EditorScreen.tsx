@@ -1,12 +1,14 @@
 "use client";
 
-import { ArrowUpRight, Settings } from "lucide-react";
+import { useState } from "react";
+import { ArrowUpRight, Eye, Settings } from "lucide-react";
 import { FONTS, THEMES } from "../constants";
 import { fieldStyle } from "../controls";
 import { QrCardFace } from "../QrCardFace";
 import { EscortCardFace } from "../EscortCardFace";
+import { LetterPreviewFace } from "../LetterPreviewFace";
+import { LetterPreviewModal } from "../LetterPreviewModal";
 import type { CardGeometry, EscortGeometry } from "../geometry";
-import { withAlpha } from "@/lib/color";
 import styles from "../letter-studio.module.css";
 import type { CardConfig, Draft, EditorTab, EscortConfig, Honor, Project } from "../types";
 import { FONT_SIZE } from "@/lib/typography";
@@ -84,11 +86,12 @@ export function EditorScreen({
   const showEscortFields = edTab === "escort" && escortEnabled;
   const showLetterFields = !showCardFields && !showEscortFields;
   const footText = cardConf.nameOverride.trim() || project.name;
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   return (
     <main
       className={styles.fadeup}
-      style={{ maxWidth: 1120, margin: "0 auto", padding: "28px clamp(16px,4vw,40px) 80px" }}
+      style={{ maxWidth: 1120, margin: "0 auto", padding: "28px clamp(16px,4vw,40px) 168px" }}
     >
       <button
         type="button"
@@ -604,53 +607,6 @@ export function EditorScreen({
             </>
           )}
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={saving}
-              className={styles.btnSolid}
-              style={{
-                padding: "12px 26px",
-                borderRadius: 999,
-                border: "none",
-                background: "#D3A5B4",
-                color: "#FFF9F5",
-                fontSize: FONT_SIZE.body,
-                letterSpacing: "0.08em",
-                boxShadow: "0 6px 16px rgba(150,110,130,0.28)",
-                opacity: saving ? 0.6 : 1,
-                cursor: saving ? "default" : "pointer",
-              }}
-            >
-              {saving ? "保存中…" : "保存する"}
-            </button>
-            <a
-              href={letterUrl}
-              target="_blank"
-              rel="noreferrer"
-              className={styles.btnOutline}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 7,
-                padding: "12px 22px",
-                borderRadius: 999,
-                border: "1px solid #EBD9DF",
-                background: "#FFFFFF",
-                color: "#5C4A4A",
-                fontSize: FONT_SIZE.body,
-                letterSpacing: "0.08em",
-                textDecoration: "none",
-              }}
-            >
-              お手紙を開く
-              <ArrowUpRight size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
-            </a>
-          </div>
-          <p style={{ margin: 0, fontSize: FONT_SIZE.caption, color: "#B4A2A2", letterSpacing: "0.05em" }}>
-            「お手紙を開く」の前に保存してください。開封アニメーション付きで表示されます。
-          </p>
         </div>
 
         <div style={{ flex: 1.2, minWidth: 300, position: "sticky", top: 20 }}>
@@ -663,124 +619,15 @@ export function EditorScreen({
           </div>
 
           {showLetterFields && (
-            <div
-              style={{
-                borderRadius: 16,
-                overflow: "hidden",
-                boxShadow: "0 14px 44px rgba(150,110,130,0.2)",
-                background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
-                padding: "clamp(20px,4vw,40px) clamp(14px,3vw,30px)",
-              }}
-            >
-              <div
-                style={{
-                  background: theme.paper,
-                  padding: "34px 28px 26px",
-                  boxShadow: "0 10px 34px rgba(150,110,130,0.18)",
-                  position: "relative",
-                }}
-              >
-                <div
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    inset: 8,
-                    border: `1px solid ${withAlpha(theme.accent, 38)}`,
-                    pointerEvents: "none",
-                  }}
-                />
-                <div
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    inset: 11,
-                    border: `1px solid ${withAlpha(theme.accent, 18)}`,
-                    pointerEvents: "none",
-                  }}
-                />
-                <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-                  <svg
-                    viewBox="0 0 120 28"
-                    fill="none"
-                    stroke={theme.gold}
-                    strokeWidth="1.1"
-                    strokeLinecap="round"
-                    style={{ width: 96, height: 22, opacity: 0.9 }}
-                  >
-                    <path d="M14 15 H44 M76 15 H106" />
-                    <path
-                      d="M60 7.5 C56.8 11 56.8 17.5 60 21.5 C63.2 17.5 63.2 7.5 60 7.5 Z"
-                      fill={theme.gold}
-                      stroke="none"
-                      opacity="0.8"
-                    />
-                    <path d="M50 15 C53 13 55.5 13 58 14.2 M70 15 C67 13 64.5 13 62 14.2" />
-                    <circle cx="48" cy="15" r="1.3" fill={theme.gold} stroke="none" />
-                    <circle cx="72" cy="15" r="1.3" fill={theme.gold} stroke="none" />
-                  </svg>
-                </div>
-                <div
-                  style={{
-                    fontFamily: pFont,
-                    fontSize: FONT_SIZE.title,
-                    letterSpacing: "0.16em",
-                    color: theme.ink,
-                    textAlign: "center",
-                    marginBottom: 14,
-                  }}
-                >
-                  {draft.to || "宛名"}
-                </div>
-                <div
-                  style={{
-                    fontFamily: pFont,
-                    fontSize: FONT_SIZE.body,
-                    lineHeight: "2.3em",
-                    letterSpacing: "0.06em",
-                    color: theme.ink,
-                    whiteSpace: "pre-wrap",
-                    maxHeight: 320,
-                    overflow: "hidden",
-                  }}
-                >
-                  {draft.body || "ここに本文が入ります"}
-                </div>
-                {draft.photo && (
-                  <div
-                    style={{
-                      margin: "20px auto 4px",
-                      width: "min(70%,220px)",
-                      background: "#FFFFFF",
-                      padding: "7px 7px 18px",
-                      boxShadow: "0 4px 14px rgba(150,110,130,0.18)",
-                      transform: "rotate(-0.8deg)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "100%",
-                        aspectRatio: draft.photoRatio || 1.3333,
-                        backgroundImage: `url('${draft.photo}')`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                      }}
-                    />
-                  </div>
-                )}
-                <div
-                  style={{
-                    fontFamily: pFont,
-                    fontSize: FONT_SIZE.label,
-                    letterSpacing: "0.18em",
-                    color: theme.inkSoft,
-                    textAlign: "center",
-                    marginTop: 16,
-                  }}
-                >
-                  {project.date}
-                </div>
-              </div>
-            </div>
+            <LetterPreviewFace
+              to={draft.to || ""}
+              body={draft.body || ""}
+              photo={draft.photo}
+              photoRatio={draft.photoRatio}
+              date={project.date}
+              font={pFont}
+              theme={theme}
+            />
           )}
 
           {showCardFields && (
@@ -858,6 +705,121 @@ export function EditorScreen({
           )}
         </div>
       </div>
+
+      <div
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 40,
+          background: "#FFFCF8",
+          borderTop: "1px solid rgba(211,165,180,0.3)",
+          padding: "10px clamp(16px,4vw,40px) calc(10px + env(safe-area-inset-bottom))",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1120,
+            margin: "0 auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
+            className={styles.btnOutline}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "12px 22px",
+              borderRadius: 999,
+              border: "1px solid #EBD9DF",
+              background: "#FFFFFF",
+              color: "#5C4A4A",
+              fontSize: FONT_SIZE.body,
+              letterSpacing: "0.08em",
+            }}
+          >
+            <Eye size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: "#B08A99" }} />
+            プレビュー
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving}
+            className={styles.btnSolid}
+            style={{
+              padding: "12px 26px",
+              borderRadius: 999,
+              border: "none",
+              background: "#D3A5B4",
+              color: "#FFF9F5",
+              fontSize: FONT_SIZE.body,
+              letterSpacing: "0.08em",
+              boxShadow: "0 6px 16px rgba(150,110,130,0.28)",
+              opacity: saving ? 0.6 : 1,
+              cursor: saving ? "default" : "pointer",
+            }}
+          >
+            {saving ? "保存中…" : "保存する"}
+          </button>
+          <a
+            href={letterUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={styles.btnOutline}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "12px 22px",
+              borderRadius: 999,
+              border: "1px solid #EBD9DF",
+              background: "#FFFFFF",
+              color: "#5C4A4A",
+              fontSize: FONT_SIZE.body,
+              letterSpacing: "0.08em",
+              textDecoration: "none",
+            }}
+          >
+            お手紙を開く
+            <ArrowUpRight size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
+          </a>
+          <p
+            style={{
+              margin: "0 0 0 auto",
+              flex: "1 1 260px",
+              minWidth: 0,
+              fontSize: FONT_SIZE.caption,
+              color: "#B4A2A2",
+              letterSpacing: "0.05em",
+            }}
+          >
+            「お手紙を開く」の前に保存してください。開封アニメーション付きで表示されます。
+          </p>
+        </div>
+      </div>
+
+      {previewOpen && (
+        <LetterPreviewModal
+          project={project}
+          draft={draft}
+          cardConf={cardConf}
+          escortConf={escortConf}
+          geometry={g}
+          escortGeometry={eg}
+          cardName={cardName}
+          escortName={escortName}
+          qrUrl={qrUrl}
+          initialTab={edTab}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
     </main>
   );
 }
