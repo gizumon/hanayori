@@ -337,10 +337,10 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
             </div>
           </div>
         </div>
-        {/* 半券(stub) */}
+        {/* 半券(stub) 45mm / 全体182mm */}
         <div
           style={{
-            width: "20%",
+            width: "24.73%",
             flex: "none",
             borderLeft: `1.5px dashed ${withAlpha(accent, 80)}`,
             background: withAlpha(accent, 8),
@@ -394,7 +394,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
           aria-hidden="true"
           style={{
             position: "absolute",
-            right: "22%",
+            right: "26.7%",
             top: "9%",
             display: "flex",
             gap: 4,

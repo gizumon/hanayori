@@ -117,6 +117,14 @@
   background: #fbf4f6 !important;
 }
 
+/* underline page-nav tab (EventTabs) */
+.tabItem {
+  cursor: pointer;
+}
+.tabItem:hover {
+  color: #5c4a4a !important;
+}
+
 .field {
   outline: none;
 }

@@ -28,6 +28,7 @@ import type {
   SettingsTab,
 } from "./types";
 import { useUnsavedGuard } from "./useUnsavedGuard";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 
 interface EventSettingsForm {
@@ -103,6 +104,7 @@ export function EventSettingsDrawer({
   const [saving, setSaving] = useState(false);
   const dirty = JSON.stringify(local) !== JSON.stringify(saved);
   const { guard, pendingConfirm, confirmLeave, cancelLeave } = useUnsavedGuard(dirty);
+  useScrollLock();
 
   const requestClose = () => guard(onClose);
 
@@ -361,7 +363,7 @@ export function EventSettingsDrawer({
                       marginBottom: 14,
                     }}
                   >
-                    花子へ
+                    はなこへ
                   </div>
                   <div
                     style={{
@@ -749,8 +751,8 @@ export function EventSettingsDrawer({
       {escortCropSrc && (
         <CropModal
           src={escortCropSrc}
-          // チケット風は写真帯(31% × 全高)、カード風は正円用に 1:1
-          aspect={local.escort.style === "card" ? 1 : 0.6975}
+          // チケット風は写真帯(半券45mmを除いた137mmの31% × 全高65mm = 42.5×65mm)、カード風は正円用に 1:1
+          aspect={local.escort.style === "card" ? 1 : 0.653}
           onCancel={() => setEscortCropSrc(null)}
           onApply={applyEscortDefaultCrop}
         />

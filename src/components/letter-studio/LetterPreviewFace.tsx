@@ -41,6 +41,10 @@ export function LetterPreviewFace({
       style={{
         borderRadius: 16,
         overflow: "hidden",
+        // flex column に直接置かれても潰れないように(overflow:hidden があると
+        // flex item の min-height が auto ではなく 0 になり、収まりきらないとき
+        // 他の兄弟要素を優先して押し潰されてしまうため)。
+        flexShrink: 0,
         boxShadow: "0 14px 44px rgba(150,110,130,0.2)",
         background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
         padding: padding ?? "clamp(20px,4vw,40px) clamp(14px,3vw,30px)",

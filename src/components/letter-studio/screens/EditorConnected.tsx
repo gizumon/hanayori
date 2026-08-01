@@ -29,19 +29,11 @@ export function EditorConnected() {
       qrUrl={state.draft.id ? api.letterUrl(state.draft.id) : ""}
       onBack={api.backToProject}
       onEdTabChange={api.setEdTab}
-      onChangeTo={(to) => api.setDraft({ to })}
-      onChangeBody={(body) => api.setDraft({ body })}
-      onChangeCardName={(cardName) => api.setDraft({ cardName })}
-      onSetHonor={(honor) => api.setDraft({ honor })}
-      onChangeTableNo={(tableNo) => api.setDraft({ tableNo })}
-      onChangeEscortName={(escortName) => api.setDraft({ escortName })}
-      onChangeEscortMessage={(escortMessage) => api.setDraft({ escortMessage })}
-      onSetEscortHonor={(escortHonor) => api.setDraft({ escortHonor })}
+      onChange={api.setDraft}
       onUploadEscortPhoto={api.upEscortPhoto}
       onRemoveEscortPhoto={() =>
         api.setDraft({ escortPhoto: null, escortPhotoRatio: undefined })
       }
-      onSetTheme={(theme) => api.setDraft({ theme })}
       onOpenSettings={() => api.openSettings("general")}
       onOpenCardSettings={() => api.openSettings("card")}
       onOpenEscortSettings={() => api.openSettings("escort")}

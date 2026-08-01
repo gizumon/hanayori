@@ -17,9 +17,10 @@ export function ProjectConnected() {
       loadingLetters={api.loadingLetters}
       onBack={api.goHome}
       onOpenSettings={() => api.openSettings("general")}
-      onBulkEdit={api.openBulkEdit}
+      onSelectTab={api.selectEventTab}
+      onBulkAdd={api.openBulkAdd}
       onNewLetter={api.newLetter}
-      onEditLetter={api.editLetter}
+      onEditLetter={(l) => api.openLetterDrawer(l.id)}
       onShowQr={(l) => api.setQrModal(l)}
       onShowEscort={(l) => api.setEscortModal(l)}
       onCopyLink={api.copyLink}
@@ -27,6 +28,7 @@ export function ProjectConnected() {
       deletingLetter={api.deletingLetter}
       letterUrl={api.letterUrl}
       cardNameFor={api.cardNameFor}
+      escortNameFor={api.escortNameFor}
     />
   );
 }

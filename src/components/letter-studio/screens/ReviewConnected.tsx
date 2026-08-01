@@ -1,9 +1,9 @@
 "use client";
 
 import { useStudio } from "../StudioContext";
-import { BulkEditScreen } from "./BulkEditScreen";
+import { ReviewScreen } from "./ReviewScreen";
 
-export function BulkEditConnected() {
+export function ReviewConnected() {
   const api = useStudio();
   const { state, curProject } = api;
 
@@ -11,17 +11,17 @@ export function BulkEditConnected() {
   if (!curProject) return null;
 
   return (
-    <BulkEditScreen
+    <ReviewScreen
       project={curProject}
       letters={state.letters}
       loading={api.loadingLetters}
-      saving={api.savingBulk}
       onBack={api.goHome}
       onSelectTab={api.selectEventTab}
       onOpenSettings={() => api.openSettings("general")}
-      onSave={api.bulkSaveLetters}
-      cardNameFor={api.cardNameFor}
-      escortNameFor={api.escortNameFor}
+      onEdit={(letter, tab) => api.openLetterDrawer(letter.id, tab)}
+      letterUrl={api.letterUrl}
+      onPrintAllEscort={() => api.printAllEscortCards(state.letters)}
+      printingAllEscort={api.printingAllEscort}
     />
   );
 }

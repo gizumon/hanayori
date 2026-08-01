@@ -32,6 +32,9 @@ export interface LetterJson {
   updatedAt: string;
 }
 
+/** 一度の一括追加で作れる手紙の上限(WriteBatch の 500 件制限に対する安全側の値)。 */
+const MAX_BULK_CREATE = 200;
+
 function toIso(ts: Timestamp | undefined): string {
   return (ts ?? Timestamp.now()).toDate().toISOString();
 }
@@ -154,6 +157,48 @@ export async function createLetter(
   await lettersCollection().doc(id).set(doc as unknown as LetterDoc);
   const snap = await lettersCollection().doc(id).get();
   return serializeLetter(snap.id, snap.data()!);
+}
+
+/**
+ * 宛名だけの手紙をまとめて作る。本文・写真・席札まわりは空のまま作り、
+ * あとから一括編集や個別編集で埋めていく前提。ULID は昇順なので、
+ * createdAt が同一秒でも一覧の並び(createdAt → __name__)は入力順を保つ。
+ */
+export async function createLettersBulk(
+  uid: string,
+  eventId: string,
+  names: string[]
+): Promise<LetterJson[]> {
+  await requireEventMembership(uid, eventId);
+  const cleaned = names.map((n) => n.trim()).filter(Boolean);
+  if (cleaned.length === 0) throw new HttpError(400, "宛名を入力してください");
+  if (cleaned.length > MAX_BULK_CREATE) {
+    throw new HttpError(400, `一度に追加できるのは${MAX_BULK_CREATE}名までです`);
+  }
+
+  const col = lettersCollection();
+  const batch = col.firestore.batch();
+  const now = FieldValue.serverTimestamp();
+  const refs = cleaned.map((to) => {
+    const ref = col.doc(ulid());
+    batch.set(ref, {
+      eventId,
+      to,
+      body: "",
+      theme: "rose",
+      photos: [],
+      cardName: null,
+      honor: null,
+      escort: escortFromInput({}),
+      createdAt: now,
+      updatedAt: now,
+    } as unknown as LetterDoc);
+    return ref;
+  });
+  await batch.commit();
+
+  const snaps = await Promise.all(refs.map((r) => r.get()));
+  return snaps.map((s) => serializeLetter(s.id, s.data()!));
 }
 
 export interface UpdateLetterInput extends EscortInput {

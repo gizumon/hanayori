@@ -9,6 +9,7 @@ import { EscortCardFace } from "./EscortCardFace";
 import { LetterPreviewFace } from "./LetterPreviewFace";
 import type { CardGeometry, EscortGeometry } from "./geometry";
 import type { CardConfig, Draft, EditorTab, EscortConfig, Project } from "./types";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 
 interface LetterPreviewModalProps {
@@ -54,6 +55,7 @@ export function LetterPreviewModal({
   initialTab,
   onClose,
 }: LetterPreviewModalProps) {
+  useScrollLock();
   const cardEnabled = cardConf.enabled;
   const escortEnabled = escortConf.enabled;
   const [tab, setTab] = useState<EditorTab>(initialTab);

@@ -5,6 +5,7 @@ import { Download, Printer } from "lucide-react";
 import { EscortCardFace } from "./EscortCardFace";
 import type { EscortGeometry } from "./geometry";
 import type { EscortStyle } from "./types";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 
 interface EscortModalProps {
@@ -54,6 +55,7 @@ export function EscortModal({
   onPrint,
   onClose,
 }: EscortModalProps) {
+  useScrollLock();
   const stop = (e: MouseEvent) => e.stopPropagation();
 
   const actionStyle = {

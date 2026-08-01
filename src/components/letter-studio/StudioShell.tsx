@@ -1,8 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { BulkAddModal } from "./BulkAddModal";
 import { FONTS, THEMES } from "./constants";
 import { CropModal } from "./CropModal";
+import { LetterEditDrawer } from "./LetterEditDrawer";
 import { EscortModal } from "./EscortModal";
 import { EventSettingsDrawer } from "./EventSettingsDrawer";
 import styles from "./letter-studio.module.css";
@@ -50,6 +52,32 @@ export function StudioShell({ children }: { children: ReactNode }) {
                 onTabChange={api.setSettingsTab}
                 onClose={api.closeSettings}
                 onSave={api.saveSettings}
+              />
+            )}
+
+            {curProject && state.addModal && (
+              <BulkAddModal
+                onCancel={api.closeBulkAdd}
+                onCreate={api.createLettersBulk}
+                creating={api.creatingBulk}
+              />
+            )}
+
+            {/* 確認タブ・一覧から開く 1 通ぶんの編集。手紙一覧の取得後に解決する。 */}
+            {curProject && cardConf && escortConf && state.editLetter && (
+              <LetterEditDrawer
+                letter={state.editLetter}
+                letters={state.letters}
+                project={curProject}
+                cardConf={cardConf}
+                escortConf={escortConf}
+                tab={state.edTab}
+                onTabChange={api.setEdTab}
+                onSelectLetter={(id) => api.openLetterDrawer(id, state.edTab)}
+                onClose={api.closeLetterDrawer}
+                onSave={api.bulkSaveLetters}
+                saving={api.savingBulk}
+                letterUrl={api.letterUrl}
               />
             )}
           </>
@@ -117,8 +145,8 @@ export function StudioShell({ children }: { children: ReactNode }) {
         {state.escortCropSrc && escortConf && (
           <CropModal
             src={state.escortCropSrc}
-            // チケット風は写真帯(31% × 全高 = 55.8×80mm)、カード風は正円用に 1:1
-            aspect={escortConf.style === "card" ? 1 : 0.6975}
+            // チケット風は写真帯(半券45mmを除いた137mmの31% × 全高65mm = 42.5×65mm)、カード風は正円用に 1:1
+            aspect={escortConf.style === "card" ? 1 : 0.653}
             onCancel={api.cancelEscortCrop}
             onApply={api.applyEscortCrop}
           />

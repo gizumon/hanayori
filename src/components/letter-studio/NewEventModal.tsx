@@ -4,6 +4,7 @@ import { DatePicker } from "@/components/DatePicker";
 import { fieldStyle } from "./controls";
 import { isoToJaDate, jaDateToIso } from "@/lib/date";
 import styles from "./letter-studio.module.css";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 
 interface NewEventModalProps {
@@ -25,6 +26,7 @@ export function NewEventModal({
   onCreate,
   creating,
 }: NewEventModalProps) {
+  useScrollLock();
   return (
     <div
       style={{
@@ -68,7 +70,7 @@ export function NewEventModal({
           <input
             value={name}
             onChange={(e) => onChangeName(e.target.value)}
-            placeholder="ゆい & 蓮 の結婚式"
+            placeholder="◯◯ & ◯◯ の結婚式"
             className={styles.field}
             style={fieldStyle({ padding: "12px 14px", fontSize: FONT_SIZE.input })}
             autoFocus

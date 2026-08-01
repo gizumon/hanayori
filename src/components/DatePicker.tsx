@@ -1,8 +1,9 @@
 "use client";
 
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { isoToJaDate } from "@/lib/date";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 
 const WEEKDAYS_JA = ["日", "月", "火", "水", "木", "金", "土"];
@@ -40,13 +41,13 @@ function buildWeeks(y: number, m: number): (number | null)[][] {
 /** 軽量な日付ピッカー(依存追加なし)。値は input[type=date] と同じ ISO 文字列。 */
 export function DatePicker({ value, onChange, disabled, placeholder = "日付を選択" }: DatePickerProps) {
   const [open, setOpen] = useState(false);
+  useScrollLock(open);
   const parsed = parseIso(value);
   const today = new Date();
   const [view, setView] = useState(() => ({
     y: parsed?.y ?? today.getFullYear(),
     m: parsed?.m ?? today.getMonth(),
   }));
-  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -57,18 +58,11 @@ export function DatePicker({ value, onChange, disabled, placeholder = "日付を
 
   useEffect(() => {
     if (!open) return;
-    const handlePointer = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    };
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
-    document.addEventListener("mousedown", handlePointer);
     document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handlePointer);
-      document.removeEventListener("keydown", handleKey);
-    };
+    return () => document.removeEventListener("keydown", handleKey);
   }, [open]);
 
   const weeks = buildWeeks(view.y, view.m);
@@ -85,10 +79,10 @@ export function DatePicker({ value, onChange, disabled, placeholder = "日付を
   };
 
   return (
-    <div ref={rootRef} style={{ position: "relative" }}>
+    <>
       <button
         type="button"
-        onClick={() => !disabled && setOpen((v) => !v)}
+        onClick={() => !disabled && setOpen(true)}
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -130,75 +124,112 @@ export function DatePicker({ value, onChange, disabled, placeholder = "日付を
 
       {open && (
         <div
-          role="dialog"
-          aria-label="日付を選択"
-          className="absolute left-0 z-20 mt-1.5 w-[272px] rounded-xl border border-[#EBD9DF] bg-white p-3 shadow-[0_12px_30px_rgba(80,50,60,0.18)]"
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-[68] flex items-center justify-center p-5"
+          style={{ background: "rgba(60,42,46,0.4)", backdropFilter: "blur(3px)" }}
         >
-          <div className="mb-2 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => changeMonth(-1)}
-              aria-label="前の月"
-              className="flex h-7 w-7 items-center justify-center rounded-full text-[#8C7676] hover:bg-[#FBF1F4]"
+          <div
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-label="日付を選択"
+            className="w-[300px] max-w-[92vw] overflow-hidden rounded-[22px] bg-[#FFFCF8]"
+            style={{ boxShadow: "0 24px 70px rgba(80,50,60,0.28)" }}
+          >
+            <div
+              style={{
+                fontSize: FONT_SIZE.caption,
+                letterSpacing: "0.1em",
+                color: "#8C7676",
+                borderBottom: "1px solid rgba(211,165,180,0.3)",
+              }}
+              className="px-5 py-3.5"
             >
-              <ChevronLeft size={16} />
-            </button>
-            <span style={{ fontSize: FONT_SIZE.label }} className="font-medium tracking-wide text-[#5C4A4A]">
-              {view.y}年{view.m + 1}月
-            </span>
-            <button
-              type="button"
-              onClick={() => changeMonth(1)}
-              aria-label="次の月"
-              className="flex h-7 w-7 items-center justify-center rounded-full text-[#8C7676] hover:bg-[#FBF1F4]"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-          <div className="grid grid-cols-7 gap-y-1 text-center">
-            {WEEKDAYS_JA.map((w, i) => (
-              <span
-                key={w}
-                style={{ fontSize: FONT_SIZE.micro }}
-                className={i === 0 ? "text-[#C97D89]" : i === 6 ? "text-[#7A93B0]" : "text-[#B08A99]"}
-              >
-                {w}
-              </span>
-            ))}
-            {weeks.map((week, wi) =>
-              week.map((d, di) => (
-                <div key={`${wi}-${di}`} className="flex items-center justify-center py-0.5">
-                  {d ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onChange(toIso(view.y, view.m, d));
-                        setOpen(false);
-                      }}
-                      style={{ fontSize: FONT_SIZE.bodySm }}
-                      className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
-                        isSelected(d)
-                          ? "bg-[#D3A5B4] text-[#FFF9F5]"
-                          : isToday(d)
-                            ? "border border-[#D3A5B4] text-[#5C4A4A] hover:bg-[#FBF1F4]"
-                            : di === 0
-                              ? "text-[#C97D89] hover:bg-[#FBF1F4]"
-                              : di === 6
-                                ? "text-[#7A93B0] hover:bg-[#FBF1F4]"
-                                : "text-[#5C4A4A] hover:bg-[#FBF1F4]"
-                      }`}
-                    >
-                      {d}
-                    </button>
-                  ) : (
-                    <span className="h-8 w-8" />
-                  )}
-                </div>
-              )),
-            )}
+              日付を選ぶ
+            </div>
+            <div className="px-5 pt-4 pb-5">
+              <div className="mb-4 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => changeMonth(-1)}
+                  aria-label="前の月"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[#B08A99] transition-colors hover:bg-[#FBF1F4] hover:text-[#5C4A4A]"
+                >
+                  <ChevronLeft size={15} strokeWidth={1.8} />
+                </button>
+                <span
+                  style={{ fontSize: FONT_SIZE.body, letterSpacing: "0.12em", color: "#5C4A4A" }}
+                  className="font-semibold"
+                >
+                  {view.y}<span className="mx-[2px] font-normal text-[#B08A99]">年</span>
+                  {view.m + 1}<span className="mx-[1px] font-normal text-[#B08A99]">月</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => changeMonth(1)}
+                  aria-label="次の月"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[#B08A99] transition-colors hover:bg-[#FBF1F4] hover:text-[#5C4A4A]"
+                >
+                  <ChevronRight size={15} strokeWidth={1.8} />
+                </button>
+              </div>
+              <div className="grid grid-cols-7 gap-y-1.5 text-center">
+                {WEEKDAYS_JA.map((w, i) => (
+                  <span
+                    key={w}
+                    style={{ fontSize: FONT_SIZE.micro, letterSpacing: "0.05em" }}
+                    className={i === 0 ? "text-[#C97D89]" : i === 6 ? "text-[#7A93B0]" : "text-[#B08A99]"}
+                  >
+                    {w}
+                  </span>
+                ))}
+                {weeks.map((week, wi) =>
+                  week.map((d, di) => (
+                    <div key={`${wi}-${di}`} className="relative flex items-center justify-center py-0.5">
+                      {d ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onChange(toIso(view.y, view.m, d));
+                              setOpen(false);
+                            }}
+                            style={{
+                              fontSize: FONT_SIZE.bodySm,
+                              background: isSelected(d)
+                                ? "linear-gradient(135deg, #D9AEBC, #C393A5)"
+                                : undefined,
+                              boxShadow: isSelected(d) ? "0 6px 16px rgba(150,90,110,0.35)" : undefined,
+                            }}
+                            className={`flex h-9 w-9 items-center justify-center rounded-full font-medium transition-all ${
+                              isSelected(d)
+                                ? "text-[#FFF9F5]"
+                                : di === 0
+                                  ? "text-[#C97D89] hover:bg-[#FBF1F4]"
+                                  : di === 6
+                                    ? "text-[#7A93B0] hover:bg-[#FBF1F4]"
+                                    : "text-[#5C4A4A] hover:bg-[#FBF1F4]"
+                            }`}
+                          >
+                            {d}
+                          </button>
+                          {isToday(d) && !isSelected(d) && (
+                            <span
+                              aria-hidden="true"
+                              className="pointer-events-none absolute bottom-[3px] h-[3px] w-[3px] rounded-full bg-[#CBA45C]"
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <span className="h-9 w-9" />
+                      )}
+                    </div>
+                  )),
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

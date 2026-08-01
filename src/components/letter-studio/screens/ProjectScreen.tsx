@@ -1,13 +1,55 @@
 "use client";
 
-import { Settings, SlidersHorizontal } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronDown, Plus, Search, SquarePen, UserPlus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FONTS } from "../constants";
+import { fieldStyle } from "../controls";
 import styles from "../letter-studio.module.css";
-import type { Letter, Project } from "../types";
+import type { EventTab, Letter, Project } from "../types";
+import { EventHeader } from "./EventHeader";
 import { LetterRow } from "./LetterRow";
 import { ListToolbar, type SortOption } from "./ListToolbar";
 import { FONT_SIZE } from "@/lib/typography";
+
+const addMenuItemStyle = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 10,
+  width: "100%",
+  padding: "10px 12px",
+  border: "none",
+  background: "none",
+  textAlign: "left" as const,
+  borderRadius: 10,
+  cursor: "pointer",
+};
+
+const addMenuIconStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 30,
+  height: 30,
+  borderRadius: 9,
+  background: "#F6E9ED",
+  flex: "none",
+  marginTop: 1,
+};
+
+const addMenuTitleStyle = {
+  fontSize: FONT_SIZE.bodySm,
+  fontWeight: 600,
+  letterSpacing: "0.04em",
+  color: "#5C4A4A",
+};
+
+const addMenuCaptionStyle = {
+  fontSize: FONT_SIZE.caption,
+  letterSpacing: "0.03em",
+  color: "#8C7676",
+  lineHeight: 1.5,
+  marginTop: 2,
+};
 
 type SortKey = "createdDesc" | "createdAsc" | "nameAsc";
 
@@ -42,7 +84,8 @@ interface ProjectScreenProps {
   loadingLetters: boolean;
   onBack: () => void;
   onOpenSettings: () => void;
-  onBulkEdit: () => void;
+  onSelectTab: (tab: EventTab) => void;
+  onBulkAdd: () => void;
   onNewLetter: () => void;
   onEditLetter: (letter: Letter) => void;
   onShowQr: (letter: Letter) => void;
@@ -52,6 +95,7 @@ interface ProjectScreenProps {
   deletingLetter: boolean;
   letterUrl: (id: string) => string;
   cardNameFor: (letter: Letter) => string;
+  escortNameFor: (letter: Letter) => string;
 }
 
 export function ProjectScreen({
@@ -60,7 +104,8 @@ export function ProjectScreen({
   loadingLetters,
   onBack,
   onOpenSettings,
-  onBulkEdit,
+  onSelectTab,
+  onBulkAdd,
   onNewLetter,
   onEditLetter,
   onShowQr,
@@ -70,6 +115,7 @@ export function ProjectScreen({
   deletingLetter,
   letterUrl,
   cardNameFor,
+  escortNameFor,
 }: ProjectScreenProps) {
   const cardEnabled = project.cardConfig.enabled;
   const escortEnabled = project.escortConfig.enabled;
@@ -77,141 +123,253 @@ export function ProjectScreen({
   const cFont = FONTS[project.cardConfig.font].family;
 
   const [sort, setSort] = useState<SortKey>("createdDesc");
-  const [page, setPage] = useState(1);
+  const [queryInput, setQueryInput] = useState("");
+  const [query, setQuery] = useState("");
+  const [shown, setShown] = useState(PAGE_SIZE);
+
+  // 入力から300ms経ってから絞り込みに反映する(打鍵のたびに再計算しない)。
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(queryInput), 300);
+    return () => clearTimeout(timer);
+  }, [queryInput]);
+  // 並び替え/検索を変えたら先頭から数え直す(render 中の派生)。
   const [prevSort, setPrevSort] = useState(sort);
-  if (prevSort !== sort) {
+  const [prevQuery, setPrevQuery] = useState(query);
+  if (prevSort !== sort || prevQuery !== query) {
     setPrevSort(sort);
-    setPage(1);
+    setPrevQuery(query);
+    setShown(PAGE_SIZE);
   }
 
-  const sorted = useMemo(() => sortLetters(letters, sort), [letters, sort]);
-  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
-  const paged = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!addMenuOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setAddMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAddMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [addMenuOpen]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return letters;
+    return letters.filter((l) => {
+      const to = l.to.toLowerCase();
+      const card = cardNameFor(l).toLowerCase();
+      const escort = escortNameFor(l).toLowerCase();
+      const table = (l.tableNo ?? "").toLowerCase();
+      return to.includes(q) || card.includes(q) || escort.includes(q) || table.includes(q);
+    });
+  }, [letters, query, cardNameFor, escortNameFor]);
+  const sorted = useMemo(() => sortLetters(filtered, sort), [filtered, sort]);
+  const visible = sorted.slice(0, shown);
 
   return (
     <main
       className={styles.fadeup}
       style={{ maxWidth: 960, margin: "0 auto", padding: "28px clamp(16px,4vw,40px) 80px" }}
     >
-      <button
-        type="button"
-        onClick={onBack}
-        className={styles.linkBack}
-        style={{
-          border: "none",
-          background: "none",
-          color: "#B08A99",
-          fontSize: FONT_SIZE.label,
-          letterSpacing: "0.08em",
-          padding: 0,
-          marginBottom: 14,
-        }}
-      >
-        ← イベント一覧
-      </button>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          gap: 14,
-          flexWrap: "wrap",
-          marginBottom: 22,
-        }}
-      >
-        <div>
-          <h2 style={{ margin: "0 0 4px", fontSize: FONT_SIZE.title, fontWeight: 600, letterSpacing: "0.12em" }}>
-            {project.name}
-          </h2>
-          <p style={{ margin: 0, fontSize: FONT_SIZE.label, color: "#8C7676", letterSpacing: "0.08em" }}>
-            {project.date}
-          </p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          {letters.length > 0 && (
-            <button
-              type="button"
-              onClick={onBulkEdit}
-              className={styles.btnOutline}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 7,
-                padding: "10px 20px",
-                borderRadius: 999,
-                border: "1px solid #EBD9DF",
-                background: "#FFFFFF",
-                color: "#5C4A4A",
-                fontSize: FONT_SIZE.bodySm,
-                letterSpacing: "0.08em",
-              }}
-            >
-              <SlidersHorizontal
-                size={14}
-                strokeWidth={1.8}
-                aria-hidden="true"
-                style={{ flex: "none", color: "#B08A99" }}
-              />
-              一括編集
-            </button>
-          )}
+      <EventHeader
+        project={project}
+        currentTab="list"
+        onBack={onBack}
+        onSelectTab={onSelectTab}
+        onOpenSettings={onOpenSettings}
+      />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div ref={addMenuRef} style={{ position: "relative", display: "inline-block" }}>
           <button
             type="button"
-            onClick={onOpenSettings}
-            className={styles.btnOutline}
+            onClick={() => setAddMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={addMenuOpen}
+            className={styles.btnSolid}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 7,
-              padding: "10px 20px",
+              gap: 8,
+              padding: "12px 18px 12px 22px",
               borderRadius: 999,
-              border: "1px solid #EBD9DF",
-              background: "#FFFFFF",
-              color: "#5C4A4A",
-              fontSize: FONT_SIZE.bodySm,
-              letterSpacing: "0.08em",
+              border: "none",
+              background: "#D3A5B4",
+              color: "#FFF9F5",
+              fontSize: FONT_SIZE.body,
+              fontWeight: 600,
+              letterSpacing: "0.06em",
+              boxShadow: "0 6px 16px rgba(211,165,180,0.35)",
             }}
           >
-            <Settings size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: "#B08A99" }} />
-            共通設定
+            <Plus size={17} strokeWidth={2} aria-hidden="true" style={{ flex: "none" }} />
+            お手紙を追加
+            <ChevronDown
+              size={15}
+              strokeWidth={2}
+              aria-hidden="true"
+              style={{
+                flex: "none",
+                marginLeft: 2,
+                transform: addMenuOpen ? "rotate(180deg)" : undefined,
+                transition: "transform 0.15s ease",
+              }}
+            />
           </button>
+          {addMenuOpen && (
+            <div
+              role="menu"
+              style={{
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                left: 0,
+                zIndex: 10,
+                width: "min(300px,88vw)",
+                background: "#FFFFFF",
+                border: "1px solid #EBD9DF",
+                borderRadius: 14,
+                boxShadow: "0 14px 38px rgba(150,110,130,0.24)",
+                padding: 6,
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+              }}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAddMenuOpen(false);
+                  onNewLetter();
+                }}
+                className={styles.optionRow}
+                style={addMenuItemStyle}
+              >
+                <span style={addMenuIconStyle}>
+                  <SquarePen size={15} strokeWidth={1.8} color="#B08A99" aria-hidden="true" />
+                </span>
+                <span style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={addMenuTitleStyle}>1通ずつ書く</span>
+                  <span style={addMenuCaptionStyle}>宛名から本文まで、その場で仕上げます</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAddMenuOpen(false);
+                  onBulkAdd();
+                }}
+                className={styles.optionRow}
+                style={addMenuItemStyle}
+              >
+                <span style={addMenuIconStyle}>
+                  <UserPlus size={15} strokeWidth={1.8} color="#B08A99" aria-hidden="true" />
+                </span>
+                <span style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={addMenuTitleStyle}>名前をまとめて追加</span>
+                  <span style={addMenuCaptionStyle}>宛名だけ一気に登録。本文はあとで書けます</span>
+                </span>
+              </button>
+            </div>
+          )}
         </div>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <button
-          type="button"
-          onClick={onNewLetter}
-          className={styles.dashedAdd}
-          style={{
-            background: "transparent",
-            border: "1.5px dashed #D3A5B4",
-            borderRadius: 14,
-            color: "#B08A99",
-            fontSize: FONT_SIZE.body,
-            letterSpacing: "0.1em",
-            padding: "18px 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-          }}
-        >
-          <span style={{ fontSize: FONT_SIZE.title, fontWeight: 300, lineHeight: 1 }}>+</span>
-          新しいお手紙を書く
-        </button>
         {!loadingLetters && letters.length > 0 && (
           <ListToolbar
-            totalCount={letters.length}
+            totalCount={sorted.length}
             countUnit="通"
             sortValue={sort}
             sortOptions={SORT_OPTIONS}
             onSortChange={setSort}
-            page={currentPage}
-            pageCount={pageCount}
-            onPageChange={setPage}
           />
+        )}
+        {!loadingLetters && letters.length > 0 && (
+          <div style={{ position: "relative", maxWidth: 360, marginBottom: 4 }}>
+            <Search
+              size={15}
+              strokeWidth={1.8}
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "#B08A99",
+                pointerEvents: "none",
+              }}
+            />
+            <input
+              type="text"
+              value={queryInput}
+              onChange={(e) => setQueryInput(e.target.value)}
+              placeholder="宛名・席札・エスコートカード名・テーブル名で検索"
+              aria-label="お手紙を検索"
+              className={styles.field}
+              style={fieldStyle({ width: "100%", padding: "9px 34px 9px 34px" })}
+            />
+            {queryInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQueryInput("");
+                  setQuery("");
+                }}
+                aria-label="検索をクリア"
+                style={{
+                  position: "absolute",
+                  right: 8,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  border: "none",
+                  background: "transparent",
+                  color: "#B08A99",
+                  cursor: "pointer",
+                }}
+              >
+                <X size={14} strokeWidth={1.8} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        )}
+        {!loadingLetters && letters.length === 0 && (
+          <p
+            style={{
+              margin: "2px 0 4px",
+              fontSize: FONT_SIZE.bodySm,
+              color: "#B4A2A2",
+              letterSpacing: "0.04em",
+            }}
+          >
+            まだお手紙がありません。上のボタンから最初の1通を追加しましょう。
+          </p>
+        )}
+        {!loadingLetters && letters.length > 0 && sorted.length === 0 && (
+          <p
+            style={{
+              margin: "2px 0 4px",
+              fontSize: FONT_SIZE.bodySm,
+              color: "#B4A2A2",
+              letterSpacing: "0.04em",
+            }}
+          >
+            検索条件に一致するお手紙が見つかりませんでした。
+          </p>
         )}
         {loadingLetters &&
           Array.from({ length: 2 }).map((_, i) => (
@@ -238,7 +396,7 @@ export function ProjectScreen({
             </div>
           ))}
         {!loadingLetters &&
-          paged.map((l) => (
+          visible.map((l) => (
             <LetterRow
               key={l.id}
               letter={l}
@@ -256,6 +414,27 @@ export function ProjectScreen({
               onDelete={() => onDeleteLetter(l)}
             />
           ))}
+        {!loadingLetters && sorted.length > shown && (
+          <button
+            type="button"
+            onClick={() => setShown((n) => n + PAGE_SIZE)}
+            className={styles.btnOutline}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "13px 20px",
+              borderRadius: 999,
+              border: "1px solid #EBD9DF",
+              background: "#FFFFFF",
+              color: "#5C4A4A",
+              fontSize: FONT_SIZE.bodySm,
+              letterSpacing: "0.08em",
+              cursor: "pointer",
+            }}
+          >
+            さらに表示（残り {sorted.length - shown} 件）
+          </button>
+        )}
       </div>
 
       <h4

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { bulkUpdateLetters, type BulkLetterPatch } from "@/lib/server/letters";
+import {
+  bulkUpdateLetters,
+  createLettersBulk,
+  type BulkLetterPatch,
+} from "@/lib/server/letters";
 import { handleRouteError } from "@/lib/server/route-helpers";
 import type { Honor, ThemeKey } from "@/lib/server/schema";
 import { requireUid } from "@/lib/server/session";
@@ -12,6 +16,7 @@ function sanitize(raw: unknown): BulkLetterPatch | null {
   const p: BulkLetterPatch = { id: u.id };
   // JSON は undefined を落とすので、キーの有無 = 更新意図の有無として扱う。
   if ("to" in u) p.to = String(u.to ?? "");
+  if ("body" in u) p.body = String(u.body ?? "");
   if ("theme" in u) p.theme = u.theme as ThemeKey;
   if ("photo" in u) p.photo = (u.photo as string | null) ?? null;
   if ("photoRatio" in u) p.photoRatio = u.photoRatio as number | undefined;
@@ -24,6 +29,26 @@ function sanitize(raw: unknown): BulkLetterPatch | null {
   if ("escortPhoto" in u) p.escortPhoto = (u.escortPhoto as string | null) ?? null;
   if ("escortPhotoRatio" in u) p.escortPhotoRatio = u.escortPhotoRatio as number | undefined;
   return p;
+}
+
+/**
+ * 宛名だけの手紙をまとめて作る。`{ names: ["山田花子へ", ...] }` を受け取り、
+ * 1 つの WriteBatch で作成する。ログイン・メンバーシップ必須。
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ eventId: string }> }
+) {
+  try {
+    const uid = await requireUid();
+    const { eventId } = await params;
+    const body = await request.json();
+    const names = Array.isArray(body?.names) ? body.names.map((n: unknown) => String(n ?? "")) : [];
+    const letters = await createLettersBulk(uid, eventId, names);
+    return NextResponse.json({ letters }, { status: 201 });
+  } catch (err) {
+    return handleRouteError(err);
+  }
 }
 
 /**

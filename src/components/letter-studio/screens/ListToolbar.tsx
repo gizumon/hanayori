@@ -15,9 +15,9 @@ interface ListToolbarProps<T extends string> {
   sortValue: T;
   sortOptions: SortOption<T>[];
   onSortChange: (value: T) => void;
-  page: number;
-  pageCount: number;
-  onPageChange: (page: number) => void;
+  page?: number;
+  pageCount?: number;
+  onPageChange?: (page: number) => void;
 }
 
 export function ListToolbar<T extends string>({
@@ -76,7 +76,7 @@ export function ListToolbar<T extends string>({
             </option>
           ))}
         </select>
-        {pageCount > 1 && (
+        {onPageChange && pageCount !== undefined && page !== undefined && pageCount > 1 && (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button
               type="button"

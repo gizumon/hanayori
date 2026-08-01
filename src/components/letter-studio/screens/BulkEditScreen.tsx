@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { THEMES } from "../constants";
 import { encodeImageFile } from "../imageEncode";
 import styles from "../letter-studio.module.css";
-import type { BulkLetterPatch, Honor, Letter, Project } from "../types";
+import type { BulkLetterPatch, EventTab, Honor, Letter, Project } from "../types";
+import { EventHeader } from "./EventHeader";
 import { FONT_SIZE } from "@/lib/typography";
 
 type CellType = "text" | "theme" | "honor" | "photo";
@@ -46,6 +47,8 @@ interface BulkEditScreenProps {
   loading: boolean;
   saving: boolean;
   onBack: () => void;
+  onSelectTab: (tab: EventTab) => void;
+  onOpenSettings: () => void;
   onSave: (patches: BulkLetterPatch[]) => Promise<boolean>;
   cardNameFor: (l: Letter) => string;
   escortNameFor: (l: Letter) => string;
@@ -72,6 +75,8 @@ export function BulkEditScreen({
   loading,
   saving,
   onBack,
+  onSelectTab,
+  onOpenSettings,
   onSave,
   cardNameFor,
   escortNameFor,
@@ -86,7 +91,7 @@ export function BulkEditScreen({
             key: "to",
             label: "宛名",
             type: "text",
-            placeholder: "山田花子へ",
+            placeholder: "はなこへ",
             desc: "お手紙の宛名。席札・エスコート名の自動生成にも使われます。",
           },
           { key: "theme", label: "色", type: "theme", desc: "お手紙の配色テーマを選びます。" },
@@ -132,7 +137,7 @@ export function BulkEditScreen({
             key: "tableNo",
             label: "卓番",
             type: "text",
-            placeholder: "A / 1 / さくら",
+            placeholder: "A / 1 / はなこ",
             desc: "エスコートカードに表示する卓番号・卓名。",
           },
           {
@@ -290,33 +295,13 @@ export function BulkEditScreen({
       className={styles.fadeup}
       style={{ maxWidth: 1040, margin: "0 auto", padding: "28px clamp(16px,4vw,40px) 120px" }}
     >
-      <button
-        type="button"
-        onClick={onBack}
-        className={styles.linkBack}
-        style={{
-          border: "none",
-          background: "none",
-          color: "#B08A99",
-          fontSize: FONT_SIZE.label,
-          letterSpacing: "0.08em",
-          padding: 0,
-          marginBottom: 14,
-        }}
-      >
-        ← {project.name}
-      </button>
-
-      <h2
-        style={{
-          margin: "0 0 20px",
-          fontSize: FONT_SIZE.title,
-          fontWeight: 600,
-          letterSpacing: "0.12em",
-        }}
-      >
-        一括編集
-      </h2>
+      <EventHeader
+        project={project}
+        currentTab="bulk"
+        onBack={onBack}
+        onSelectTab={onSelectTab}
+        onOpenSettings={onOpenSettings}
+      />
 
       {/* 2 段ピッカー: 対象 → 項目 */}
       <div

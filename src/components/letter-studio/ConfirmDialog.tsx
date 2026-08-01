@@ -1,6 +1,7 @@
 "use client";
 
 import styles from "./letter-studio.module.css";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 
 interface ConfirmDialogProps {
@@ -18,6 +19,7 @@ export function ConfirmDialog({
   onStay,
   onLeave,
 }: ConfirmDialogProps) {
+  useScrollLock();
   return (
     <div
       style={{

@@ -15,6 +15,8 @@ export type EscortStyle = "ticket" | "card";
 export type Honor = "" | "様" | "さん";
 export type SettingsTab = "general" | "card" | "escort";
 export type EditorTab = "letter" | "card" | "escort";
+/** イベント配下の画面タブ。一覧 / 一括編集 / 確認。 */
+export type EventTab = "list" | "bulk" | "review";
 
 export interface Letter {
   id: string;
@@ -106,6 +108,7 @@ export type BulkLetterPatch = { id: string } & Partial<
   Pick<
     Letter,
     | "to"
+    | "body"
     | "theme"
     | "photo"
     | "photoRatio"
@@ -130,6 +133,10 @@ export interface StudioState {
   letters: Letter[];
   draft: Draft;
   modalShown: boolean;
+  /** 宛名まとめて追加モーダル。 */
+  addModal: boolean;
+  /** 1 通ぶんの編集ドロワーの対象。null = 閉。 */
+  editLetter: Letter | null;
   newName: string;
   newDate: string;
   toastMsg: string;

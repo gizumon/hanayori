@@ -1,11 +1,12 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { FONTS } from "./constants";
 import styles from "./letter-studio.module.css";
 import type { FontKey } from "./types";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 
 interface PillButtonProps {
@@ -56,29 +57,22 @@ interface FontSelectProps {
 
 export function FontSelect({ value, onChange, sample }: FontSelectProps) {
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
+  useScrollLock(open);
 
   useEffect(() => {
     if (!open) return;
-    const handlePointer = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    };
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
-    document.addEventListener("mousedown", handlePointer);
     document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handlePointer);
-      document.removeEventListener("keydown", handleKey);
-    };
+    return () => document.removeEventListener("keydown", handleKey);
   }, [open]);
 
   return (
-    <div ref={rootRef} style={{ position: "relative" }}>
+    <>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(true)}
         aria-haspopup="listbox"
         aria-expanded={open}
         className={styles.field}
@@ -106,83 +100,102 @@ export function FontSelect({ value, onChange, sample }: FontSelectProps) {
           <span style={{ fontSize: FONT_SIZE.micro, color: "#B08A99", letterSpacing: "0.04em" }}>
             {FONTS[value].label}
           </span>
-          <ChevronDown
-            size={15}
-            style={{
-              color: "#B08A99",
-              transition: "transform 0.15s",
-              transform: open ? "rotate(180deg)" : undefined,
-            }}
-          />
+          <ChevronDown size={15} style={{ color: "#B08A99" }} />
         </span>
       </button>
       {open && (
         <div
-          role="listbox"
+          onClick={() => setOpen(false)}
           style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            left: 0,
-            right: 0,
-            zIndex: 20,
-            background: "#FFFFFF",
-            border: "1px solid #EBD9DF",
-            borderRadius: 12,
-            boxShadow: "0 12px 30px rgba(80,50,60,0.18)",
-            overflow: "hidden",
+            position: "fixed",
+            inset: 0,
+            zIndex: 68,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+            background: "rgba(60,42,46,0.4)",
+            backdropFilter: "blur(3px)",
           }}
         >
-          {(Object.keys(FONTS) as FontKey[]).map((k) => (
-            <button
-              key={k}
-              type="button"
-              role="option"
-              aria-selected={value === k}
-              onClick={() => {
-                onChange(k);
-                setOpen(false);
-              }}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(360px,92vw)",
+              maxHeight: "min(480px,80vh)",
+              background: "#FFFCF8",
+              borderRadius: 18,
+              boxShadow: "0 24px 70px rgba(0,0,0,0.18)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
               style={{
-                display: "flex",
-                width: "100%",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-                padding: "10px 14px",
-                border: "none",
-                borderBottom: "1px solid #F3E8EC",
-                background: value === k ? "#FBF1F4" : "#FFFFFF",
-                cursor: "pointer",
-                textAlign: "left",
+                padding: "16px 20px",
+                borderBottom: "1px solid rgba(211,165,180,0.3)",
+                fontSize: FONT_SIZE.caption,
+                letterSpacing: "0.1em",
+                color: "#8C7676",
               }}
             >
-              <span
-                style={{
-                  fontFamily: FONTS[k].family,
-                  fontSize: FONT_SIZE.input,
-                  color: "#5C4A4A",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {sample}
-              </span>
-              <span
-                style={{
-                  fontSize: FONT_SIZE.micro,
-                  color: "#B08A99",
-                  letterSpacing: "0.04em",
-                  flex: "none",
-                }}
-              >
-                {FONTS[k].label}
-              </span>
-            </button>
-          ))}
+              フォントを選ぶ
+            </div>
+            <div role="listbox" style={{ overflowY: "auto", padding: 6 }}>
+              {(Object.keys(FONTS) as FontKey[]).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="option"
+                  aria-selected={value === k}
+                  onClick={() => {
+                    onChange(k);
+                    setOpen(false);
+                  }}
+                  className={styles.optionRow}
+                  style={{
+                    display: "flex",
+                    width: "100%",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                    padding: "12px 14px",
+                    border: "none",
+                    borderRadius: 10,
+                    background: value === k ? "#FBF1F4" : "transparent",
+                    textAlign: "left",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: FONTS[k].family,
+                      fontSize: FONT_SIZE.input,
+                      color: "#5C4A4A",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {sample}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: FONT_SIZE.micro,
+                      color: "#B08A99",
+                      letterSpacing: "0.04em",
+                      flex: "none",
+                    }}
+                  >
+                    {FONTS[k].label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

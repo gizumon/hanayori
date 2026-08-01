@@ -123,9 +123,9 @@ export function escortGeom(style: EscortStyle): EscortGeometry {
   }
   return {
     w: "min(560px,100%)",
-    aspect: "180 / 80",
-    sizeLabel: "180×80mm",
-    printDims: "width:180mm;height:80mm",
+    aspect: "182 / 65",
+    sizeLabel: "182×65mm",
+    printDims: "width:182mm;height:65mm",
   };
 }
 

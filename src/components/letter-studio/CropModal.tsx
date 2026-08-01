@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 import { IMAGE_MAX_WIDTH, encodeCanvas } from "./imageEncode";
 
@@ -29,6 +30,7 @@ const HANDLE_SIZE = 16;
  * 四隅ハンドルのドラッグで大きさを調整して切り取るモーダル。
  */
 export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
+  useScrollLock();
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [disp, setDisp] = useState<{ w: number; h: number } | null>(null);
   const [frame, setFrame] = useState<Frame | null>(null);

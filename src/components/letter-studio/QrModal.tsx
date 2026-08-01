@@ -5,6 +5,7 @@ import { Download, Printer } from "lucide-react";
 import { QrCardFace } from "./QrCardFace";
 import type { CardGeometry } from "./geometry";
 import type { CardConfig } from "./types";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 
 interface QrModalProps {
@@ -55,6 +56,7 @@ export function QrModal({
   onPrint,
   onClose,
 }: QrModalProps) {
+  useScrollLock();
   const stop = (e: MouseEvent) => e.stopPropagation();
 
   const actionStyle = {

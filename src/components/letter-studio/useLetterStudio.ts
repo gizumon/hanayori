@@ -15,6 +15,12 @@ import {
   updateDisplayName,
   type User,
 } from "@/lib/firebase/auth";
+import { FONTS } from "./constants";
+import {
+  printAllEscortCards as printAllEscortCardsSheet,
+  printErrorHtml,
+  printLoadingHtml,
+} from "./escortPrint";
 import { cardNameFor, escortGeom, escortNameFor, geom } from "./geometry";
 import { uploadIfDataUrl } from "./uploadImage";
 import { IMAGE_MAX_WIDTH, encodeCanvas } from "./imageEncode";
@@ -26,6 +32,7 @@ import type {
   EscortConfig,
   EventSettingsPatch,
   EventSummary,
+  EventTab,
   Letter,
   Screen,
   SettingsTab,
@@ -82,6 +89,10 @@ export function useLetterStudio() {
     parseAsStringLiteral(PREVIEW_KINDS)
   );
   const [newModal, setNewModal] = useQueryState("new", parseAsBoolean.withDefault(false));
+  // 一括追加モーダル(一覧タブから開く)
+  const [addModal, setAddModal] = useQueryState("add", parseAsBoolean.withDefault(false));
+  // 確認タブ / 一覧から開く 1 通ぶんの編集ドロワー。タブは edTab を共用する。
+  const [editId, setEditId] = useQueryState("edit", parseAsString);
 
   // --- クライアント側データ(URL には載せない)---
   const [authed, setAuthed] = useState(false);
@@ -107,7 +118,9 @@ export function useLetterStudio() {
   const [savingLetter, setSavingLetter] = useState(false);
   const [savingBulk, setSavingBulk] = useState(false);
   const [creatingProject, setCreatingProject] = useState(false);
+  const [creatingBulk, setCreatingBulk] = useState(false);
   const [deletingLetter, setDeletingLetter] = useState(false);
+  const [printingAllEscort, setPrintingAllEscort] = useState(false);
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -115,6 +128,7 @@ export function useLetterStudio() {
   const savingLetterRef = useRef(false);
   const savingBulkRef = useRef(false);
   const creatingProjectRef = useRef(false);
+  const creatingBulkRef = useRef(false);
   const deletingLetterRef = useRef(false);
 
   const toast = useCallback((msg: string) => {
@@ -261,18 +275,43 @@ export function useLetterStudio() {
     router.push(`/events/${curP}/letters/new`);
   }, [curP, router]);
 
-  const editLetter = useCallback(
-    (letter: Letter) => {
-      if (!curP) return;
-      router.push(`/events/${curP}/letters/${letter.id}`);
-    },
-    [curP, router]
-  );
-
   const openBulkEdit = useCallback(() => {
     if (!curP) return;
     router.push(`/events/${curP}/bulk`);
   }, [curP, router]);
+
+  const openReview = useCallback(() => {
+    if (!curP) return;
+    router.push(`/events/${curP}/review`);
+  }, [curP, router]);
+
+  /** イベント配下のタブ切り替え。一覧 = イベントページ、それ以外は同名のサブルート。 */
+  const selectEventTab = useCallback(
+    (tab: EventTab) => {
+      if (!curP) return;
+      router.push(tab === "list" ? `/events/${curP}` : `/events/${curP}/${tab}`);
+    },
+    [curP, router]
+  );
+
+  const openBulkAdd = useCallback(() => {
+    void setAddModal(true);
+  }, [setAddModal]);
+  const closeBulkAdd = useCallback(() => {
+    void setAddModal(null);
+  }, [setAddModal]);
+
+  /** 1 通ぶんの編集ドロワーを開く。tab は編集画面と同じ query(`tab`)を使う。 */
+  const openLetterDrawer = useCallback(
+    (id: string, tab: EditorTab = "letter") => {
+      void setTab(tab);
+      void setEditId(id);
+    },
+    [setEditId, setTab]
+  );
+  const closeLetterDrawer = useCallback(() => {
+    void setEditId(null);
+  }, [setEditId]);
 
   const openSettings = useCallback(
     (tab: SettingsTab = "general") => {
@@ -457,6 +496,33 @@ export function useLetterStudio() {
     [curP, toast]
   );
 
+  /** 宛名だけの手紙をまとめて作る。成功したら作成件数を返す。 */
+  const createLettersBulk = useCallback(
+    async (names: string[]): Promise<number> => {
+      if (!curP) return 0;
+      if (creatingBulkRef.current) return 0;
+      creatingBulkRef.current = true;
+      setCreatingBulk(true);
+      try {
+        const data = await api<{ letters: Letter[] }>(`/api/events/${curP}/letters/bulk`, {
+          method: "POST",
+          body: JSON.stringify({ names }),
+        });
+        setLettersRaw((ls) => ls.concat(data.letters));
+        void setAddModal(null);
+        toast(`${data.letters.length}通のお手紙を追加しました`);
+        return data.letters.length;
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "追加に失敗しました");
+        return 0;
+      } finally {
+        creatingBulkRef.current = false;
+        setCreatingBulk(false);
+      }
+    },
+    [curP, setAddModal, toast]
+  );
+
   const deleteLetter = useCallback(
     async (id: string) => {
       if (deletingLetterRef.current) return;
@@ -555,18 +621,36 @@ export function useLetterStudio() {
   }, [captureCard, toast]);
 
   const printCard = useCallback(async () => {
-    toast("印刷を準備しています…");
-    const canvas = await captureCard();
-    if (!canvas) {
-      toast("印刷の準備に失敗しました");
-      return;
-    }
+    // モバイル(特に iOS Safari)は非同期処理を挟んだ後の window.open を
+    // 「ユーザー操作直後」とみなさずブロックすることがあるため、キャプチャの
+    // 前にウィンドウを確保しておき、準備画面はそのウィンドウ内に表示する。
     const w = window.open("", "_blank");
     if (!w) {
       toast("ポップアップがブロックされました");
       return;
     }
+    w.document.write(
+      printLoadingHtml({
+        windowTitle: "QRカード印刷",
+        title: "QRカードを準備中です",
+        sub: "もうすこしで完成します",
+      })
+    );
+    w.document.close();
+    toast("印刷を準備しています…");
+    const canvas = await captureCard();
+    if (w.closed) return;
+    if (!canvas) {
+      toast("印刷の準備に失敗しました");
+      w.document.open();
+      w.document.write(
+        printErrorHtml({ windowTitle: "QRカード印刷", message: "時間をおいて、もう一度<br/>お試しください" })
+      );
+      w.document.close();
+      return;
+    }
     const dims = cardConf ? geom(cardConf, "#ccc").printDims : "width:91mm;height:55mm";
+    w.document.open();
     w.document.write(
       `<html><head><title>QRカード印刷</title><style>@page{size:auto;margin:10mm}body{margin:0;display:flex;justify-content:center;padding-top:10mm}img{${dims}}</style></head><body><img src="${canvas.toDataURL(
         "image/png"
@@ -590,18 +674,38 @@ export function useLetterStudio() {
   }, [captureCard, toast]);
 
   const printEscortCard = useCallback(async () => {
-    toast("印刷を準備しています…");
-    const canvas = await captureCard(escortCardRef);
-    if (!canvas) {
-      toast("印刷の準備に失敗しました");
-      return;
-    }
+    // printCard と同様、キャプチャ前にウィンドウを確保してモバイルでの
+    // ポップアップブロックを避ける。
     const w = window.open("", "_blank");
     if (!w) {
       toast("ポップアップがブロックされました");
       return;
     }
-    const dims = escortConf ? escortGeom(escortConf.style).printDims : "width:180mm;height:80mm";
+    w.document.write(
+      printLoadingHtml({
+        windowTitle: "エスコートカード印刷",
+        title: "エスコートカードを準備中です",
+        sub: "もうすこしで完成します",
+      })
+    );
+    w.document.close();
+    toast("印刷を準備しています…");
+    const canvas = await captureCard(escortCardRef);
+    if (w.closed) return;
+    if (!canvas) {
+      toast("印刷の準備に失敗しました");
+      w.document.open();
+      w.document.write(
+        printErrorHtml({
+          windowTitle: "エスコートカード印刷",
+          message: "時間をおいて、もう一度<br/>お試しください",
+        })
+      );
+      w.document.close();
+      return;
+    }
+    const dims = escortConf ? escortGeom(escortConf.style).printDims : "width:182mm;height:65mm";
+    w.document.open();
     w.document.write(
       `<html><head><title>エスコートカード印刷</title><style>@page{size:auto;margin:10mm}body{margin:0;display:flex;justify-content:center;padding-top:10mm}img{${dims}}</style></head><body><img src="${canvas.toDataURL(
         "image/png"
@@ -609,6 +713,42 @@ export function useLetterStudio() {
     );
     w.document.close();
   }, [escortConf, captureCard, toast]);
+
+  /**
+   * 確認タブから「全ゲストぶんをまとめて印刷」。ticket 風のみ対応(A4 1枚に4枚)。
+   * 進捗は開いた印刷ウィンドウ側に表示されるので、ここでは開始と結果だけ toast する
+   * (別タブに切り替わると元タブの toast は見えなくなるため)。
+   */
+  const printAllEscortCards = useCallback(
+    async (targetLetters: Letter[]) => {
+      if (!escortConf || escortConf.style !== "ticket" || targetLetters.length === 0) return;
+      if (printingAllEscort) return;
+      setPrintingAllEscort(true);
+      toast("印刷を準備しています…");
+      try {
+        const { opened, printed, failed } = await printAllEscortCardsSheet({
+          letters: targetLetters,
+          escortConf,
+          fontFamily: FONTS[escortConf.font].family,
+          fallbackFootText: curProject?.name ?? "",
+        });
+        if (!opened) {
+          toast("ポップアップがブロックされました");
+        } else if (printed === 0) {
+          toast("印刷用の画像を作成できませんでした");
+        } else if (failed > 0) {
+          toast(`${printed}枚を印刷ウィンドウに準備しました(${failed}枚は失敗)`);
+        } else {
+          toast(`${printed}枚を印刷ウィンドウに準備しました`);
+        }
+      } catch {
+        toast("印刷の準備に失敗しました");
+      } finally {
+        setPrintingAllEscort(false);
+      }
+    },
+    [escortConf, curProject, printingAllEscort, toast]
+  );
 
   // アップロードしたらまずクロップモーダルを開く。切り取り確定でドラフトに入る。
   const upEscortPhoto = useCallback((file: File) => {
@@ -685,6 +825,8 @@ export function useLetterStudio() {
   const escortModal = previewKind === "escort" && preview
     ? letters.find((l) => l.id === preview) ?? null
     : null;
+  // 編集ドロワーの対象。一覧の取得前は null のままで、取得後に解決する。
+  const drawerLetter = editId ? letters.find((l) => l.id === editId) ?? null : null;
 
   const state = useMemo(
     () => ({
@@ -696,6 +838,8 @@ export function useLetterStudio() {
       letters,
       draft,
       modalShown: newModal,
+      addModal,
+      editLetter: drawerLetter,
       newName,
       newDate,
       toastMsg,
@@ -714,6 +858,8 @@ export function useLetterStudio() {
       letters,
       draft,
       newModal,
+      addModal,
+      drawerLetter,
       newName,
       newDate,
       toastMsg,
@@ -764,14 +910,23 @@ export function useLetterStudio() {
     printCard,
     saveEscortCard,
     printEscortCard,
+    printAllEscortCards,
+    printingAllEscort,
     upEscortPhoto,
     applyEscortCrop,
     cancelEscortCrop,
     createProject,
     creatingProject,
     newLetter,
-    editLetter,
     openBulkEdit,
+    openReview,
+    selectEventTab,
+    openBulkAdd,
+    closeBulkAdd,
+    createLettersBulk,
+    creatingBulk,
+    openLetterDrawer,
+    closeLetterDrawer,
     cardNameFor: (l: Draft | Letter | null | undefined) =>
       cardConf ? cardNameFor(l, cardConf) : "お名前",
     escortNameFor: (l: Draft | Letter | null | undefined) =>

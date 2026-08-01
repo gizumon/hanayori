@@ -49,14 +49,14 @@ const STEPS = [
 
 const THEME_ORDER: ThemeKey[] = ["rose", "blue", "sage", "kinari"];
 const THEME_FONT: Record<ThemeKey, FontKey> = {
-  rose: "yomogi",
-  blue: "mincho",
-  sage: "gothic",
+  rose: "fuiji",
+  blue: "anzumoji",
+  sage: "klee",
   kinari: "maru",
 };
 const THEME_GREETING: Record<ThemeKey, string> = {
   rose: "さくらへ",
-  blue: "かえでへ",
+  blue: "あおいへ",
   sage: "みどりへ",
   kinari: "ひなたへ",
 };
@@ -451,7 +451,7 @@ export function Landing() {
                 <div style={{ position: "absolute", inset: 0, display: "flex", padding: "5%" }}>
                   <div style={{ flex: 1.4, display: "flex", flexDirection: "column", justifyContent: "center", gap: 5, padding: "3% 2% 12% 7%" }}>
                     <div style={{ fontSize: 8.5, letterSpacing: "0.3em", color: "#8C7676" }}>WEDDING RECEPTION</div>
-                    <div style={{ fontSize: 21, fontWeight: 600, letterSpacing: "0.14em", color: "#5C4A4A" }}>山田花子 様</div>
+                    <div style={{ fontSize: 21, fontWeight: 600, letterSpacing: "0.14em", color: "#5C4A4A" }}>はなこ 様</div>
                   </div>
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5 }}>
                     <div
@@ -477,7 +477,7 @@ export function Landing() {
                   </div>
                 </div>
                 <div style={{ position: "absolute", left: "7%", right: "44%", bottom: "6%", fontSize: 8.5, letterSpacing: "0.12em", color: "#8C7676" }}>
-                  ゆい &amp; 蓮 の結婚式 ・ 2026年10月24日(土)
+                  結婚式 ・ 2026年10月24日(土)
                 </div>
               </div>
               <div style={{ fontSize: FONT_SIZE.caption, letterSpacing: "0.14em", color: "#9D6F83" }}>名刺サイズ 91×55mm</div>
@@ -531,8 +531,8 @@ export function Landing() {
                   }}
                 >
                   <div style={{ fontSize: 8.5, letterSpacing: "0.3em", color: "#8C7676" }}>WEDDING RECEPTION</div>
-                  <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: "0.14em", color: "#5C4A4A" }}>山田花子 様</div>
-                  <div style={{ fontSize: 7.5, letterSpacing: "0.1em", color: "#8C7676" }}>ゆい &amp; 蓮 の結婚式 ・ 2026年10月24日(土)</div>
+                  <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: "0.14em", color: "#5C4A4A" }}>はなこ 様</div>
+                  <div style={{ fontSize: 7.5, letterSpacing: "0.1em", color: "#8C7676" }}>結婚式 ・ 2026年10月24日(土)</div>
                 </div>
               </div>
               <div style={{ fontSize: FONT_SIZE.caption, letterSpacing: "0.14em", color: "#9D6F83" }}>二つ折りタイプ 91×110mm</div>
