@@ -7,6 +7,7 @@ import styles from "../letter-studio.module.css";
 import type { BulkLetterPatch, EventTab, Honor, Letter, Project } from "../types";
 import { EventHeader } from "./EventHeader";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 type CellType = "text" | "theme" | "honor" | "photo";
 type BulkField =
@@ -54,13 +55,6 @@ interface BulkEditScreenProps {
   escortNameFor: (l: Letter) => string;
 }
 
-const CHANGED = "#C98A3F";
-const ACCENT = "#D3A5B4";
-const BORDER = "#EBD9DF";
-const INK = "#5C4A4A";
-const MUTED = "#8C7676";
-const FAINT = "#B4A2A2";
-const SURFACE = "#FFFCF8";
 
 const HONOR_OPTIONS = (def: Honor): { value: Honor | null; label: string }[] => [
   { value: null, label: `既定(${def || "なし"})` },
@@ -310,8 +304,8 @@ export function BulkEditScreen({
           flexDirection: "column",
           gap: 12,
           padding: 16,
-          background: "#FFF7F1",
-          border: `1px solid #F2E6EB`,
+          background: COLOR.surface,
+          border: `1px solid ${COLOR.divider}`,
           borderRadius: 14,
           marginBottom: 16,
         }}
@@ -344,8 +338,8 @@ export function BulkEditScreen({
                   cursor: "pointer",
                   fontSize: FONT_SIZE.bodySm,
                   letterSpacing: "0.08em",
-                  background: active ? "#FFFCF8" : "transparent",
-                  color: active ? "#5C4A4A" : "#A38A93",
+                  background: active ? COLOR.surface : "transparent",
+                  color: active ? COLOR.ink : COLOR.inkMuted,
                   fontWeight: active ? 600 : 400,
                   boxShadow: active ? "0 2px 8px rgba(150,110,130,0.18)" : "none",
                 }}
@@ -366,9 +360,9 @@ export function BulkEditScreen({
                 type="button"
                 onClick={() => setFieldKey(f.key)}
                 style={{
-                  border: active ? `1px solid ${ACCENT}` : `1px solid ${BORDER}`,
-                  background: active ? ACCENT : SURFACE,
-                  color: active ? "#FFF9F5" : INK,
+                  border: active ? `1px solid ${COLOR.accent}` : `1px solid ${COLOR.border}`,
+                  background: active ? COLOR.accent : COLOR.surface,
+                  color: active ? COLOR.onAccent : COLOR.ink,
                   fontWeight: active ? 600 : 400,
                   cursor: "pointer",
                   padding: "8px 15px",
@@ -389,14 +383,14 @@ export function BulkEditScreen({
         </div>
       </div>
 
-      <p style={{ margin: "0 0 14px", fontSize: FONT_SIZE.caption, color: FAINT, letterSpacing: "0.03em" }}>
+      <p style={{ margin: "0 0 14px", fontSize: FONT_SIZE.caption, color: COLOR.inkFaint, letterSpacing: "0.03em" }}>
         {field.desc}
       </p>
 
       {loading && rows.length === 0 ? (
-        <p style={{ fontSize: FONT_SIZE.bodySm, color: MUTED }}>読み込んでいます…</p>
+        <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>読み込んでいます…</p>
       ) : rows.length === 0 ? (
-        <p style={{ fontSize: FONT_SIZE.bodySm, color: MUTED }}>まだお手紙がありません。</p>
+        <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>まだお手紙がありません。</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {rows.map((row) => (
@@ -427,8 +421,8 @@ export function BulkEditScreen({
             alignItems: "center",
             gap: 12,
             flexWrap: "wrap",
-            background: SURFACE,
-            border: `1px solid ${BORDER}`,
+            background: COLOR.surface,
+            border: `1px solid ${COLOR.border}`,
             borderRadius: 14,
             padding: "12px 16px",
             boxShadow: "0 14px 40px rgba(150,110,130,0.2)",
@@ -439,13 +433,13 @@ export function BulkEditScreen({
               flex: narrow ? "1 1 100%" : 1,
               minWidth: 0,
               fontSize: FONT_SIZE.bodySm,
-              color: MUTED,
+              color: COLOR.inkSoft,
               letterSpacing: "0.02em",
             }}
           >
             {changedCount > 0 ? (
               <>
-                <b style={{ color: CHANGED, fontVariantNumeric: "tabular-nums" }}>{changedCount}</b>{" "}
+                <b style={{ color: COLOR.change, fontVariantNumeric: "tabular-nums" }}>{changedCount}</b>{" "}
                 件のセルを変更中 — 保存するとまとめて反映します
               </>
             ) : (
@@ -461,9 +455,9 @@ export function BulkEditScreen({
               flex: narrow ? "1 1 0" : undefined,
               padding: "10px 18px",
               borderRadius: 999,
-              border: `1px solid ${BORDER}`,
+              border: `1px solid ${COLOR.border}`,
               background: "transparent",
-              color: MUTED,
+              color: COLOR.inkSoft,
               fontSize: FONT_SIZE.label,
               letterSpacing: "0.06em",
               opacity: changedCount === 0 || saving ? 0.45 : 1,
@@ -482,8 +476,8 @@ export function BulkEditScreen({
               padding: "11px 24px",
               borderRadius: 999,
               border: "none",
-              background: ACCENT,
-              color: "#FFF9F5",
+              background: COLOR.accent,
+              color: COLOR.onAccent,
               fontSize: FONT_SIZE.body,
               letterSpacing: "0.06em",
               boxShadow: "0 6px 16px rgba(211,165,180,0.4)",
@@ -510,8 +504,8 @@ function Badge({ value, floating, onAccent }: { value: number; floating?: boolea
         height: 16,
         padding: "0 4px",
         borderRadius: 999,
-        background: onAccent ? "#FFFFFF" : CHANGED,
-        color: onAccent ? "#B08A99" : "#FFFFFF",
+        background: onAccent ? COLOR.surfaceRaised : COLOR.change,
+        color: onAccent ? COLOR.accentInk : COLOR.onAccent,
         fontSize: FONT_SIZE.micro,
         fontWeight: 700,
         display: "inline-flex",
@@ -564,9 +558,9 @@ function Row({
         flexDirection: narrow ? "column" : "row",
         alignItems: narrow ? "stretch" : "center",
         gap: narrow ? 10 : 14,
-        background: "#FFF7F1",
-        border: "1px solid #F2E6EB",
-        borderLeft: changed ? `3px solid ${CHANGED}` : "1px solid #F2E6EB",
+        background: COLOR.surface,
+        border: `1px solid ${COLOR.divider}`,
+        borderLeft: changed ? `3px solid ${COLOR.change}` : `1px solid ${COLOR.divider}`,
         borderRadius: 12,
         padding: "11px 14px",
       }}
@@ -580,7 +574,7 @@ function Row({
             height: 30,
             borderRadius: 9,
             background: accent,
-            color: "#FFFFFF",
+            color: COLOR.onAccent,
             fontSize: FONT_SIZE.label,
             fontWeight: 700,
             display: "flex",
@@ -596,7 +590,7 @@ function Row({
             style={{
               fontSize: FONT_SIZE.body,
               fontWeight: 600,
-              color: INK,
+              color: COLOR.ink,
               letterSpacing: "0.03em",
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -606,7 +600,7 @@ function Row({
             {identity}
           </div>
           {showTable && (
-            <div style={{ fontSize: FONT_SIZE.micro, color: FAINT, letterSpacing: "0.02em" }}>
+            <div style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkFaint, letterSpacing: "0.02em" }}>
               卓 {row.tableNo || "—"}
             </div>
           )}
@@ -653,9 +647,9 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
   const inputStyle = {
     width: narrow ? "100%" : 320,
     fontSize: FONT_SIZE.input,
-    color: INK,
-    background: SURFACE,
-    border: `1px solid ${BORDER}`,
+    color: COLOR.ink,
+    background: COLOR.surface,
+    border: `1px solid ${COLOR.border}`,
     borderRadius: 9,
     padding: "9px 11px",
     letterSpacing: "0.02em",
@@ -694,8 +688,8 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
                 cursor: "pointer",
                 padding: 0,
                 background: THEMES[k].accent,
-                border: selected ? `3px solid ${INK}` : "3px solid #FFFFFF",
-                boxShadow: `0 0 0 1px ${BORDER}, 0 2px 6px rgba(150,110,130,0.18)`,
+                border: selected ? `3px solid ${COLOR.ink}` : `3px solid ${COLOR.surfaceRaised}`,
+                boxShadow: `0 0 0 1px ${COLOR.border}, 0 2px 6px rgba(150,110,130,0.18)`,
               }}
             />
           );
@@ -721,9 +715,9 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
                 borderRadius: 999,
                 fontSize: FONT_SIZE.caption,
                 letterSpacing: "0.04em",
-                background: selected ? ACCENT : "#FFFFFF",
-                color: selected ? "#FFF9F5" : INK,
-                border: selected ? `1px solid ${ACCENT}` : `1px solid ${BORDER}`,
+                background: selected ? COLOR.accent : COLOR.surfaceRaised,
+                color: selected ? COLOR.onAccent : COLOR.ink,
+                border: selected ? `1px solid ${COLOR.accent}` : `1px solid ${COLOR.border}`,
               }}
             >
               {label}
@@ -749,7 +743,7 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
             backgroundImage: `url('${photo}')`,
             backgroundSize: "cover",
             backgroundPosition: "center",
-            border: `1px solid ${BORDER}`,
+            border: `1px solid ${COLOR.border}`,
             boxShadow: "0 3px 10px rgba(150,110,130,0.2)",
           }}
         />
@@ -760,13 +754,13 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
             height: 46,
             borderRadius: 10,
             flex: "none",
-            background: SURFACE,
-            border: `1px solid ${BORDER}`,
+            background: COLOR.surface,
+            border: `1px solid ${COLOR.border}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontSize: FONT_SIZE.micro,
-            color: FAINT,
+            color: COLOR.inkFaint,
           }}
         >
           なし
@@ -779,9 +773,9 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
           alignItems: "center",
           padding: "8px 15px",
           borderRadius: 999,
-          border: `1px solid ${BORDER}`,
-          background: "#FFFFFF",
-          color: INK,
+          border: `1px solid ${COLOR.border}`,
+          background: COLOR.surfaceRaised,
+          color: COLOR.ink,
           fontSize: FONT_SIZE.label,
           letterSpacing: "0.04em",
           cursor: "pointer",
@@ -809,7 +803,7 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
             borderRadius: 999,
             border: "none",
             background: "transparent",
-            color: "#B5555F",
+            color: COLOR.danger,
             fontSize: FONT_SIZE.label,
             letterSpacing: "0.04em",
           }}

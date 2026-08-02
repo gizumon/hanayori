@@ -4,6 +4,7 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -36,6 +37,10 @@ export async function signInWithEmail(email: string, password: string) {
 export async function signUpWithEmail(email: string, password: string) {
   const cred = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
   await establishSession(cred.user);
+}
+
+export async function sendPasswordReset(email: string) {
+  await sendPasswordResetEmail(getFirebaseAuth(), email);
 }
 
 export async function updateDisplayName(name: string) {
@@ -73,6 +78,8 @@ export function authErrorMessage(err: unknown): string {
       return "メールアドレスの形式が正しくありません";
     case "auth/popup-closed-by-user":
       return "ログインがキャンセルされました";
+    case "auth/too-many-requests":
+      return "試行回数が多すぎます。しばらく待ってからお試しください";
     case "auth/operation-not-allowed":
       return "この方法でのログインはまだ設定されていません";
     default:

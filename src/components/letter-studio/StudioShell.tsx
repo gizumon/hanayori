@@ -52,6 +52,10 @@ export function StudioShell({ children }: { children: ReactNode }) {
                 onTabChange={api.setSettingsTab}
                 onClose={api.closeSettings}
                 onSave={api.saveSettings}
+                onLeaveEvent={() => {
+                  api.closeSettings();
+                  api.goHome();
+                }}
               />
             )}
 
@@ -63,8 +67,9 @@ export function StudioShell({ children }: { children: ReactNode }) {
               />
             )}
 
-            {/* 確認タブ・一覧から開く 1 通ぶんの編集。手紙一覧の取得後に解決する。 */}
-            {curProject && cardConf && escortConf && state.editLetter && (
+            {/* 確認タブ・一覧から開く 1 通ぶんの編集、および「お手紙を作る」の新規作成。
+                同じドロワーを使い、新規作成モードはヘッダー表示だけが変わる。 */}
+            {curProject && cardConf && escortConf && (state.editLetter || state.creatingLetter) && (
               <LetterEditDrawer
                 letter={state.editLetter}
                 letters={state.letters}
@@ -76,6 +81,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
                 onSelectLetter={(id) => api.openLetterDrawer(id, state.edTab)}
                 onClose={api.closeLetterDrawer}
                 onSave={api.bulkSaveLetters}
+                onCreate={api.createLetterFromDrawer}
                 saving={api.savingBulk}
                 letterUrl={api.letterUrl}
               />
@@ -113,7 +119,6 @@ export function StudioShell({ children }: { children: ReactNode }) {
             qrUrl={api.letterUrl(state.qrModal.id)}
             cardRef={api.cardRef}
             onSaveImage={api.saveCard}
-            onPrint={api.printCard}
             onClose={() => api.setQrModal(null)}
           />
         )}
@@ -137,7 +142,6 @@ export function StudioShell({ children }: { children: ReactNode }) {
             footText={escortConf.nameOverride.trim() || curProject.name}
             cardRef={api.escortCardRef}
             onSaveImage={api.saveEscortCard}
-            onPrint={api.printEscortCard}
             onClose={() => api.setEscortModal(null)}
           />
         )}

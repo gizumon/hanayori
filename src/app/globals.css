@@ -19,6 +19,50 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /*
+   * UI カラートークン。src/lib/palette.ts の COLOR と同じ値を保つこと
+   * （仕様は /DESIGN.md）。CSS Modules と Tailwind の任意値から参照する。
+   */
+  /* 面 */
+  --c-bg: #fff9f5;
+  --c-surface: #fffcf8;
+  --c-surface-raised: #ffffff;
+  --c-surface-disabled: #f2ecec;
+  --c-tint: #fbf1f4;
+  --c-tint-rose: #fbeef2;
+  --c-tint-rose-deep: #f3d9e3;
+  /* 線 */
+  --c-border: #ebd9df;
+  --c-border-soft: #f0e2e7;
+  --c-divider: #f2e6eb;
+  --c-border-dash: #e3cbd4;
+  /* 文字 */
+  --c-ink: #5c4a4a;
+  --c-ink-soft: #8c7676;
+  --c-ink-muted: #a38a93;
+  --c-ink-faint: #b4a2a2;
+  --c-ink-disabled: #cbb6be;
+  --c-on-accent: #fff9f5;
+  --c-on-ink: #d9c6cb;
+  /* アクセント */
+  --c-accent-pale: #e2b6c3;
+  --c-accent: #d3a5b4;
+  --c-accent-rose: #c393a5;
+  --c-accent-ink: #b08a99;
+  --c-accent-deep: #9d6f83;
+  --c-accent-off: #e3d2d8;
+  --c-gold: #e3c293;
+  /* 状態 */
+  --c-danger: #b5555f;
+  --c-success: #7a9a7e;
+  --c-change: #c98a3f;
+  --c-warn-bg: #f8ecd7;
+  --c-warn-ink: #9a7b4a;
+  /* カレンダー */
+  --c-sunday: #c97d89;
+  --c-saturday: #7a93b0;
+  --c-holiday: #cba45c;
 }
 
 @theme inline {

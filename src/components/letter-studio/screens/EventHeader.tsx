@@ -5,6 +5,7 @@ import type { EventTab, Project } from "../types";
 import styles from "../letter-studio.module.css";
 import { EventTabs } from "./EventTabs";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 interface EventHeaderProps {
   project: Project;
@@ -28,7 +29,7 @@ export function EventHeader({ project, currentTab, onBack, onSelectTab, onOpenSe
         style={{
           border: "none",
           background: "none",
-          color: "#B08A99",
+          color: COLOR.accentInk,
           fontSize: FONT_SIZE.label,
           letterSpacing: "0.08em",
           padding: 0,
@@ -52,29 +53,29 @@ export function EventHeader({ project, currentTab, onBack, onSelectTab, onOpenSe
           <h2 style={{ margin: "0 0 4px", fontSize: FONT_SIZE.title, fontWeight: 600, letterSpacing: "0.12em" }}>
             {project.name}
           </h2>
-          <p style={{ margin: 0, fontSize: FONT_SIZE.label, color: "#8C7676", letterSpacing: "0.08em" }}>
+          <p style={{ margin: 0, fontSize: FONT_SIZE.label, color: COLOR.inkSoft, letterSpacing: "0.08em" }}>
             {project.date}
           </p>
         </div>
         <button
           type="button"
           onClick={onOpenSettings}
-          className={styles.btnGhost}
+          className={styles.btnOutline}
           style={{
             display: "flex",
             alignItems: "center",
             gap: 6,
             padding: "8px 14px",
             borderRadius: 999,
-            border: "1px solid transparent",
-            background: "transparent",
-            color: "#8C7676",
+            border: `1px solid ${COLOR.border}`,
+            background: COLOR.surfaceRaised,
+            color: COLOR.ink,
             fontSize: FONT_SIZE.label,
             letterSpacing: "0.06em",
             flex: "none",
           }}
         >
-          <Settings size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: "#B08A99" }} />
+          <Settings size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: COLOR.accentInk }} />
           共通設定
         </button>
       </div>

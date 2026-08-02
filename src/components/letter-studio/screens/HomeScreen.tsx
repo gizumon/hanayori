@@ -6,6 +6,7 @@ import styles from "../letter-studio.module.css";
 import type { EventSummary } from "../types";
 import { ListToolbar, type SortOption } from "./ListToolbar";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 interface HomeScreenProps {
   projects: EventSummary[];
@@ -76,7 +77,7 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
       <h2 style={{ margin: "0 0 4px", fontSize: FONT_SIZE.title, fontWeight: 600, letterSpacing: "0.14em" }}>
         イベント
       </h2>
-      <p style={{ margin: "0 0 24px", fontSize: FONT_SIZE.label, color: "#8C7676", letterSpacing: "0.05em" }}>
+      <p style={{ margin: "0 0 24px", fontSize: FONT_SIZE.label, color: COLOR.inkSoft, letterSpacing: "0.05em" }}>
         イベントごとのお手紙をまとめて管理できます
       </p>
 
@@ -87,9 +88,9 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
         style={{
           width: "100%",
           background: "transparent",
-          border: "1.5px dashed #D3A5B4",
+          border: `1.5px dashed ${COLOR.accent}`,
           borderRadius: 14,
-          color: "#B08A99",
+          color: COLOR.accentInk,
           fontSize: FONT_SIZE.body,
           letterSpacing: "0.1em",
           padding: "18px 20px",
@@ -129,7 +130,7 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
             <div
               key={i}
               style={{
-                background: "#FFFCF8",
+                background: COLOR.surface,
                 borderRadius: 16,
                 padding: "24px 22px",
                 boxShadow: "0 8px 28px rgba(150,110,130,0.14)",
@@ -159,7 +160,7 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
               className={styles.cardTile}
               style={{
                 textAlign: "left",
-                background: "#FFFCF8",
+                background: COLOR.surface,
                 border: "none",
                 borderRadius: 16,
                 padding: "22px 22px 20px",
@@ -176,22 +177,22 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
                     width: 40,
                     height: 40,
                     borderRadius: 12,
-                    background: "linear-gradient(135deg,#FBEEF2,#F3D9E3)",
-                    border: "1px solid #F0E2E7",
+                    background: `linear-gradient(135deg,${COLOR.tintRose},${COLOR.tintRoseDeep})`,
+                    border: `1px solid ${COLOR.borderSoft}`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     flex: "none",
                   }}
                 >
-                  <CalendarHeart size={20} strokeWidth={1.6} color="#B7899A" />
+                  <CalendarHeart size={20} strokeWidth={1.6} color={COLOR.accentInk} />
                 </span>
                 <span
                   style={{
                     fontSize: FONT_SIZE.micro,
                     fontWeight: 600,
                     letterSpacing: "0.24em",
-                    color: "#C6A5B2",
+                    color: COLOR.accentInk,
                   }}
                 >
                   EVENT
@@ -202,7 +203,7 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
                   fontSize: FONT_SIZE.heading,
                   fontWeight: 600,
                   letterSpacing: "0.08em",
-                  color: "#5C4A4A",
+                  color: COLOR.ink,
                 }}
               >
                 {p.name}
@@ -213,14 +214,14 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
                   alignItems: "center",
                   gap: 6,
                   fontSize: FONT_SIZE.caption,
-                  color: "#8C7676",
+                  color: COLOR.inkSoft,
                   letterSpacing: "0.08em",
                 }}
               >
                 <CalendarDays
                   size={13}
                   strokeWidth={1.7}
-                  color="#B08A99"
+                  color={COLOR.accentInk}
                   aria-hidden="true"
                   style={{ flex: "none" }}
                 />
@@ -233,15 +234,28 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
                   alignItems: "center",
                   gap: 6,
                   fontSize: FONT_SIZE.caption,
-                  color: "#B08A99",
+                  color: COLOR.accentInk,
                   letterSpacing: "0.06em",
-                  borderTop: "1px dashed #F0E2E7",
+                  borderTop: `1px dashed ${COLOR.borderSoft}`,
                   paddingTop: 10,
                   width: "100%",
                 }}
               >
                 <Mail size={13} strokeWidth={1.7} aria-hidden="true" style={{ flex: "none" }} />
-                お手紙 {p.letterCount} 通
+                <span>
+                  お手紙{" "}
+                  <strong
+                    style={{
+                      fontSize: FONT_SIZE.bodySm,
+                      fontWeight: 700,
+                      color: COLOR.ink,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {p.letterCount}
+                  </strong>{" "}
+                  通
+                </span>
               </span>
             </button>
           ))}

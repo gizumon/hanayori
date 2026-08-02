@@ -15,13 +15,12 @@ import {
   updateDisplayName,
   type User,
 } from "@/lib/firebase/auth";
+import { api } from "./apiClient";
+import { copyText } from "@/lib/clipboard";
 import { FONTS } from "./constants";
-import {
-  printAllEscortCards as printAllEscortCardsSheet,
-  printErrorHtml,
-  printLoadingHtml,
-} from "./escortPrint";
+import { printAllEscortCards as printAllEscortCardsSheet } from "./escortPrint";
 import { cardNameFor, escortGeom, escortNameFor, geom } from "./geometry";
+import { printAllCards as printAllCardsSheet } from "./qrCardPrint";
 import { uploadIfDataUrl } from "./uploadImage";
 import { IMAGE_MAX_WIDTH, encodeCanvas } from "./imageEncode";
 import type {
@@ -39,20 +38,12 @@ import type {
 } from "./types";
 
 const EDITOR_TABS = ["letter", "card", "escort"] as const;
-const SETTINGS_TABS = ["general", "card", "escort"] as const;
+const SETTINGS_TABS = ["general", "card", "escort", "members"] as const;
 const PREVIEW_KINDS = ["qr", "escort"] as const;
-
-async function api<T>(input: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(input, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.error || `${res.status} ${res.statusText}`);
-  }
-  return res.json();
-}
+/** 編集ドロワーの `edit` クエリに載せる、新規作成モードを表す特別な値。 */
+const NEW_LETTER_ID = "__new__";
+/** カード画像保存時のキャプチャ目標幅(px)。一括印刷と同等の解像度になる値。 */
+const CAPTURE_TARGET_PX = 1920;
 
 async function establishSession(user: User) {
   const idToken = await user.getIdToken();
@@ -97,6 +88,8 @@ export function useLetterStudio() {
   // --- クライアント側データ(URL には載せない)---
   const [authed, setAuthed] = useState(false);
   const [userName, setUserName] = useState("");
+  /** ログイン中の uid。手紙の作成者が自分かどうかの判定に使う。 */
+  const [userUid, setUserUid] = useState<string | null>(null);
   const [projects, setProjects] = useState<EventSummary[]>([]);
   // 手紙一覧はイベント単位でスコープする。lettersFor が現在の eventId と一致
   // するときだけ lettersRaw を採用し、切替時の「クリア」を synchronous な
@@ -121,6 +114,7 @@ export function useLetterStudio() {
   const [creatingBulk, setCreatingBulk] = useState(false);
   const [deletingLetter, setDeletingLetter] = useState(false);
   const [printingAllEscort, setPrintingAllEscort] = useState(false);
+  const [printingAllCards, setPrintingAllCards] = useState(false);
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -157,6 +151,7 @@ export function useLetterStudio() {
       if (!user) {
         setAuthed(false);
         setUserName("");
+        setUserUid(null);
         setProjects([]);
         setLettersFor(null);
         setLettersRaw([]);
@@ -165,6 +160,7 @@ export function useLetterStudio() {
       }
       setAuthed(true);
       setUserName(user.displayName || user.email?.split("@")[0] || "");
+      setUserUid(user.uid);
       setHydrated(true);
       try {
         await refreshEvents();
@@ -270,10 +266,12 @@ export function useLetterStudio() {
     router.push(curP ? `/events/${curP}` : "/events");
   }, [curP, router]);
 
+  /** 新規のお手紙を編集ドロワーで開く(1通ぶんの編集と同じドロワー、ヘッダーだけ「作成」表示)。 */
   const newLetter = useCallback(() => {
     if (!curP) return;
-    router.push(`/events/${curP}/letters/new`);
-  }, [curP, router]);
+    void setTab("letter");
+    void setEditId(NEW_LETTER_ID);
+  }, [curP, setEditId, setTab]);
 
   const openBulkEdit = useCallback(() => {
     if (!curP) return;
@@ -496,6 +494,38 @@ export function useLetterStudio() {
     [curP, toast]
   );
 
+  /**
+   * 編集ドロワーの新規作成モードから1通を作る。作成できたら `edit` クエリを
+   * その手紙の id に差し替え、ドロワーは開いたまま(以降は通常の編集)続ける。
+   */
+  const createLetterFromDrawer = useCallback(
+    async (payload: Omit<BulkLetterPatch, "id">): Promise<Letter | null> => {
+      if (!curP) return null;
+      if (!payload.to?.trim()) {
+        toast("宛名を入力してください");
+        return null;
+      }
+      try {
+        const [photo, escortPhoto] = await Promise.all([
+          uploadIfDataUrl(payload.photo),
+          uploadIfDataUrl(payload.escortPhoto),
+        ]);
+        const data = await api<{ letter: Letter }>(`/api/events/${curP}/letters`, {
+          method: "POST",
+          body: JSON.stringify({ ...payload, photo, escortPhoto }),
+        });
+        setLettersRaw((ls) => ls.concat([data.letter]));
+        void setEditId(data.letter.id);
+        toast("保存しました");
+        return data.letter;
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "保存に失敗しました");
+        return null;
+      }
+    },
+    [curP, setEditId, toast]
+  );
+
   /** 宛名だけの手紙をまとめて作る。成功したら作成件数を返す。 */
   const createLettersBulk = useCallback(
     async (names: string[]): Promise<number> => {
@@ -573,23 +603,8 @@ export function useLetterStudio() {
 
   const copyLink = useCallback(
     async (id: string) => {
-      const url = letterUrl(id);
-      try {
-        await navigator.clipboard.writeText(url);
-        toast("リンクをコピーしました");
-      } catch {
-        const ta = document.createElement("textarea");
-        ta.value = url;
-        document.body.appendChild(ta);
-        ta.select();
-        try {
-          document.execCommand("copy");
-          toast("リンクをコピーしました");
-        } catch {
-          toast("コピーに失敗しました");
-        }
-        ta.remove();
-      }
+      const ok = await copyText(letterUrl(id));
+      toast(ok ? "リンクをコピーしました" : "コピーに失敗しました");
     },
     [letterUrl, toast]
   );
@@ -601,127 +616,52 @@ export function useLetterStudio() {
       if (!ref.current) return null;
       const { default: html2canvas } = await import("html2canvas");
       if (document.fonts?.ready) await document.fonts.ready;
-      return html2canvas(ref.current, { scale: 3, useCORS: true, backgroundColor: null });
+      // 画面上のカードはモーダル幅(スマホでは vw 上限で数百pxまで縮む)に
+      // 依存するため、固定 scale だと保存画像の解像度が画面サイズ任せになる。
+      // 常に一定の出力幅(一括印刷と同等)になるよう表示幅から逆算する。
+      const scale = Math.max(3, CAPTURE_TARGET_PX / ref.current.offsetWidth);
+      return html2canvas(ref.current, { scale, useCORS: true, backgroundColor: null });
     },
     []
   );
 
-  const saveCard = useCallback(async () => {
-    toast("画像を作成しています…");
-    const canvas = await captureCard();
-    if (!canvas) {
-      toast("画像の作成に失敗しました");
-      return;
-    }
-    const a = document.createElement("a");
-    a.download = "qr-card.png";
-    a.href = canvas.toDataURL("image/png");
-    a.click();
-    toast("保存しました");
-  }, [captureCard, toast]);
+  /** 任意のカードDOM(モーダル内・確認タブの各アイテムなど)を画像として保存する。 */
+  const saveCardImage = useCallback(
+    async (ref: React.RefObject<HTMLDivElement | null>, filename: string) => {
+      toast("画像を作成しています…");
+      const canvas = await captureCard(ref);
+      if (!canvas) {
+        toast("画像の作成に失敗しました");
+        return;
+      }
+      const a = document.createElement("a");
+      a.download = filename;
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+      toast("保存しました");
+    },
+    [captureCard, toast]
+  );
 
-  const printCard = useCallback(async () => {
-    // モバイル(特に iOS Safari)は非同期処理を挟んだ後の window.open を
-    // 「ユーザー操作直後」とみなさずブロックすることがあるため、キャプチャの
-    // 前にウィンドウを確保しておき、準備画面はそのウィンドウ内に表示する。
-    const w = window.open("", "_blank");
-    if (!w) {
-      toast("ポップアップがブロックされました");
-      return;
-    }
-    w.document.write(
-      printLoadingHtml({
-        windowTitle: "QRカード印刷",
-        title: "QRカードを準備中です",
-        sub: "もうすこしで完成します",
-      })
-    );
-    w.document.close();
-    toast("印刷を準備しています…");
-    const canvas = await captureCard();
-    if (w.closed) return;
-    if (!canvas) {
-      toast("印刷の準備に失敗しました");
-      w.document.open();
-      w.document.write(
-        printErrorHtml({ windowTitle: "QRカード印刷", message: "時間をおいて、もう一度<br/>お試しください" })
-      );
-      w.document.close();
-      return;
-    }
-    const dims = cardConf ? geom(cardConf, "#ccc").printDims : "width:91mm;height:55mm";
-    w.document.open();
-    w.document.write(
-      `<html><head><title>QRカード印刷</title><style>@page{size:auto;margin:10mm}body{margin:0;display:flex;justify-content:center;padding-top:10mm}img{${dims}}</style></head><body><img src="${canvas.toDataURL(
-        "image/png"
-      )}" onload="setTimeout(function(){window.print()},200)"></body></html>`
-    );
-    w.document.close();
-  }, [cardConf, captureCard, toast]);
+  const saveCard = useCallback(
+    () => saveCardImage(cardRef, "qr-card.png"),
+    [saveCardImage, cardRef]
+  );
 
-  const saveEscortCard = useCallback(async () => {
-    toast("画像を作成しています…");
-    const canvas = await captureCard(escortCardRef);
-    if (!canvas) {
-      toast("画像の作成に失敗しました");
-      return;
-    }
-    const a = document.createElement("a");
-    a.download = "escort-card.png";
-    a.href = canvas.toDataURL("image/png");
-    a.click();
-    toast("保存しました");
-  }, [captureCard, toast]);
-
-  const printEscortCard = useCallback(async () => {
-    // printCard と同様、キャプチャ前にウィンドウを確保してモバイルでの
-    // ポップアップブロックを避ける。
-    const w = window.open("", "_blank");
-    if (!w) {
-      toast("ポップアップがブロックされました");
-      return;
-    }
-    w.document.write(
-      printLoadingHtml({
-        windowTitle: "エスコートカード印刷",
-        title: "エスコートカードを準備中です",
-        sub: "もうすこしで完成します",
-      })
-    );
-    w.document.close();
-    toast("印刷を準備しています…");
-    const canvas = await captureCard(escortCardRef);
-    if (w.closed) return;
-    if (!canvas) {
-      toast("印刷の準備に失敗しました");
-      w.document.open();
-      w.document.write(
-        printErrorHtml({
-          windowTitle: "エスコートカード印刷",
-          message: "時間をおいて、もう一度<br/>お試しください",
-        })
-      );
-      w.document.close();
-      return;
-    }
-    const dims = escortConf ? escortGeom(escortConf.style).printDims : "width:182mm;height:65mm";
-    w.document.open();
-    w.document.write(
-      `<html><head><title>エスコートカード印刷</title><style>@page{size:auto;margin:10mm}body{margin:0;display:flex;justify-content:center;padding-top:10mm}img{${dims}}</style></head><body><img src="${canvas.toDataURL(
-        "image/png"
-      )}" onload="setTimeout(function(){window.print()},200)"></body></html>`
-    );
-    w.document.close();
-  }, [escortConf, captureCard, toast]);
+  const saveEscortCard = useCallback(
+    () => saveCardImage(escortCardRef, "escort-card.png"),
+    [saveCardImage, escortCardRef]
+  );
 
   /**
-   * 確認タブから「全ゲストぶんをまとめて印刷」。ticket 風のみ対応(A4 1枚に4枚)。
+   * 確認タブから「全ゲストぶんをまとめて印刷」。A4 1枚に敷き詰める
+   * (チケット風は4枚、カード風は91×55mmのマス目に回転して収め10枚)。
    * 進捗は開いた印刷ウィンドウ側に表示されるので、ここでは開始と結果だけ toast する
    * (別タブに切り替わると元タブの toast は見えなくなるため)。
    */
   const printAllEscortCards = useCallback(
     async (targetLetters: Letter[]) => {
-      if (!escortConf || escortConf.style !== "ticket" || targetLetters.length === 0) return;
+      if (!escortConf || targetLetters.length === 0) return;
       if (printingAllEscort) return;
       setPrintingAllEscort(true);
       toast("印刷を準備しています…");
@@ -748,6 +688,44 @@ export function useLetterStudio() {
       }
     },
     [escortConf, curProject, printingAllEscort, toast]
+  );
+
+  /**
+   * 確認タブから席札を「全ゲストぶんをまとめて印刷」。91×55mm(横向き)
+   * はそのまま、55×91mm(縦向き)は回転して、A4 1枚に10枚敷き詰める。
+   * 二つ折り(tent-l / tent-p)は対象外。
+   */
+  const printAllCards = useCallback(
+    async (targetLetters: Letter[]) => {
+      if (!cardConf || targetLetters.length === 0) return;
+      if (printingAllCards) return;
+      setPrintingAllCards(true);
+      toast("印刷を準備しています…");
+      try {
+        const { opened, printed, failed } = await printAllCardsSheet({
+          letters: targetLetters,
+          cardConf,
+          fontFamily: FONTS[cardConf.font].family,
+          fallbackFootText: curProject?.name ?? "",
+          date: curProject?.date ?? "",
+          qrUrlFor: letterUrl,
+        });
+        if (!opened) {
+          toast("ポップアップがブロックされました");
+        } else if (printed === 0) {
+          toast("印刷用の画像を作成できませんでした");
+        } else if (failed > 0) {
+          toast(`${printed}枚を印刷ウィンドウに準備しました(${failed}枚は失敗)`);
+        } else {
+          toast(`${printed}枚を印刷ウィンドウに準備しました`);
+        }
+      } catch {
+        toast("印刷の準備に失敗しました");
+      } finally {
+        setPrintingAllCards(false);
+      }
+    },
+    [cardConf, curProject, printingAllCards, letterUrl, toast]
   );
 
   // アップロードしたらまずクロップモーダルを開く。切り取り確定でドラフトに入る。
@@ -825,13 +803,17 @@ export function useLetterStudio() {
   const escortModal = previewKind === "escort" && preview
     ? letters.find((l) => l.id === preview) ?? null
     : null;
-  // 編集ドロワーの対象。一覧の取得前は null のままで、取得後に解決する。
-  const drawerLetter = editId ? letters.find((l) => l.id === editId) ?? null : null;
+  // 新規作成モード(edit クエリが特別な値)かどうか。
+  const creatingLetter = editId === NEW_LETTER_ID;
+  // 編集ドロワーの対象。一覧の取得前や新規作成モードでは null のまま。
+  const drawerLetter =
+    editId && !creatingLetter ? letters.find((l) => l.id === editId) ?? null : null;
 
   const state = useMemo(
     () => ({
       screen,
       userName,
+      userUid,
       projects,
       curP,
       curL,
@@ -840,6 +822,7 @@ export function useLetterStudio() {
       modalShown: newModal,
       addModal,
       editLetter: drawerLetter,
+      creatingLetter,
       newName,
       newDate,
       toastMsg,
@@ -852,6 +835,7 @@ export function useLetterStudio() {
     [
       screen,
       userName,
+      userUid,
       projects,
       curP,
       curL,
@@ -860,6 +844,7 @@ export function useLetterStudio() {
       newModal,
       addModal,
       drawerLetter,
+      creatingLetter,
       newName,
       newDate,
       toastMsg,
@@ -881,6 +866,7 @@ export function useLetterStudio() {
     escortConf,
     cardRef,
     escortCardRef,
+    refreshEvents,
     goHome,
     openProject,
     backToProject,
@@ -902,16 +888,18 @@ export function useLetterStudio() {
     savingLetter,
     bulkSaveLetters,
     savingBulk,
+    createLetterFromDrawer,
     deleteLetter,
     deletingLetter,
     upPhoto,
     copyLink,
     saveCard,
-    printCard,
     saveEscortCard,
-    printEscortCard,
+    saveCardImage,
     printAllEscortCards,
     printingAllEscort,
+    printAllCards,
+    printingAllCards,
     upEscortPhoto,
     applyEscortCrop,
     cancelEscortCrop,

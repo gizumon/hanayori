@@ -5,6 +5,7 @@ import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent }
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 import { IMAGE_MAX_WIDTH, encodeCanvas } from "./imageEncode";
+import { COLOR } from "@/lib/palette";
 
 interface CropModalProps {
   /** 元画像の dataUrl */
@@ -158,8 +159,8 @@ export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
       width: HANDLE_SIZE,
       height: HANDLE_SIZE,
       borderRadius: "50%",
-      background: "#FFFFFF",
-      border: "2px solid #D3A5B4",
+      background: COLOR.surfaceRaised,
+      border: `2px solid ${COLOR.accent}`,
       boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
       left: mode === "nw" || mode === "sw" ? -half : undefined,
       right: mode === "ne" || mode === "se" ? -half : undefined,
@@ -188,7 +189,7 @@ export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
       <div
         onClick={stop}
         style={{
-          background: "#FFFCF8",
+          background: COLOR.surface,
           borderRadius: 18,
           padding: "20px 22px",
           boxShadow: "0 22px 60px rgba(0,0,0,0.3)",
@@ -198,10 +199,10 @@ export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
           maxWidth: "min(480px,92vw)",
         }}
       >
-        <div style={{ fontSize: FONT_SIZE.body, fontWeight: 600, letterSpacing: "0.1em", color: "#5C4A4A" }}>
+        <div style={{ fontSize: FONT_SIZE.body, fontWeight: 600, letterSpacing: "0.1em", color: COLOR.ink }}>
           写真を切り取る
         </div>
-        <div style={{ fontSize: FONT_SIZE.caption, color: "#8C7676", letterSpacing: "0.05em", marginTop: -6 }}>
+        <div style={{ fontSize: FONT_SIZE.caption, color: COLOR.inkSoft, letterSpacing: "0.05em", marginTop: -6 }}>
           枠をドラッグして位置を、四隅をドラッグして大きさを調整してください
         </div>
         {disp && frame ? (
@@ -258,7 +259,7 @@ export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
                 top: frame.y,
                 width: frame.w,
                 height: frameH,
-                border: "2px solid #FFFFFF",
+                border: `2px solid ${COLOR.surfaceRaised}`,
                 borderRadius: aspect === 1 ? "50%" : 4,
                 cursor: "move",
                 touchAction: "none",
@@ -277,7 +278,7 @@ export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
             </div>
           </div>
         ) : (
-          <div style={{ padding: 40, textAlign: "center", color: "#B4A2A2", fontSize: FONT_SIZE.label }}>
+          <div style={{ padding: 40, textAlign: "center", color: COLOR.inkFaint, fontSize: FONT_SIZE.label }}>
             読み込み中…
           </div>
         )}
@@ -288,9 +289,9 @@ export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
             style={{
               padding: "10px 20px",
               borderRadius: 999,
-              border: "1px solid #EBD9DF",
-              background: "#FFFFFF",
-              color: "#5C4A4A",
+              border: `1px solid ${COLOR.border}`,
+              background: COLOR.surfaceRaised,
+              color: COLOR.ink,
               fontSize: FONT_SIZE.label,
               letterSpacing: "0.06em",
               cursor: "pointer",
@@ -306,8 +307,8 @@ export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
               padding: "10px 24px",
               borderRadius: 999,
               border: "none",
-              background: "#D3A5B4",
-              color: "#FFF9F5",
+              background: COLOR.accent,
+              color: COLOR.onAccent,
               fontSize: FONT_SIZE.label,
               letterSpacing: "0.06em",
               cursor: applying ? "default" : "pointer",

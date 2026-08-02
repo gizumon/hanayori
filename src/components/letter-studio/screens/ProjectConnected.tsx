@@ -14,6 +14,7 @@ export function ProjectConnected() {
     <ProjectScreen
       project={curProject}
       letters={state.letters}
+      currentUid={state.userUid}
       loadingLetters={api.loadingLetters}
       onBack={api.goHome}
       onOpenSettings={() => api.openSettings("general")}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Plus, Search, SquarePen, UserPlus, X } from "lucide-react";
+import { ChevronDown, Plus, Search, SquarePen, UserPlus, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FONTS } from "../constants";
 import { fieldStyle } from "../controls";
@@ -10,6 +10,7 @@ import { EventHeader } from "./EventHeader";
 import { LetterRow } from "./LetterRow";
 import { ListToolbar, type SortOption } from "./ListToolbar";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 const addMenuItemStyle = {
   display: "flex",
@@ -31,7 +32,7 @@ const addMenuIconStyle = {
   width: 30,
   height: 30,
   borderRadius: 9,
-  background: "#F6E9ED",
+  background: COLOR.tintRose,
   flex: "none",
   marginTop: 1,
 };
@@ -40,13 +41,13 @@ const addMenuTitleStyle = {
   fontSize: FONT_SIZE.bodySm,
   fontWeight: 600,
   letterSpacing: "0.04em",
-  color: "#5C4A4A",
+  color: COLOR.ink,
 };
 
 const addMenuCaptionStyle = {
   fontSize: FONT_SIZE.caption,
   letterSpacing: "0.03em",
-  color: "#8C7676",
+  color: COLOR.inkSoft,
   lineHeight: 1.5,
   marginTop: 2,
 };
@@ -60,6 +61,16 @@ const SORT_OPTIONS: SortOption<SortKey>[] = [
 ];
 
 const PAGE_SIZE = 8;
+
+/** 作成者フィルタの「すべて」。uid と衝突しない値にする。 */
+const CREATOR_ALL = "__all__";
+/** 作成者フィルタの「作成者不明」(この機能より前に作られた手紙)。 */
+const CREATOR_UNKNOWN = "__unknown__";
+
+/** 手紙の createdBy をフィルタのキーに落とす。未設定は「不明」にまとめる。 */
+function creatorKeyOf(letter: Letter): string {
+  return letter.createdBy || CREATOR_UNKNOWN;
+}
 
 function sortLetters(letters: Letter[], sort: SortKey): Letter[] {
   const sorted = [...letters];
@@ -81,6 +92,8 @@ function sortLetters(letters: Letter[], sort: SortKey): Letter[] {
 interface ProjectScreenProps {
   project: Project;
   letters: Letter[];
+  /** ログイン中の uid。自分が書いた手紙を「あなた」と表示するために使う。 */
+  currentUid: string | null;
   loadingLetters: boolean;
   onBack: () => void;
   onOpenSettings: () => void;
@@ -101,6 +114,7 @@ interface ProjectScreenProps {
 export function ProjectScreen({
   project,
   letters,
+  currentUid,
   loadingLetters,
   onBack,
   onOpenSettings,
@@ -125,20 +139,61 @@ export function ProjectScreen({
   const [sort, setSort] = useState<SortKey>("createdDesc");
   const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
+  const [creator, setCreator] = useState<string>(CREATOR_ALL);
   const [shown, setShown] = useState(PAGE_SIZE);
+
+  // 1 人だけのイベントでは「誰が書いたか」は自明なので、作成者まわりは一切出さない。
+  const showCreators = project.memberCount > 1;
+
+  /** 作成者の表示名。自分は「あなた」、名前が引けない人は「作成者不明」。 */
+  const creatorLabelOf = (letter: Letter): string => {
+    if (letter.createdBy && letter.createdBy === currentUid) return "あなた";
+    return letter.createdByName || "作成者不明";
+  };
+
+  // 絞り込みの選択肢は、実際に手紙を持っている作成者だけから作る。
+  // メンバー一覧から作ると「1 通も書いていない人」が並んで選びにくくなる。
+  const creatorOptions = useMemo(() => {
+    const byKey = new Map<string, { label: string; count: number }>();
+    for (const letter of letters) {
+      const key = creatorKeyOf(letter);
+      const entry = byKey.get(key);
+      if (entry) entry.count += 1;
+      else byKey.set(key, { label: creatorLabelOf(letter), count: 1 });
+    }
+    const rest = [...byKey.entries()]
+      // 「あなた」を先頭に、残りは名前順。不明は常に末尾。
+      .sort(([aKey, a], [bKey, b]) => {
+        if (aKey === CREATOR_UNKNOWN) return 1;
+        if (bKey === CREATOR_UNKNOWN) return -1;
+        if (aKey === currentUid) return -1;
+        if (bKey === currentUid) return 1;
+        return a.label.localeCompare(b.label, "ja");
+      })
+      .map(([value, { label, count }]) => ({ value, label: `${label}（${count}）` }));
+    return [{ value: CREATOR_ALL, label: "すべての作成者" }, ...rest];
+    // creatorLabelOf は currentUid にしか依存しない。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [letters, currentUid]);
 
   // 入力から300ms経ってから絞り込みに反映する(打鍵のたびに再計算しない)。
   useEffect(() => {
     const timer = setTimeout(() => setQuery(queryInput), 300);
     return () => clearTimeout(timer);
   }, [queryInput]);
-  // 並び替え/検索を変えたら先頭から数え直す(render 中の派生)。
+  // 並び替え/検索/作成者を変えたら先頭から数え直す(render 中の派生)。
   const [prevSort, setPrevSort] = useState(sort);
   const [prevQuery, setPrevQuery] = useState(query);
-  if (prevSort !== sort || prevQuery !== query) {
+  const [prevCreator, setPrevCreator] = useState(creator);
+  if (prevSort !== sort || prevQuery !== query || prevCreator !== creator) {
     setPrevSort(sort);
     setPrevQuery(query);
+    setPrevCreator(creator);
     setShown(PAGE_SIZE);
+  }
+  // 選んでいた作成者の手紙が全部消えたら「すべて」に戻す(空の一覧に固定されないように)。
+  if (creator !== CREATOR_ALL && !creatorOptions.some((o) => o.value === creator)) {
+    setCreator(CREATOR_ALL);
   }
 
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -164,15 +219,17 @@ export function ProjectScreen({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return letters;
-    return letters.filter((l) => {
+    const byCreator =
+      creator === CREATOR_ALL ? letters : letters.filter((l) => creatorKeyOf(l) === creator);
+    if (!q) return byCreator;
+    return byCreator.filter((l) => {
       const to = l.to.toLowerCase();
       const card = cardNameFor(l).toLowerCase();
       const escort = escortNameFor(l).toLowerCase();
       const table = (l.tableNo ?? "").toLowerCase();
       return to.includes(q) || card.includes(q) || escort.includes(q) || table.includes(q);
     });
-  }, [letters, query, cardNameFor, escortNameFor]);
+  }, [letters, query, creator, cardNameFor, escortNameFor]);
   const sorted = useMemo(() => sortLetters(filtered, sort), [filtered, sort]);
   const visible = sorted.slice(0, shown);
 
@@ -204,8 +261,8 @@ export function ProjectScreen({
               padding: "12px 18px 12px 22px",
               borderRadius: 999,
               border: "none",
-              background: "#D3A5B4",
-              color: "#FFF9F5",
+              background: COLOR.accent,
+              color: COLOR.onAccent,
               fontSize: FONT_SIZE.body,
               fontWeight: 600,
               letterSpacing: "0.06em",
@@ -235,8 +292,8 @@ export function ProjectScreen({
                 left: 0,
                 zIndex: 10,
                 width: "min(300px,88vw)",
-                background: "#FFFFFF",
-                border: "1px solid #EBD9DF",
+                background: COLOR.surfaceRaised,
+                border: `1px solid ${COLOR.border}`,
                 borderRadius: 14,
                 boxShadow: "0 14px 38px rgba(150,110,130,0.24)",
                 padding: 6,
@@ -256,7 +313,7 @@ export function ProjectScreen({
                 style={addMenuItemStyle}
               >
                 <span style={addMenuIconStyle}>
-                  <SquarePen size={15} strokeWidth={1.8} color="#B08A99" aria-hidden="true" />
+                  <SquarePen size={15} strokeWidth={1.8} color={COLOR.accentInk} aria-hidden="true" />
                 </span>
                 <span style={{ display: "flex", flexDirection: "column" }}>
                   <span style={addMenuTitleStyle}>1通ずつ書く</span>
@@ -274,7 +331,7 @@ export function ProjectScreen({
                 style={addMenuItemStyle}
               >
                 <span style={addMenuIconStyle}>
-                  <UserPlus size={15} strokeWidth={1.8} color="#B08A99" aria-hidden="true" />
+                  <UserPlus size={15} strokeWidth={1.8} color={COLOR.accentInk} aria-hidden="true" />
                 </span>
                 <span style={{ display: "flex", flexDirection: "column" }}>
                   <span style={addMenuTitleStyle}>名前をまとめて追加</span>
@@ -291,6 +348,26 @@ export function ProjectScreen({
             sortValue={sort}
             sortOptions={SORT_OPTIONS}
             onSortChange={setSort}
+            filter={
+              // 作成者が実質 1 人なら選択肢にならないので出さない。
+              showCreators && creatorOptions.length > 2
+                ? {
+                    value: creator,
+                    options: creatorOptions,
+                    onChange: setCreator,
+                    ariaLabel: "作成者で絞り込む",
+                    icon: (
+                      <UserRound
+                        size={13}
+                        strokeWidth={1.8}
+                        color={COLOR.accentInk}
+                        aria-hidden="true"
+                        style={{ flex: "none" }}
+                      />
+                    ),
+                  }
+                : undefined
+            }
           />
         )}
         {!loadingLetters && letters.length > 0 && (
@@ -304,7 +381,7 @@ export function ProjectScreen({
                 left: 12,
                 top: "50%",
                 transform: "translateY(-50%)",
-                color: "#B08A99",
+                color: COLOR.accentInk,
                 pointerEvents: "none",
               }}
             />
@@ -338,7 +415,7 @@ export function ProjectScreen({
                   borderRadius: "50%",
                   border: "none",
                   background: "transparent",
-                  color: "#B08A99",
+                  color: COLOR.accentInk,
                   cursor: "pointer",
                 }}
               >
@@ -352,7 +429,7 @@ export function ProjectScreen({
             style={{
               margin: "2px 0 4px",
               fontSize: FONT_SIZE.bodySm,
-              color: "#B4A2A2",
+              color: COLOR.inkFaint,
               letterSpacing: "0.04em",
             }}
           >
@@ -364,11 +441,11 @@ export function ProjectScreen({
             style={{
               margin: "2px 0 4px",
               fontSize: FONT_SIZE.bodySm,
-              color: "#B4A2A2",
+              color: COLOR.inkFaint,
               letterSpacing: "0.04em",
             }}
           >
-            検索条件に一致するお手紙が見つかりませんでした。
+            条件に一致するお手紙が見つかりませんでした。
           </p>
         )}
         {loadingLetters &&
@@ -377,22 +454,18 @@ export function ProjectScreen({
               key={i}
               style={{
                 display: "flex",
-                alignItems: "center",
-                gap: 16,
-                background: "#FFFCF8",
-                borderRadius: 14,
-                padding: "16px 20px",
+                flexDirection: "column",
+                gap: 8,
+                background: COLOR.surface,
+                border: `1px solid ${COLOR.borderSoft}`,
+                padding: "16px 16px 14px 32px",
                 boxShadow: "0 6px 20px rgba(150,110,130,0.12)",
               }}
             >
-              <div
-                className={styles.skeleton}
-                style={{ width: 42, height: 42, borderRadius: 12, flex: "none" }}
-              />
-              <div style={{ flex: 1, minWidth: 160, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div className={styles.skeleton} style={{ height: 16, width: "30%" }} />
-                <div className={styles.skeleton} style={{ height: 12, width: "55%" }} />
-              </div>
+              <div className={styles.skeleton} style={{ height: 18, width: "30%" }} />
+              <div className={styles.skeleton} style={{ height: 12, width: "70%" }} />
+              <div className={styles.skeleton} style={{ height: 12, width: "45%" }} />
+              <div className={styles.skeleton} style={{ height: 20, width: "38%", borderRadius: 999 }} />
             </div>
           ))}
         {!loadingLetters &&
@@ -405,6 +478,8 @@ export function ProjectScreen({
               pFont={pFont}
               cFont={cFont}
               cardName={cardNameFor(l)}
+              escortName={escortNameFor(l)}
+              creatorLabel={showCreators ? creatorLabelOf(l) : null}
               letterUrl={letterUrl(l.id)}
               deletingLetter={deletingLetter}
               onEdit={() => onEditLetter(l)}
@@ -424,9 +499,9 @@ export function ProjectScreen({
               width: "100%",
               padding: "13px 20px",
               borderRadius: 999,
-              border: "1px solid #EBD9DF",
-              background: "#FFFFFF",
-              color: "#5C4A4A",
+              border: `1px solid ${COLOR.border}`,
+              background: COLOR.surfaceRaised,
+              color: COLOR.ink,
               fontSize: FONT_SIZE.bodySm,
               letterSpacing: "0.08em",
               cursor: "pointer",
@@ -443,12 +518,12 @@ export function ProjectScreen({
           fontSize: FONT_SIZE.body,
           fontWeight: 600,
           letterSpacing: "0.12em",
-          color: "#8C7676",
+          color: COLOR.inkSoft,
         }}
       >
         全手紙共通ページ
       </h4>
-      <p style={{ margin: "0 0 14px", fontSize: FONT_SIZE.caption, color: "#B4A2A2", letterSpacing: "0.05em" }}>
+      <p style={{ margin: "0 0 14px", fontSize: FONT_SIZE.caption, color: COLOR.inkFaint, letterSpacing: "0.05em" }}>
         お手紙の最後からリンクできる共通コンテンツ(近日公開)
       </p>
       <div
@@ -464,10 +539,10 @@ export function ProjectScreen({
             key={label}
             style={{
               background: "rgba(255,252,248,0.55)",
-              border: "1px dashed #E3CBD4",
+              border: `1px dashed ${COLOR.borderDash}`,
               borderRadius: 14,
               padding: 18,
-              color: "#B4A2A2",
+              color: COLOR.inkFaint,
             }}
           >
             <div style={{ fontSize: FONT_SIZE.body, letterSpacing: "0.1em", marginBottom: 4 }}>{label}</div>

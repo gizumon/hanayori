@@ -11,6 +11,7 @@ import type { CardGeometry, EscortGeometry } from "./geometry";
 import type { CardConfig, Draft, EditorTab, EscortConfig, Project } from "./types";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 interface LetterPreviewModalProps {
   project: Project;
@@ -115,8 +116,8 @@ export function LetterPreviewModal({
                     cursor: "pointer",
                     fontSize: FONT_SIZE.bodySm,
                     letterSpacing: "0.08em",
-                    background: tab === t.key ? "#D3A5B4" : "transparent",
-                    color: tab === t.key ? "#FFF9F5" : "#5C4A4A",
+                    background: tab === t.key ? COLOR.accent : "transparent",
+                    color: tab === t.key ? COLOR.onAccent : COLOR.ink,
                     fontWeight: tab === t.key ? 600 : 400,
                   }}
                 >
@@ -136,7 +137,7 @@ export function LetterPreviewModal({
               borderRadius: "50%",
               border: "none",
               background: "rgba(255,249,245,0.9)",
-              color: "#5C4A4A",
+              color: COLOR.ink,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",

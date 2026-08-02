@@ -15,6 +15,7 @@ import type { BulkLetterPatch, CardConfig, EditorTab, EscortConfig, Letter, Proj
 import { useUnsavedGuard } from "./useUnsavedGuard";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 /** ドロワーで編集できるフィールド。「新規作成」画面と揃えている(本文写真は未実装)。 */
 const EDITABLE = [
@@ -31,8 +32,20 @@ const EDITABLE = [
   "escortPhotoRatio",
 ] as const;
 
+/** 新規作成モードの作業コピーの初期値。 */
+const EMPTY_LETTER: Letter = {
+  id: "",
+  to: "",
+  body: "",
+  theme: "rose",
+  photo: null,
+  createdAt: "",
+  updatedAt: "",
+};
+
 interface LetterEditDrawerProps {
-  letter: Letter;
+  /** null = 新規作成モード(「お手紙を作る」から開く)。ヘッダー表示だけが変わる。 */
+  letter: Letter | null;
   /** 前後移動の順序。確認タブ・一覧の並びをそのまま渡す。 */
   letters: Letter[];
   project: Project;
@@ -43,6 +56,8 @@ interface LetterEditDrawerProps {
   onSelectLetter: (id: string) => void;
   onClose: () => void;
   onSave: (patches: BulkLetterPatch[]) => Promise<boolean>;
+  /** 新規作成モードの保存。作成できたら手紙を返す(以降は通常の編集として続く)。 */
+  onCreate: (payload: Omit<BulkLetterPatch, "id">) => Promise<Letter | null>;
   saving: boolean;
   letterUrl: (id: string) => string;
 }
@@ -51,6 +66,7 @@ interface LetterEditDrawerProps {
  * 1 通ぶんをその場で直すドロワー。確認タブやお手紙一覧から、見ていた対象
  * (お手紙 / 席札 / エスコート)のタブが選ばれた状態で開く。編集画面へ遷移せずに
  * プレビューを見ながら直し、「保存して次へ」で連続処理できる。
+ * `letter` が null の間は「お手紙を作る」の新規作成モード(ヘッダーのみ表示を変える)。
  */
 export function LetterEditDrawer({
   letter,
@@ -63,17 +79,22 @@ export function LetterEditDrawer({
   onSelectLetter,
   onClose,
   onSave,
+  onCreate,
   saving,
   letterUrl,
 }: LetterEditDrawerProps) {
-  const [local, setLocal] = useState<Letter>(letter);
-  const [saved, setSaved] = useState<Letter>(letter);
+  const isCreate = letter === null;
+  const initial = letter ?? EMPTY_LETTER;
+  const [local, setLocal] = useState<Letter>(initial);
+  const [saved, setSaved] = useState<Letter>(initial);
   // 対象が変わったら作業コピーを差し替える(render 中の派生。effect は不要)。
-  const [seedId, setSeedId] = useState(letter.id);
-  if (seedId !== letter.id) {
-    setSeedId(letter.id);
-    setLocal(letter);
-    setSaved(letter);
+  // 新規作成 -> 作成成功後は letter が実体に変わるので、そのタイミングで
+  // 作業コピーも実体(サーバーから返った値)に揃う。
+  const [seedId, setSeedId] = useState(initial.id);
+  if (seedId !== initial.id) {
+    setSeedId(initial.id);
+    setLocal(initial);
+    setSaved(initial);
   }
 
   const changed = EDITABLE.filter((k) => (local[k] ?? null) !== (saved[k] ?? null));
@@ -104,7 +125,7 @@ export function LetterEditDrawer({
     setEscortCropSrc(null);
   };
 
-  const index = letters.findIndex((l) => l.id === letter.id);
+  const index = letters.findIndex((l) => l.id === local.id);
   const prev = index > 0 ? letters[index - 1] : null;
   const next = index >= 0 && index < letters.length - 1 ? letters[index + 1] : null;
 
@@ -119,8 +140,19 @@ export function LetterEditDrawer({
   // 無効化された対象のタブが URL に残っていても、お手紙にフォールバックする。
   const curTab = tabs.some((t) => t.key === tab) ? tab : "letter";
 
-  /** 変更のあったフィールドだけをパッチにする。 */
-  async function persist(): Promise<boolean> {
+  /** 新規作成モードは全フィールドを作成ペイロードとして送る。 */
+  async function persistNew(): Promise<boolean> {
+    const payload: Record<string, unknown> = {};
+    EDITABLE.forEach((k) => {
+      payload[k] = local[k] ?? null;
+    });
+    const created = await onCreate(payload as Omit<BulkLetterPatch, "id">);
+    if (created) setSaved(local);
+    return created !== null;
+  }
+
+  /** 編集モードは変更のあったフィールドだけをパッチにする。 */
+  async function persistExisting(): Promise<boolean> {
     if (!dirty) return true;
     const patch: Record<string, unknown> = { id: local.id };
     changed.forEach((k) => {
@@ -132,8 +164,10 @@ export function LetterEditDrawer({
   }
 
   async function saveAndNext() {
-    const ok = await persist();
+    const ok = isCreate ? await persistNew() : await persistExisting();
     if (!ok) return;
+    // 新規作成後はドロワーを開いたまま(letter が実体に切り替わって通常の編集になる)。
+    if (isCreate) return;
     if (next) onSelectLetter(next.id);
     else onClose();
   }
@@ -149,18 +183,18 @@ export function LetterEditDrawer({
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label="お手紙を直す"
+        aria-label={isCreate ? "お手紙を作る" : "お手紙を直す"}
         className={styles.drawerPanel}
       >
         <span aria-hidden="true" className={styles.drawerGrabber} />
-        {/* ヘッダー: 対象名 + 前後移動 */}
+        {/* ヘッダー: 新規作成モードはタイトルのみ、編集モードは対象名 + 前後移動 */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: 10,
             padding: "13px 16px",
-            borderBottom: "1px solid #F2E6EB",
+            borderBottom: `1px solid ${COLOR.divider}`,
             flex: "none",
           }}
         >
@@ -185,41 +219,43 @@ export function LetterEditDrawer({
               whiteSpace: "nowrap",
             }}
           >
-            {local.to.trim() || "(宛名未設定)"}
+            {isCreate ? "お手紙を作る" : local.to.trim() || "(宛名未設定)"}
           </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "none" }}>
-            <button
-              type="button"
-              onClick={() => goto(prev)}
-              disabled={!prev}
-              aria-label="前のお手紙"
-              className={styles.btnOutline}
-              style={{ ...iconBtn, opacity: prev ? 1 : 0.35, cursor: prev ? "pointer" : "default" }}
-            >
-              ‹
-            </button>
-            <span
-              style={{
-                fontSize: FONT_SIZE.caption,
-                color: "#8C7676",
-                fontVariantNumeric: "tabular-nums",
-                minWidth: 52,
-                textAlign: "center",
-              }}
-            >
-              {index + 1} / {letters.length}
-            </span>
-            <button
-              type="button"
-              onClick={() => goto(next)}
-              disabled={!next}
-              aria-label="次のお手紙"
-              className={styles.btnOutline}
-              style={{ ...iconBtn, opacity: next ? 1 : 0.35, cursor: next ? "pointer" : "default" }}
-            >
-              ›
-            </button>
-          </div>
+          {!isCreate && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "none" }}>
+              <button
+                type="button"
+                onClick={() => goto(prev)}
+                disabled={!prev}
+                aria-label="前のお手紙"
+                className={styles.btnOutline}
+                style={{ ...iconBtn, opacity: prev ? 1 : 0.35, cursor: prev ? "pointer" : "default" }}
+              >
+                ‹
+              </button>
+              <span
+                style={{
+                  fontSize: FONT_SIZE.caption,
+                  color: COLOR.inkSoft,
+                  fontVariantNumeric: "tabular-nums",
+                  minWidth: 52,
+                  textAlign: "center",
+                }}
+              >
+                {index + 1} / {letters.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => goto(next)}
+                disabled={!next}
+                aria-label="次のお手紙"
+                className={styles.btnOutline}
+                style={{ ...iconBtn, opacity: next ? 1 : 0.35, cursor: next ? "pointer" : "default" }}
+              >
+                ›
+              </button>
+            </div>
+          )}
         </div>
 
         <div
@@ -260,8 +296,8 @@ export function LetterEditDrawer({
                       cursor: "pointer",
                       fontSize: FONT_SIZE.bodySm,
                       letterSpacing: "0.08em",
-                      background: active ? "#FFFCF8" : "transparent",
-                      color: active ? "#5C4A4A" : "#A38A93",
+                      background: active ? COLOR.surface : "transparent",
+                      color: active ? COLOR.ink : COLOR.inkMuted,
                       fontWeight: active ? 600 : 400,
                       boxShadow: active ? "0 2px 8px rgba(150,110,130,0.18)" : "none",
                     }}
@@ -304,7 +340,7 @@ export function LetterEditDrawer({
                 note={cardConf.note}
                 footText={cardConf.nameOverride.trim() || project.name}
                 date={project.date || ""}
-                qrUrl={letterUrl(local.id)}
+                qrUrl={local.id ? letterUrl(local.id) : ""}
                 boxShadow="0 14px 40px rgba(150,110,130,0.22)"
               />
             </div>
@@ -359,7 +395,7 @@ export function LetterEditDrawer({
             alignItems: "center",
             gap: 10,
             padding: "12px 16px calc(12px + env(safe-area-inset-bottom))",
-            borderTop: "1px solid #F2E6EB",
+            borderTop: `1px solid ${COLOR.divider}`,
           }}
         >
           <span
@@ -367,7 +403,7 @@ export function LetterEditDrawer({
               flex: 1,
               minWidth: 0,
               fontSize: FONT_SIZE.caption,
-              color: dirty ? "#C98A3F" : "#B4A2A2",
+              color: dirty ? COLOR.change : COLOR.inkFaint,
               letterSpacing: "0.04em",
             }}
           >
@@ -382,8 +418,8 @@ export function LetterEditDrawer({
               padding: "11px 22px",
               borderRadius: 999,
               border: "none",
-              background: "#D3A5B4",
-              color: "#FFF9F5",
+              background: COLOR.accent,
+              color: COLOR.onAccent,
               fontSize: FONT_SIZE.bodySm,
               letterSpacing: "0.06em",
               boxShadow: "0 6px 16px rgba(211,165,180,0.4)",
@@ -391,7 +427,7 @@ export function LetterEditDrawer({
               cursor: saving ? "default" : "pointer",
             }}
           >
-            {saving ? "保存中…" : next ? "保存して次へ →" : "保存して閉じる"}
+            {saving ? "保存中…" : isCreate ? "作成する" : next ? "保存して次へ →" : "保存して閉じる"}
           </button>
         </div>
       </aside>
@@ -421,9 +457,9 @@ const iconBtn = {
   width: 32,
   height: 32,
   borderRadius: "50%",
-  border: "1px solid #EBD9DF",
-  background: "#FFFFFF",
-  color: "#5C4A4A",
+  border: `1px solid ${COLOR.border}`,
+  background: COLOR.surfaceRaised,
+  color: COLOR.ink,
   fontSize: FONT_SIZE.bodySm,
   lineHeight: 1,
   display: "flex",

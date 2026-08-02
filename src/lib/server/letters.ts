@@ -4,6 +4,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { eventsCollection, lettersCollection } from "./collections";
 import { normalizeEventDoc, requireEventMembership } from "./events";
 import { HttpError } from "./http-error";
+import { getUserProfiles } from "./users";
 import type {
   EscortFieldsDoc,
   FontKey,
@@ -15,6 +16,10 @@ import type {
 
 export interface LetterJson {
   id: string;
+  /** 作成者の uid。旧データには無いので null。 */
+  createdBy: string | null;
+  /** 作成者の表示名。`withCreatorNames` が users から解決して埋める。 */
+  createdByName: string | null;
   to: string;
   body: string;
   theme: ThemeKey;
@@ -71,6 +76,8 @@ function serializeLetter(id: string, data: LetterDoc): LetterJson {
   const escort = data.escort;
   return {
     id,
+    createdBy: data.createdBy ?? null,
+    createdByName: null,
     to: data.to,
     body: data.body,
     theme: data.theme,
@@ -99,6 +106,28 @@ interface EscortInput {
   escortPhotoRatio?: number;
 }
 
+/**
+ * `createdBy` の uid を表示名に解決して埋める。
+ *
+ * 手紙側に名前を複製せず、返すときに users から引く(挙式日・フォントを手紙に
+ * 持たせないのと同じ方針)。distinct な uid をまとめて 1 回の `getAll` で引くので、
+ * 何通あっても往復は 1 回。プロフィールが無い uid は null のままにして、
+ * 表示側で「作成者不明」にフォールバックさせる。
+ */
+async function withCreatorNames(letters: LetterJson[]): Promise<LetterJson[]> {
+  const uids = [...new Set(letters.map((l) => l.createdBy).filter((v): v is string => !!v))];
+  if (uids.length === 0) return letters;
+  const profiles = await getUserProfiles(uids);
+  return letters.map((letter) => {
+    if (!letter.createdBy) return letter;
+    const profile = profiles.get(letter.createdBy);
+    return {
+      ...letter,
+      createdByName: profile?.displayName?.trim() || profile?.email?.split("@")[0] || null,
+    };
+  });
+}
+
 async function requireLetterMembership(uid: string, letterId: string) {
   const snap = await lettersCollection().doc(letterId).get();
   const data = snap.data();
@@ -116,7 +145,7 @@ export async function listLettersForEvent(
     .where("eventId", "==", eventId)
     .orderBy("createdAt", "asc")
     .get();
-  return snap.docs.map((doc) => serializeLetter(doc.id, doc.data()));
+  return withCreatorNames(snap.docs.map((doc) => serializeLetter(doc.id, doc.data())));
 }
 
 export interface CreateLetterInput extends EscortInput {
@@ -144,6 +173,7 @@ export async function createLetter(
     updatedAt: FieldValue;
   } = {
     eventId,
+    createdBy: uid,
     to: input.to,
     body: input.body,
     theme: input.theme,
@@ -156,7 +186,8 @@ export async function createLetter(
   };
   await lettersCollection().doc(id).set(doc as unknown as LetterDoc);
   const snap = await lettersCollection().doc(id).get();
-  return serializeLetter(snap.id, snap.data()!);
+  const [letter] = await withCreatorNames([serializeLetter(snap.id, snap.data()!)]);
+  return letter;
 }
 
 /**
@@ -183,6 +214,7 @@ export async function createLettersBulk(
     const ref = col.doc(ulid());
     batch.set(ref, {
       eventId,
+      createdBy: uid,
       to,
       body: "",
       theme: "rose",
@@ -198,7 +230,7 @@ export async function createLettersBulk(
   await batch.commit();
 
   const snaps = await Promise.all(refs.map((r) => r.get()));
-  return snaps.map((s) => serializeLetter(s.id, s.data()!));
+  return withCreatorNames(snaps.map((s) => serializeLetter(s.id, s.data()!)));
 }
 
 export interface UpdateLetterInput extends EscortInput {
@@ -264,7 +296,8 @@ export async function updateLetter(
   const { ref, data } = await requireLetterMembership(uid, letterId);
   await ref.update(buildLetterUpdate(patch, data));
   const snap = await ref.get();
-  return serializeLetter(snap.id, snap.data()!);
+  const [letter] = await withCreatorNames([serializeLetter(snap.id, snap.data()!)]);
+  return letter;
 }
 
 /** 一括更新のパッチ 1 件。id で対象を指定し、残りは部分更新。 */
@@ -300,7 +333,7 @@ export async function bulkUpdateLetters(
   await batch.commit();
 
   const updated = await Promise.all(refs.map((r) => r.get()));
-  return updated.map((s) => serializeLetter(s.id, s.data()!));
+  return withCreatorNames(updated.map((s) => serializeLetter(s.id, s.data()!)));
 }
 
 export async function deleteLetter(uid: string, letterId: string): Promise<void> {

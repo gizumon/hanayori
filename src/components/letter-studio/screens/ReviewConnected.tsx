@@ -20,8 +20,11 @@ export function ReviewConnected() {
       onOpenSettings={() => api.openSettings("general")}
       onEdit={(letter, tab) => api.openLetterDrawer(letter.id, tab)}
       letterUrl={api.letterUrl}
+      saveCardImage={api.saveCardImage}
       onPrintAllEscort={() => api.printAllEscortCards(state.letters)}
       printingAllEscort={api.printingAllEscort}
+      onPrintAllCards={() => api.printAllCards(state.letters)}
+      printingAllCards={api.printingAllCards}
     />
   );
 }

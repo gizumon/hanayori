@@ -6,13 +6,14 @@ import { cardNameFor, escortNameFor } from "./geometry";
 import styles from "./letter-studio.module.css";
 import type { CardConfig, Draft, EscortConfig, Honor, Letter } from "./types";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 type FieldChange = (patch: Partial<Letter>) => void;
 
 export const FIELD_LABEL = {
   fontSize: FONT_SIZE.label,
   letterSpacing: "0.1em",
-  color: "#8C7676",
+  color: COLOR.inkSoft,
 } as const;
 
 export const fieldWrap = {
@@ -23,7 +24,7 @@ export const fieldWrap = {
 
 export const hintStyle = {
   fontSize: FONT_SIZE.caption,
-  color: "#B4A2A2",
+  color: COLOR.inkFaint,
   letterSpacing: "0.04em",
 } as const;
 
@@ -64,9 +65,9 @@ export function HonorField({
                 fontSize: FONT_SIZE.caption,
                 letterSpacing: "0.05em",
                 cursor: "pointer",
-                background: active ? "#D3A5B4" : "#FFFFFF",
-                color: active ? "#FFF9F5" : "#5C4A4A",
-                border: active ? "1px solid #D3A5B4" : "1px solid #EBD9DF",
+                background: active ? COLOR.accent : COLOR.surfaceRaised,
+                color: active ? COLOR.onAccent : COLOR.ink,
+                border: active ? `1px solid ${COLOR.accent}` : `1px solid ${COLOR.border}`,
               }}
             >
               {l}
@@ -92,7 +93,7 @@ function SettingsShortcut({
     <div
       style={{
         background: "rgba(255,252,248,0.7)",
-        border: "1px dashed #E3CBD4",
+        border: `1px dashed ${COLOR.borderDash}`,
         borderRadius: 12,
         padding: "14px 16px",
         display: "flex",
@@ -100,7 +101,7 @@ function SettingsShortcut({
         gap: 8,
       }}
     >
-      <span style={{ fontSize: FONT_SIZE.caption, color: "#8C7676", letterSpacing: "0.06em", lineHeight: 1.7 }}>
+      <span style={{ fontSize: FONT_SIZE.caption, color: COLOR.inkSoft, letterSpacing: "0.06em", lineHeight: 1.7 }}>
         {note}
       </span>
       <button
@@ -111,9 +112,9 @@ function SettingsShortcut({
           alignSelf: "flex-start",
           padding: "9px 18px",
           borderRadius: 999,
-          border: "1px solid #D3A5B4",
+          border: `1px solid ${COLOR.accent}`,
           background: "transparent",
-          color: "#B08A99",
+          color: COLOR.accentInk,
           fontSize: FONT_SIZE.label,
           letterSpacing: "0.06em",
         }}
@@ -167,7 +168,7 @@ export function LetterFields({ value, onChange, font, date, bodyRows = 9 }: Lett
                 cursor: "pointer",
                 padding: 0,
                 background: `linear-gradient(135deg, ${THEMES[k].bg1} 40%, ${THEMES[k].accent} 130%)`,
-                border: (value.theme || "rose") === k ? "3px solid #5C4A4A" : "3px solid #FFFFFF",
+                border: (value.theme || "rose") === k ? `3px solid ${COLOR.ink}` : `3px solid ${COLOR.surfaceRaised}`,
                 boxShadow: "0 3px 10px rgba(150,110,130,0.18)",
               }}
             />
@@ -196,10 +197,10 @@ export function LetterFields({ value, onChange, font, date, bodyRows = 9 }: Lett
         <div
           style={{
             background: "rgba(255,252,248,0.55)",
-            border: "1px dashed #E3CBD4",
+            border: `1px dashed ${COLOR.borderDash}`,
             borderRadius: 14,
             padding: "14px 18px",
-            color: "#B4A2A2",
+            color: COLOR.inkFaint,
             maxWidth: 260,
           }}
         >
@@ -355,9 +356,9 @@ export function EscortPhotoField({
             alignItems: "center",
             padding: "9px 18px",
             borderRadius: 999,
-            border: "1px solid #EBD9DF",
-            background: "#FFFFFF",
-            color: "#5C4A4A",
+            border: `1px solid ${COLOR.border}`,
+            background: COLOR.surfaceRaised,
+            color: COLOR.ink,
             fontSize: FONT_SIZE.label,
             letterSpacing: "0.06em",
             cursor: "pointer",
@@ -385,7 +386,7 @@ export function EscortPhotoField({
               borderRadius: 999,
               border: "none",
               background: "transparent",
-              color: "#B5555F",
+              color: COLOR.danger,
               fontSize: FONT_SIZE.label,
               letterSpacing: "0.06em",
             }}
@@ -394,7 +395,7 @@ export function EscortPhotoField({
           </button>
         )}
       </div>
-      <div style={{ fontSize: FONT_SIZE.overline, color: "#B4A2A2", letterSpacing: "0.05em" }}>
+      <div style={{ fontSize: FONT_SIZE.overline, color: COLOR.inkFaint, letterSpacing: "0.05em" }}>
         アップロード時に切り取り位置を選べます。やり直す場合は再度アップロードしてください。
       </div>
     </div>

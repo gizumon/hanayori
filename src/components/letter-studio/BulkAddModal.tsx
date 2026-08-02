@@ -4,6 +4,7 @@ import { useState } from "react";
 import { fieldStyle } from "./controls";
 import styles from "./letter-studio.module.css";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 interface BulkAddModalProps {
   onCancel: () => void;
@@ -48,7 +49,7 @@ export function BulkAddModal({ onCancel, onCreate, creating }: BulkAddModalProps
           width: "min(460px,94vw)",
           maxHeight: "calc(100vh - 60px)",
           overflow: "auto",
-          background: "#FFFCF8",
+          background: COLOR.surface,
           borderRadius: 18,
           padding: "28px 26px",
           boxShadow: "0 24px 70px rgba(0,0,0,0.25)",
@@ -64,7 +65,7 @@ export function BulkAddModal({ onCancel, onCreate, creating }: BulkAddModalProps
           style={{
             margin: 0,
             fontSize: FONT_SIZE.bodySm,
-            color: "#8C7676",
+            color: COLOR.inkSoft,
             lineHeight: 1.75,
             letterSpacing: "0.03em",
           }}
@@ -78,7 +79,7 @@ export function BulkAddModal({ onCancel, onCreate, creating }: BulkAddModalProps
             gap: 6,
             fontSize: FONT_SIZE.label,
             letterSpacing: "0.1em",
-            color: "#8C7676",
+            color: COLOR.inkSoft,
           }}
         >
           宛名のリスト
@@ -105,7 +106,7 @@ export function BulkAddModal({ onCancel, onCreate, creating }: BulkAddModalProps
               flex: 1,
               minWidth: 120,
               fontSize: FONT_SIZE.caption,
-              color: names.length > 0 ? "#8C7676" : "#B4A2A2",
+              color: names.length > 0 ? COLOR.inkSoft : COLOR.inkFaint,
               letterSpacing: "0.04em",
             }}
           >
@@ -117,9 +118,9 @@ export function BulkAddModal({ onCancel, onCreate, creating }: BulkAddModalProps
             style={{
               padding: "10px 18px",
               borderRadius: 999,
-              border: "1px solid #EBD9DF",
+              border: `1px solid ${COLOR.border}`,
               background: "transparent",
-              color: "#8C7676",
+              color: COLOR.inkSoft,
               fontSize: FONT_SIZE.bodySm,
               cursor: "pointer",
             }}
@@ -135,8 +136,8 @@ export function BulkAddModal({ onCancel, onCreate, creating }: BulkAddModalProps
               padding: "10px 22px",
               borderRadius: 999,
               border: "none",
-              background: "#D3A5B4",
-              color: "#FFF9F5",
+              background: COLOR.accent,
+              color: COLOR.onAccent,
               fontSize: FONT_SIZE.bodySm,
               letterSpacing: "0.06em",
               opacity: names.length === 0 || creating ? 0.5 : 1,

@@ -5,16 +5,7 @@ import { Download, Share, X } from "lucide-react";
 import { Portal } from "@/components/Portal";
 import { isDismissedRecently, saveDismiss, usePWAInstall } from "@/hooks/usePWAInstall";
 import { FONT_SIZE } from "@/lib/typography";
-
-// Hanayori brand palette (inline hex — matches the letter-studio / landing UI)
-const C = {
-  accent: "#D3A5B4",
-  text: "#5C4A4A",
-  textSec: "#8C7676",
-  textTer: "#B4A2A2",
-  border: "#EBD9DF",
-  bgAlt: "#FFF9F5",
-};
+import { COLOR } from "@/lib/palette";
 
 const SHOW_DELAY_MS = 3000;
 
@@ -62,7 +53,7 @@ export function PWAInstallBanner() {
             background: "white",
             borderRadius: 16,
             boxShadow: "0 4px 24px rgba(92,74,74,0.16)",
-            border: `1px solid ${C.border}`,
+            border: `1px solid ${COLOR.border}`,
             pointerEvents: "auto",
           }}
         >
@@ -83,12 +74,12 @@ function ChromiumPrompt({ onInstall, onDismiss }: { onInstall: () => void; onDis
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/icons/icon-192.png" alt="" width={44} height={44} style={{ borderRadius: 10, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: FONT_SIZE.body, fontWeight: 700, color: C.text }}>Hanayori をインストール</div>
-        <div style={{ fontSize: FONT_SIZE.overline, color: C.textSec, marginTop: 2 }}>ホーム画面からすぐ開けます</div>
+        <div style={{ fontSize: FONT_SIZE.body, fontWeight: 700, color: COLOR.ink }}>Hanayori をインストール</div>
+        <div style={{ fontSize: FONT_SIZE.overline, color: COLOR.inkSoft, marginTop: 2 }}>ホーム画面からすぐ開けます</div>
       </div>
       <button
         onClick={onDismiss}
-        style={{ padding: 6, border: "none", background: "transparent", color: C.textTer, cursor: "pointer", flexShrink: 0, display: "flex" }}
+        style={{ padding: 6, border: "none", background: "transparent", color: COLOR.inkFaint, cursor: "pointer", flexShrink: 0, display: "flex" }}
         aria-label="閉じる"
       >
         <X size={18} />
@@ -100,7 +91,7 @@ function ChromiumPrompt({ onInstall, onDismiss }: { onInstall: () => void; onDis
           alignItems: "center",
           gap: 6,
           padding: "8px 14px",
-          background: C.accent,
+          background: COLOR.accent,
           color: "white",
           border: "none",
           borderRadius: 20,
@@ -126,22 +117,22 @@ function IOSGuide({ onDismiss }: { onDismiss: () => void }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/icon-192.png" alt="" width={36} height={36} style={{ borderRadius: 8, flexShrink: 0 }} />
           <div>
-            <div style={{ fontSize: FONT_SIZE.body, fontWeight: 700, color: C.text }}>ホーム画面に追加できます</div>
-            <div style={{ fontSize: FONT_SIZE.overline, color: C.textSec, marginTop: 1 }}>アプリのようにすぐ開けます</div>
+            <div style={{ fontSize: FONT_SIZE.body, fontWeight: 700, color: COLOR.ink }}>ホーム画面に追加できます</div>
+            <div style={{ fontSize: FONT_SIZE.overline, color: COLOR.inkSoft, marginTop: 1 }}>アプリのようにすぐ開けます</div>
           </div>
         </div>
         <button
           onClick={onDismiss}
-          style={{ padding: 6, border: "none", background: "transparent", color: C.textTer, cursor: "pointer", display: "flex", flexShrink: 0 }}
+          style={{ padding: 6, border: "none", background: "transparent", color: COLOR.inkFaint, cursor: "pointer", display: "flex", flexShrink: 0 }}
           aria-label="閉じる"
         >
           <X size={18} />
         </button>
       </div>
-      <div style={{ background: C.bgAlt, borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ background: COLOR.bg, borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
         <InstallStep number={1}>
           Safari 下部の{" "}
-          <span style={{ display: "inline-flex", verticalAlign: "middle", color: C.accent }}>
+          <span style={{ display: "inline-flex", verticalAlign: "middle", color: COLOR.accent }}>
             <Share size={13} />
           </span>{" "}
           <strong>共有</strong> をタップ
@@ -156,13 +147,13 @@ function IOSGuide({ onDismiss }: { onDismiss: () => void }) {
 
 function InstallStep({ number, children }: { number: number; children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: FONT_SIZE.caption, color: C.text }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: FONT_SIZE.caption, color: COLOR.ink }}>
       <span
         style={{
           width: 18,
           height: 18,
           borderRadius: "50%",
-          background: C.accent,
+          background: COLOR.accent,
           color: "white",
           display: "flex",
           alignItems: "center",

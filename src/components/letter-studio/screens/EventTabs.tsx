@@ -5,6 +5,7 @@ import type { ComponentType } from "react";
 import type { EventTab } from "../types";
 import styles from "../letter-studio.module.css";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 interface EventTabsProps {
   current: EventTab;
@@ -28,7 +29,7 @@ export function EventTabs({ current, onSelect }: EventTabsProps) {
       className={styles.noScrollbar}
       style={{
         display: "flex",
-        borderBottom: "1px solid #EBD9DF",
+        borderBottom: `1px solid ${COLOR.border}`,
         overflowX: "auto",
       }}
     >
@@ -49,12 +50,12 @@ export function EventTabs({ current, onSelect }: EventTabsProps) {
               padding: "10px 4px 11px",
               marginRight: 24,
               border: "none",
-              borderBottom: active ? "2px solid #D3A5B4" : "2px solid transparent",
+              borderBottom: active ? `2px solid ${COLOR.accent}` : "2px solid transparent",
               background: "transparent",
               fontSize: FONT_SIZE.bodySm,
               fontWeight: active ? 600 : 400,
               letterSpacing: "0.08em",
-              color: active ? "#5C4A4A" : "#A38A93",
+              color: active ? COLOR.ink : COLOR.inkMuted,
               whiteSpace: "nowrap",
             }}
           >

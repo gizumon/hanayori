@@ -10,6 +10,7 @@ import { isoToJaDate, jaDateToIso } from "@/lib/date";
 import { escortGeom, geom } from "./geometry";
 import { EscortCardFace } from "./EscortCardFace";
 import { CropModal } from "./CropModal";
+import { MembersTab } from "./MembersTab";
 import { useStudio } from "./StudioContext";
 import { uploadIfDataUrl } from "./uploadImage";
 import { QrCardFace } from "./QrCardFace";
@@ -30,6 +31,7 @@ import type {
 import { useUnsavedGuard } from "./useUnsavedGuard";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 interface EventSettingsForm {
   name: string;
@@ -55,6 +57,8 @@ interface EventSettingsDrawerProps {
   onTabChange: (tab: SettingsTab) => void;
   onClose: () => void;
   onSave: (patch: EventSettingsPatch) => Promise<boolean>;
+  /** メンバータブで自分が退出したとき。ドロワーを閉じてイベント一覧へ戻す。 */
+  onLeaveEvent: () => void;
 }
 
 const ORIENT_OPTS: { key: CardOrient; label: string }[] = [
@@ -84,7 +88,7 @@ const ESCORT_STYLE_OPTS: { key: EscortStyle; label: string }[] = [
 const sectionLabel = {
   fontSize: FONT_SIZE.caption,
   letterSpacing: "0.1em",
-  color: "#8C7676",
+  color: COLOR.inkSoft,
 } as const;
 
 /**
@@ -97,6 +101,7 @@ export function EventSettingsDrawer({
   onTabChange,
   onClose,
   onSave,
+  onLeaveEvent,
 }: EventSettingsDrawerProps) {
   const { toast } = useStudio();
   const [local, setLocal] = useState<EventSettingsForm>(() => formOf(project));
@@ -207,9 +212,9 @@ export function EventSettingsDrawer({
               width: 32,
               height: 32,
               borderRadius: "50%",
-              border: "1px solid #EBD9DF",
-              background: "#FFFFFF",
-              color: "#8C7676",
+              border: `1px solid ${COLOR.border}`,
+              background: COLOR.surfaceRaised,
+              color: COLOR.inkSoft,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -237,6 +242,7 @@ export function EventSettingsDrawer({
               ["general", "基本"],
               ["card", "席札 / QRカード"],
               ["escort", "エスコートカード"],
+              ["members", "メンバー"],
             ] as const
           ).map(([k, label]) => (
             <button
@@ -250,9 +256,9 @@ export function EventSettingsDrawer({
                 cursor: "pointer",
                 fontSize: FONT_SIZE.bodySm,
                 letterSpacing: "0.08em",
-                color: tab === k ? "#5C4A4A" : "#B08A99",
+                color: tab === k ? COLOR.ink : COLOR.accentInk,
                 fontWeight: tab === k ? 600 : 400,
-                borderBottom: tab === k ? "2px solid #D3A5B4" : "2px solid transparent",
+                borderBottom: tab === k ? `2px solid ${COLOR.accent}` : "2px solid transparent",
                 marginBottom: -1,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
@@ -391,7 +397,7 @@ export function EventSettingsDrawer({
                     {local.date || "2025年10月10日"}
                   </div>
                 </div>
-                <span style={{ fontSize: FONT_SIZE.micro, color: "#A38A93", letterSpacing: "0.05em" }}>
+                <span style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkMuted, letterSpacing: "0.05em" }}>
                   プレビュー(本文はお手紙ごとに入ります)
                 </span>
               </div>
@@ -445,7 +451,7 @@ export function EventSettingsDrawer({
                       qrUrl=""
                       boxShadow="0 10px 30px rgba(150,110,130,0.22)"
                     />
-                    <span style={{ fontSize: FONT_SIZE.micro, color: "#A38A93", letterSpacing: "0.05em" }}>
+                    <span style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkMuted, letterSpacing: "0.05em" }}>
                       プレビュー(名前はお手紙ごとに入ります) ・ 実寸 {previewGeom.sizeLabel}
                     </span>
                   </div>
@@ -573,7 +579,7 @@ export function EventSettingsDrawer({
                       footText={local.escort.nameOverride.trim() || local.name}
                       boxShadow="0 10px 30px rgba(150,110,130,0.22)"
                     />
-                    <span style={{ fontSize: FONT_SIZE.micro, color: "#A38A93", letterSpacing: "0.05em" }}>
+                    <span style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkMuted, letterSpacing: "0.05em" }}>
                       プレビュー(卓番・名前はお手紙ごとに入ります) ・ 実寸 {escortPreviewGeom.sizeLabel}
                     </span>
                   </div>
@@ -611,9 +617,9 @@ export function EventSettingsDrawer({
                           alignItems: "center",
                           padding: "9px 18px",
                           borderRadius: 999,
-                          border: "1px solid #EBD9DF",
-                          background: "#FFFFFF",
-                          color: "#5C4A4A",
+                          border: `1px solid ${COLOR.border}`,
+                          background: COLOR.surfaceRaised,
+                          color: COLOR.ink,
                           fontSize: FONT_SIZE.label,
                           letterSpacing: "0.06em",
                           cursor: "pointer",
@@ -641,7 +647,7 @@ export function EventSettingsDrawer({
                             borderRadius: 999,
                             border: "none",
                             background: "transparent",
-                            color: "#B5555F",
+                            color: COLOR.danger,
                             fontSize: FONT_SIZE.label,
                             letterSpacing: "0.06em",
                             cursor: "pointer",
@@ -651,7 +657,7 @@ export function EventSettingsDrawer({
                         </button>
                       )}
                     </div>
-                    <span style={{ fontSize: FONT_SIZE.overline, color: "#B4A2A2", letterSpacing: "0.05em" }}>
+                    <span style={{ fontSize: FONT_SIZE.overline, color: COLOR.inkFaint, letterSpacing: "0.05em" }}>
                       アップロード時に切り取り位置を選べます。お手紙で個別に写真を設定するとそちらが優先されます。
                     </span>
                   </div>
@@ -701,8 +707,15 @@ export function EventSettingsDrawer({
               )}
             </>
           )}
+
+          {tab === "members" && (
+            <MembersTab project={project} onLeaveEvent={onLeaveEvent} />
+          )}
         </div>
 
+        {/* メンバータブの操作は即時反映なので保存バーは出さない。ただし他タブに
+            未保存の変更が残っている場合だけは、見失わないように出したままにする。 */}
+        {(tab !== "members" || dirty) && (
         <div
           style={{
             display: "flex",
@@ -711,7 +724,7 @@ export function EventSettingsDrawer({
             flexWrap: "wrap",
             padding: "8px 22px calc(9px + env(safe-area-inset-bottom))",
             borderTop: "1px solid rgba(211,165,180,0.3)",
-            background: "#FFFCF8",
+            background: COLOR.surface,
           }}
         >
           <button
@@ -723,8 +736,8 @@ export function EventSettingsDrawer({
               padding: "9px 26px",
               borderRadius: 999,
               border: "none",
-              background: dirty ? "#D3A5B4" : "#E3D2D8",
-              color: "#FFF9F5",
+              background: dirty ? COLOR.accent : COLOR.accentOff,
+              color: COLOR.onAccent,
               fontSize: FONT_SIZE.bodySm,
               letterSpacing: "0.08em",
               cursor: dirty && !saving ? "pointer" : "default",
@@ -733,11 +746,12 @@ export function EventSettingsDrawer({
             {saving ? "保存中…" : "設定を保存"}
           </button>
           {dirty && (
-            <span style={{ fontSize: FONT_SIZE.caption, color: "#B5555F", letterSpacing: "0.05em" }}>
+            <span style={{ fontSize: FONT_SIZE.caption, color: COLOR.danger, letterSpacing: "0.05em" }}>
               未保存の変更があります
             </span>
           )}
         </div>
+        )}
       </aside>
       {pendingConfirm && (
         <ConfirmDialog

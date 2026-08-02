@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { CircleQuestionMark, Printer, X } from "lucide-react";
+import { CircleAlert, CircleQuestionMark, Download, Pencil, Printer, X } from "lucide-react";
 import { FONTS, THEMES } from "../constants";
 import { EscortCardFace } from "../EscortCardFace";
 import { cardNameFor, escortGeom, escortNameFor, geom } from "../geometry";
@@ -13,6 +13,7 @@ import type { EditorTab, EventTab, Letter, Project } from "../types";
 import { EventHeader } from "./EventHeader";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 /** 1 度に描くカード数。QR の生成が重いので少しずつ増やす。 */
 const PAGE_SIZE = 12;
@@ -26,9 +27,14 @@ interface ReviewScreenProps {
   onOpenSettings: () => void;
   onEdit: (letter: Letter, tab: EditorTab) => void;
   letterUrl: (id: string) => string;
-  /** エスコートカード(チケット風)を A4 1枚に4枚ずつまとめて印刷する。 */
+  /** 任意のカードDOMを画像として保存する(確認タブの各アイテムから使う)。 */
+  saveCardImage: (ref: RefObject<HTMLDivElement | null>, filename: string) => void;
+  /** エスコートカードを A4 にまとめて印刷する(チケット風は4枚、カード風は10枚/A4)。 */
   onPrintAllEscort: () => void;
   printingAllEscort: boolean;
+  /** 席札を A4 1枚に10枚ずつまとめて印刷する(横向き・縦向きのみ対応)。 */
+  onPrintAllCards: () => void;
+  printingAllCards: boolean;
 }
 
 const KIND_LABEL: Record<EditorTab, string> = {
@@ -58,11 +64,15 @@ export function ReviewScreen({
   onOpenSettings,
   onEdit,
   letterUrl,
+  saveCardImage,
   onPrintAllEscort,
   printingAllEscort,
+  onPrintAllCards,
+  printingAllCards,
 }: ReviewScreenProps) {
   const cardEnabled = project.cardConfig.enabled;
   const escortEnabled = project.escortConfig.enabled;
+  const cardOrient = project.cardConfig.orient;
 
   const kinds: EditorTab[] = [
     "letter",
@@ -83,6 +93,24 @@ export function ReviewScreen({
   const warned = letters.filter((l) => warningOf(l, curKind)).length;
   const visible = letters.slice(0, shown);
 
+  // 一括印刷ボタン: エスコートカードはどちらのスタイルでも、席札は
+  // 横向き/縦向き(91×55mm・55×91mm)と tent-l(91×110mm)のときだけ対応する
+  // (tent-p は対象外)。
+  const showEscortPrint = curKind === "escort" && escortEnabled && letters.length > 0;
+  const showCardPrint =
+    curKind === "card" &&
+    cardEnabled &&
+    (cardOrient === "landscape" || cardOrient === "portrait" || cardOrient === "tent-l") &&
+    letters.length > 0;
+  const guideVariant: GuideVariant =
+    showEscortPrint && project.escortConfig.style === "ticket"
+      ? "ticket"
+      : showCardPrint && cardOrient === "tent-l"
+        ? "card91x110"
+        : "card91x55";
+  const bulkPrintHandler = showEscortPrint ? onPrintAllEscort : onPrintAllCards;
+  const bulkPrinting = showEscortPrint ? printingAllEscort : printingAllCards;
+
   return (
     <main
       className={styles.fadeup}
@@ -96,7 +124,7 @@ export function ReviewScreen({
         onOpenSettings={onOpenSettings}
       />
 
-      {/* 確認する対象 / エスコートカードのみ一括印刷ボタンを添える */}
+      {/* 確認する対象 / 対応する対象(席札・エスコートカード)には一括印刷ボタンを添える */}
       <div
         style={{
           display: "flex",
@@ -133,8 +161,8 @@ export function ReviewScreen({
                     cursor: "pointer",
                     fontSize: FONT_SIZE.bodySm,
                     letterSpacing: "0.08em",
-                    background: active ? "#FFFCF8" : "transparent",
-                    color: active ? "#5C4A4A" : "#A38A93",
+                    background: active ? COLOR.surface : "transparent",
+                    color: active ? COLOR.ink : COLOR.inkMuted,
                     fontWeight: active ? 600 : 400,
                     boxShadow: active ? "0 2px 8px rgba(150,110,130,0.18)" : "none",
                   }}
@@ -146,12 +174,12 @@ export function ReviewScreen({
           </div>
         )}
 
-        {curKind === "escort" && escortEnabled && project.escortConfig.style === "ticket" && letters.length > 0 && (
+        {(showEscortPrint || showCardPrint) && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
             <button
               type="button"
-              onClick={onPrintAllEscort}
-              disabled={printingAllEscort}
+              onClick={bulkPrintHandler}
+              disabled={bulkPrinting}
               className={styles.btnOutline}
               style={{
                 display: "flex",
@@ -159,17 +187,17 @@ export function ReviewScreen({
                 gap: 7,
                 padding: "9px 20px",
                 borderRadius: 999,
-                border: "1px solid #EBD9DF",
-                background: "#FFFFFF",
-                color: "#5C4A4A",
+                border: `1px solid ${COLOR.border}`,
+                background: COLOR.surfaceRaised,
+                color: COLOR.ink,
                 fontSize: FONT_SIZE.bodySm,
                 letterSpacing: "0.06em",
-                cursor: printingAllEscort ? "default" : "pointer",
-                opacity: printingAllEscort ? 0.6 : 1,
+                cursor: bulkPrinting ? "default" : "pointer",
+                opacity: bulkPrinting ? 0.6 : 1,
               }}
             >
               <Printer size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
-              {printingAllEscort ? "準備しています…" : "印刷する"}
+              {bulkPrinting ? "準備しています…" : "印刷する"}
             </button>
             <button
               type="button"
@@ -183,9 +211,9 @@ export function ReviewScreen({
                 height: 30,
                 flex: "none",
                 borderRadius: "50%",
-                border: "1px solid #EBD9DF",
-                background: "#FFFFFF",
-                color: "#A38A93",
+                border: `1px solid ${COLOR.border}`,
+                background: COLOR.surfaceRaised,
+                color: COLOR.inkMuted,
                 cursor: "pointer",
               }}
             >
@@ -195,24 +223,67 @@ export function ReviewScreen({
         )}
       </div>
 
-      {showPrintGuide && <PrintGuideModal onClose={() => setShowPrintGuide(false)} />}
+      {showPrintGuide && (
+        <PrintGuideModal variant={guideVariant} onClose={() => setShowPrintGuide(false)} />
+      )}
 
-      <p
-        style={{
-          margin: "0 0 18px",
-          fontSize: FONT_SIZE.caption,
-          color: "#8C7676",
-          letterSpacing: "0.05em",
-        }}
-      >
-        {loading
-          ? "読み込んでいます…"
-          : letters.length === 0
-            ? "まだお手紙がありません"
-            : warned > 0
-              ? `${KIND_LABEL[curKind]} ${letters.length}通 — ${warned}通に未入力があります`
-              : `${KIND_LABEL[curKind]} ${letters.length}通 — すべてそろっています`}
-      </p>
+      {loading || letters.length === 0 ? (
+        <p
+          style={{
+            margin: "0 0 18px",
+            fontSize: FONT_SIZE.caption,
+            color: COLOR.inkSoft,
+            letterSpacing: "0.05em",
+          }}
+        >
+          {loading ? "読み込んでいます…" : "まだお手紙がありません"}
+        </p>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 18px", flexWrap: "wrap" }}>
+          <span
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: 4,
+              fontSize: FONT_SIZE.caption,
+              color: COLOR.inkSoft,
+              letterSpacing: "0.04em",
+            }}
+          >
+            {KIND_LABEL[curKind]}
+            <strong
+              style={{
+                fontSize: FONT_SIZE.subheading,
+                fontWeight: 700,
+                color: COLOR.ink,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {letters.length}
+            </strong>
+            通
+          </span>
+          {warned > 0 && (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "3px 10px 3px 8px",
+                borderRadius: 999,
+                background: COLOR.warnBg,
+                color: COLOR.warnInk,
+                fontSize: FONT_SIZE.label,
+                letterSpacing: "0.03em",
+              }}
+            >
+              <CircleAlert size={13} strokeWidth={2} aria-hidden="true" style={{ flex: "none" }} />
+              未入力
+              <strong style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{warned}</strong>
+            </span>
+          )}
+        </div>
+      )}
 
       <div
         style={{
@@ -231,6 +302,7 @@ export function ReviewScreen({
             warning={warningOf(letter, curKind)}
             qrUrl={letterUrl(letter.id)}
             onEdit={() => onEdit(letter, curKind)}
+            saveCardImage={saveCardImage}
           />
         ))}
       </div>
@@ -246,9 +318,9 @@ export function ReviewScreen({
             marginTop: 18,
             padding: "13px 20px",
             borderRadius: 999,
-            border: "1px solid #EBD9DF",
-            background: "#FFFFFF",
-            color: "#5C4A4A",
+            border: `1px solid ${COLOR.border}`,
+            background: COLOR.surfaceRaised,
+            color: COLOR.ink,
             fontSize: FONT_SIZE.bodySm,
             letterSpacing: "0.08em",
             cursor: "pointer",
@@ -269,18 +341,26 @@ interface ReviewCardProps {
   warning: string;
   qrUrl: string;
   onEdit: () => void;
+  saveCardImage: (ref: RefObject<HTMLDivElement | null>, filename: string) => void;
 }
 
-function ReviewCard({ letter, index, kind, project, warning, qrUrl, onEdit }: ReviewCardProps) {
+const CARD_KIND_FILE_PREFIX: Record<EditorTab, string> = {
+  letter: "letter",
+  card: "qr-card",
+  escort: "escort-card",
+};
+
+function ReviewCard({ letter, index, kind, project, warning, qrUrl, onEdit, saveCardImage }: ReviewCardProps) {
   const theme = THEMES[letter.theme];
   const cardConf = project.cardConfig;
   const escortConf = project.escortConfig;
+  const faceRef = useRef<HTMLDivElement>(null);
 
   return (
     <article
       style={{
-        background: "#FFFCF8",
-        border: "1px solid #F2E6EB",
+        background: COLOR.surface,
+        border: `1px solid ${COLOR.divider}`,
         borderRadius: 16,
         padding: 14,
         display: "flex",
@@ -290,21 +370,24 @@ function ReviewCard({ letter, index, kind, project, warning, qrUrl, onEdit }: Re
       }}
     >
       {kind === "letter" && (
-        <LetterPreviewFace
-          to={letter.to}
-          body={letter.body}
-          photo={letter.photo}
-          photoRatio={letter.photoRatio}
-          date={project.date}
-          font={FONTS[project.letterConfig.font].family}
-          theme={theme}
-          padding="18px 14px"
-        />
+        <div ref={faceRef}>
+          <LetterPreviewFace
+            to={letter.to}
+            body={letter.body}
+            photo={letter.photo}
+            photoRatio={letter.photoRatio}
+            date={project.date}
+            font={FONTS[project.letterConfig.font].family}
+            theme={theme}
+            padding="18px 14px"
+          />
+        </div>
       )}
 
       {kind === "card" && (
         <div style={stage(theme)}>
           <QrCardFace
+            ref={faceRef}
             width="100%"
             aspect={geom(cardConf, theme.rule).aspect}
             paper={theme.paper}
@@ -329,6 +412,7 @@ function ReviewCard({ letter, index, kind, project, warning, qrUrl, onEdit }: Re
       {kind === "escort" && (
         <div style={stage(theme)}>
           <EscortCardFace
+            ref={faceRef}
             style={escortConf.style}
             width="100%"
             aspect={escortGeom(escortConf.style).aspect}
@@ -354,7 +438,7 @@ function ReviewCard({ letter, index, kind, project, warning, qrUrl, onEdit }: Re
         <span
           style={{
             fontSize: FONT_SIZE.micro,
-            color: "#B4A2A2",
+            color: COLOR.inkFaint,
             fontVariantNumeric: "tabular-nums",
             flex: "none",
           }}
@@ -380,8 +464,8 @@ function ReviewCard({ letter, index, kind, project, warning, qrUrl, onEdit }: Re
               flex: "none",
               fontSize: FONT_SIZE.micro,
               letterSpacing: "0.05em",
-              color: "#9A7B4A",
-              background: "#F8ECD7",
+              color: COLOR.warnInk,
+              background: COLOR.warnBg,
               borderRadius: 999,
               padding: "3px 9px",
             }}
@@ -391,26 +475,42 @@ function ReviewCard({ letter, index, kind, project, warning, qrUrl, onEdit }: Re
         )}
         <button
           type="button"
-          onClick={onEdit}
+          onClick={() => saveCardImage(faceRef, `${CARD_KIND_FILE_PREFIX[kind]}-${index}.png`)}
+          aria-label="画像として保存"
+          title="画像として保存"
           className={styles.btnOutline}
-          style={{
-            flex: "none",
-            padding: "7px 14px",
-            borderRadius: 999,
-            border: "1px solid #EBD9DF",
-            background: "#FFFFFF",
-            color: "#5C4A4A",
-            fontSize: FONT_SIZE.label,
-            letterSpacing: "0.06em",
-            cursor: "pointer",
-          }}
+          style={iconBtnStyle}
         >
-          編集
+          <Download size={14} strokeWidth={1.8} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label="編集"
+          title="編集"
+          className={styles.btnOutline}
+          style={iconBtnStyle}
+        >
+          <Pencil size={14} strokeWidth={1.8} aria-hidden="true" />
         </button>
       </div>
     </article>
   );
 }
+
+const iconBtnStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 32,
+  height: 32,
+  flex: "none",
+  borderRadius: "50%",
+  border: `1px solid ${COLOR.border}`,
+  background: COLOR.surfaceRaised,
+  color: COLOR.ink,
+  cursor: "pointer",
+} as const;
 
 function stage(theme: (typeof THEMES)[keyof typeof THEMES]) {
   return {
@@ -422,21 +522,66 @@ function stage(theme: (typeof THEMES)[keyof typeof THEMES]) {
   } as const;
 }
 
-// A4(210×297mm)に 182×65mm のチケットを 14mm(左右) / 18.5mm(上下) の余白で
-// 4枚並べる。SVG の viewBox をそのまま mm 単位として使い、実寸比率で描く。
+/**
+ * 印刷ガイドの敷き詰めパターン。ticket = チケット風(4枚/A4)、
+ * card91x55 = 91×55mm/55×91mm(10枚/A4)、card91x110 = tent-l 91×110mm(4枚/A4)。
+ */
+type GuideVariant = "ticket" | "card91x55" | "card91x110";
+
+// A4(210×297mm)への敷き詰め方。SVG の viewBox をそのまま mm 単位として使い、実寸比率で描く。
 const GUIDE_PAGE_W = 210;
 const GUIDE_PAGE_H = 297;
-const GUIDE_MARGIN_X = 14;
-const GUIDE_MARGIN_Y = 18.5;
-const GUIDE_CARD_W = 182;
-const GUIDE_CARD_H = 65;
-const GUIDE_TEAR_X = GUIDE_MARGIN_X + 137;
+
+// チケット風: 182×65mm を 14mm(左右) / 18.5mm(上下) の余白で1列4枚。
+const TICKET_MARGIN_X = 14;
+const TICKET_MARGIN_Y = 18.5;
+const TICKET_CARD_W = 182;
+const TICKET_CARD_H = 65;
+const TICKET_TEAR_X = TICKET_MARGIN_X + 137;
+
+// 91×55mm: 14mm(左右) / 11mm(上下) の余白で2列5行(計10枚)、隙間なし。
+const CARD_MARGIN_X = 14;
+const CARD_MARGIN_Y = 11;
+const CARD_W = 91;
+const CARD_H = 55;
+const CARD_COLS = 2;
+const CARD_ROWS = 5;
+
+// tent-l 91×110mm(二つ折り、開くと91×55mm): 14mm(左右) / 38.5mm(上下) の余白で2列2行(計4枚)。
+const TENT_MARGIN_X = 14;
+const TENT_MARGIN_Y = 38.5;
+const TENT_CARD_W = 91;
+const TENT_CARD_H = 110;
+const TENT_COLS = 2;
+const TENT_ROWS = 2;
+
 // 寸法線を引くための余白(左・上)。左側は "18.5" が入る幅を確保する。
 const GUIDE_DIM_PAD_L = 32;
 const GUIDE_DIM_PAD_T = 18;
 
-const DIM_LINE_COLOR = "#B79AA3";
-const DIM_TEXT_COLOR = "#8C7676";
+/*
+ * 印刷ガイド図の作図色。UI ではなく「印刷物の見え方をなぞる図」なので、
+ * COLOR トークンとは別に、ここだけで完結させる。
+ */
+/* eslint-disable no-restricted-syntax -- 印刷ガイド図の作図色 */
+const GUIDE_COLOR = {
+  /** 用紙の外形 */
+  page: "#D8C4CB",
+  /** カードの面 */
+  cardFill: "#FBF0EE",
+  /** カードの外形 */
+  cardEdge: "#E3C9CE",
+  /** 切り取り線・カットガイド */
+  cut: "#C98A9C",
+  /** 折り線 */
+  fold: "#B78A9B",
+  /** 寸法線 */
+  dimLine: "#B79AA3",
+};
+/* eslint-enable no-restricted-syntax */
+
+const DIM_LINE_COLOR = GUIDE_COLOR.dimLine;
+const DIM_TEXT_COLOR = COLOR.inkSoft;
 
 /** 横方向の寸法線。x を起点に segments を右へ積み上げ、区切りごとに目盛りと数値を描く。 */
 function HDim({
@@ -507,12 +652,212 @@ function VDim({
   );
 }
 
+/** チケット風(4枚/A4)の寸法線とカード配置。 */
+function TicketGuideSvg() {
+  return (
+    <>
+      <HDim
+        x={0}
+        y={-8}
+        segments={[
+          { w: TICKET_MARGIN_X, label: "14" },
+          { w: 137, label: "137" },
+          { w: TICKET_CARD_W - 137, label: "45" },
+          { w: TICKET_MARGIN_X, label: "14" },
+        ]}
+      />
+      <VDim
+        x={-10}
+        y={0}
+        segments={[
+          { h: TICKET_MARGIN_Y, label: "18.5" },
+          { h: TICKET_CARD_H, label: "65" },
+          { h: TICKET_CARD_H, label: "65" },
+          { h: TICKET_CARD_H, label: "65" },
+          { h: TICKET_CARD_H, label: "65" },
+          { h: TICKET_MARGIN_Y, label: "18.5" },
+        ]}
+      />
+      {[0, 1, 2, 3].map((i) => {
+        const y = TICKET_MARGIN_Y + i * TICKET_CARD_H;
+        return (
+          <g key={i}>
+            {i > 0 && (
+              <line x1={0} y1={y} x2={210} y2={y} stroke={GUIDE_COLOR.cut} strokeWidth="1" strokeDasharray="4 3" />
+            )}
+            <rect
+              x={TICKET_MARGIN_X}
+              y={y}
+              width={TICKET_CARD_W}
+              height={TICKET_CARD_H}
+              fill={GUIDE_COLOR.cardFill}
+              stroke={GUIDE_COLOR.cardEdge}
+              strokeWidth="0.75"
+            />
+            <line
+              x1={TICKET_TEAR_X}
+              y1={y}
+              x2={TICKET_TEAR_X}
+              y2={y + TICKET_CARD_H}
+              stroke={GUIDE_COLOR.fold}
+              strokeWidth="1"
+              strokeDasharray="2.5 2"
+            />
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
+/** 91×55mm(10枚/A4、2列×5行)の寸法線とカード配置。カード同士に隙間はない。 */
+function Card91x55GuideSvg() {
+  return (
+    <>
+      <HDim
+        x={0}
+        y={-8}
+        segments={[
+          { w: CARD_MARGIN_X, label: "14" },
+          { w: CARD_W, label: "91" },
+          { w: CARD_W, label: "91" },
+          { w: CARD_MARGIN_X, label: "14" },
+        ]}
+      />
+      <VDim
+        x={-10}
+        y={0}
+        segments={[
+          { h: CARD_MARGIN_Y, label: "11" },
+          { h: CARD_H, label: "55" },
+          { h: CARD_H, label: "55" },
+          { h: CARD_H, label: "55" },
+          { h: CARD_H, label: "55" },
+          { h: CARD_H, label: "55" },
+          { h: CARD_MARGIN_Y, label: "11" },
+        ]}
+      />
+      {Array.from({ length: CARD_ROWS }, (_, r) =>
+        Array.from({ length: CARD_COLS }, (_, c) => {
+          const x = CARD_MARGIN_X + c * CARD_W;
+          const y = CARD_MARGIN_Y + r * CARD_H;
+          return (
+            <g key={`${r}-${c}`}>
+              {r > 0 && c === 0 && (
+                <line
+                  x1={0}
+                  y1={y}
+                  x2={GUIDE_PAGE_W}
+                  y2={y}
+                  stroke={GUIDE_COLOR.cut}
+                  strokeWidth="1"
+                  strokeDasharray="4 3"
+                />
+              )}
+              {c > 0 && r === 0 && (
+                <line
+                  x1={x}
+                  y1={0}
+                  x2={x}
+                  y2={GUIDE_PAGE_H}
+                  stroke={GUIDE_COLOR.cut}
+                  strokeWidth="1"
+                  strokeDasharray="4 3"
+                />
+              )}
+              <rect x={x} y={y} width={CARD_W} height={CARD_H} fill={GUIDE_COLOR.cardFill} stroke={GUIDE_COLOR.cardEdge} strokeWidth="0.75" />
+            </g>
+          );
+        })
+      )}
+    </>
+  );
+}
+
+/** tent-l 91×110mm(4枚/A4、2列×2行)の寸法線とカード配置。カード同士に隙間はない。 */
+function Card91x110GuideSvg() {
+  return (
+    <>
+      <HDim
+        x={0}
+        y={-8}
+        segments={[
+          { w: TENT_MARGIN_X, label: "14" },
+          { w: TENT_CARD_W, label: "91" },
+          { w: TENT_CARD_W, label: "91" },
+          { w: TENT_MARGIN_X, label: "14" },
+        ]}
+      />
+      <VDim
+        x={-10}
+        y={0}
+        segments={[
+          { h: TENT_MARGIN_Y, label: "38.5" },
+          { h: TENT_CARD_H, label: "110" },
+          { h: TENT_CARD_H, label: "110" },
+          { h: TENT_MARGIN_Y, label: "38.5" },
+        ]}
+      />
+      {Array.from({ length: TENT_ROWS }, (_, r) =>
+        Array.from({ length: TENT_COLS }, (_, c) => {
+          const x = TENT_MARGIN_X + c * TENT_CARD_W;
+          const y = TENT_MARGIN_Y + r * TENT_CARD_H;
+          return (
+            <g key={`${r}-${c}`}>
+              {r > 0 && c === 0 && (
+                <line
+                  x1={0}
+                  y1={y}
+                  x2={GUIDE_PAGE_W}
+                  y2={y}
+                  stroke={GUIDE_COLOR.cut}
+                  strokeWidth="1"
+                  strokeDasharray="4 3"
+                />
+              )}
+              {c > 0 && r === 0 && (
+                <line
+                  x1={x}
+                  y1={0}
+                  x2={x}
+                  y2={GUIDE_PAGE_H}
+                  stroke={GUIDE_COLOR.cut}
+                  strokeWidth="1"
+                  strokeDasharray="4 3"
+                />
+              )}
+              <rect
+                x={x}
+                y={y}
+                width={TENT_CARD_W}
+                height={TENT_CARD_H}
+                fill={GUIDE_COLOR.cardFill}
+                stroke={GUIDE_COLOR.cardEdge}
+                strokeWidth="0.75"
+              />
+              <line
+                x1={x}
+                y1={y + TENT_CARD_H / 2}
+                x2={x + TENT_CARD_W}
+                y2={y + TENT_CARD_H / 2}
+                stroke={GUIDE_COLOR.fold}
+                strokeWidth="1"
+                strokeDasharray="2.5 2"
+              />
+            </g>
+          );
+        })
+      )}
+    </>
+  );
+}
+
 /**
  * 「印刷する」の隣のヘルプアイコンから開く、A4への配置と切り方の説明。
  * <main> は fadeup アニメーション由来で computed transform が none に戻らず
  * position:fixed の containing block になってしまうため、body 直下へ portal する。
  */
-function PrintGuideModal({ onClose }: { onClose: () => void }) {
+function PrintGuideModal({ variant, onClose }: { variant: GuideVariant; onClose: () => void }) {
   useScrollLock();
   return createPortal(
     <div
@@ -535,7 +880,7 @@ function PrintGuideModal({ onClose }: { onClose: () => void }) {
           width: "min(400px,92vw)",
           maxHeight: "88vh",
           overflowY: "auto",
-          background: "#FFFCF8",
+          background: COLOR.surface,
           borderRadius: 18,
           padding: "22px 24px 26px",
           boxShadow: "0 24px 70px rgba(0,0,0,0.18)",
@@ -551,7 +896,7 @@ function PrintGuideModal({ onClose }: { onClose: () => void }) {
               fontSize: FONT_SIZE.heading,
               fontWeight: 600,
               letterSpacing: "0.06em",
-              color: "#5C4A4A",
+              color: COLOR.ink,
             }}
           >
             A4用紙への印刷について
@@ -570,7 +915,7 @@ function PrintGuideModal({ onClose }: { onClose: () => void }) {
               borderRadius: "50%",
               border: "none",
               background: "transparent",
-              color: "#A38A93",
+              color: COLOR.inkMuted,
               cursor: "pointer",
             }}
           >
@@ -585,74 +930,29 @@ function PrintGuideModal({ onClose }: { onClose: () => void }) {
           width="190"
           style={{ display: "block", margin: "0 auto", flex: "none" }}
           role="img"
-          aria-label="A4用紙にエスコートカードを4枚配置し、各部の寸法(単位mm)を示した図"
+          aria-label={
+            variant === "ticket"
+              ? "A4用紙にエスコートカードを4枚配置し、各部の寸法(単位mm)を示した図"
+              : variant === "card91x110"
+                ? "A4用紙にカードを4枚配置し、各部の寸法(単位mm)を示した図"
+                : "A4用紙にカードを10枚配置し、各部の寸法(単位mm)を示した図"
+          }
         >
-          <rect x="0" y="0" width="210" height="297" fill="#FFFFFF" stroke="#D8C4CB" strokeWidth="1.5" />
-          <HDim
-            x={0}
-            y={-8}
-            segments={[
-              { w: GUIDE_MARGIN_X, label: "14" },
-              { w: 137, label: "137" },
-              { w: 45, label: "45" },
-              { w: GUIDE_MARGIN_X, label: "14" },
-            ]}
-          />
-          <VDim
-            x={-10}
-            y={0}
-            segments={[
-              { h: GUIDE_MARGIN_Y, label: "18.5" },
-              { h: GUIDE_CARD_H, label: "65" },
-              { h: GUIDE_CARD_H, label: "65" },
-              { h: GUIDE_CARD_H, label: "65" },
-              { h: GUIDE_CARD_H, label: "65" },
-              { h: GUIDE_MARGIN_Y, label: "18.5" },
-            ]}
-          />
-          {[0, 1, 2, 3].map((i) => {
-            const y = GUIDE_MARGIN_Y + i * GUIDE_CARD_H;
-            return (
-              <g key={i}>
-                {i > 0 && (
-                  <line
-                    x1={0}
-                    y1={y}
-                    x2={210}
-                    y2={y}
-                    stroke="#C98A9C"
-                    strokeWidth="1"
-                    strokeDasharray="4 3"
-                  />
-                )}
-                <rect
-                  x={GUIDE_MARGIN_X}
-                  y={y}
-                  width={GUIDE_CARD_W}
-                  height={GUIDE_CARD_H}
-                  fill="#FBF0EE"
-                  stroke="#E3C9CE"
-                  strokeWidth="0.75"
-                />
-                <line
-                  x1={GUIDE_TEAR_X}
-                  y1={y}
-                  x2={GUIDE_TEAR_X}
-                  y2={y + GUIDE_CARD_H}
-                  stroke="#B78A9B"
-                  strokeWidth="1"
-                  strokeDasharray="2.5 2"
-                />
-              </g>
-            );
-          })}
+          <rect x="0" y="0" width={GUIDE_PAGE_W} height={GUIDE_PAGE_H} fill={COLOR.surfaceRaised} stroke={GUIDE_COLOR.page} strokeWidth="1.5" />
+          {variant === "ticket" ? (
+            <TicketGuideSvg />
+          ) : variant === "card91x110" ? (
+            <Card91x110GuideSvg />
+          ) : (
+            <Card91x55GuideSvg />
+          )}
         </svg>
         <p
           style={{
             margin: "-6px 0 0",
             textAlign: "center",
             fontSize: FONT_SIZE.micro,
-            color: "#B4A2A2",
+            color: COLOR.inkFaint,
             letterSpacing: "0.04em",
           }}
         >
@@ -668,13 +968,24 @@ function PrintGuideModal({ onClose }: { onClose: () => void }) {
             flexDirection: "column",
             gap: 6,
             fontSize: FONT_SIZE.caption,
-            color: "#7C6868",
+            color: COLOR.inkSoft,
             lineHeight: 1.7,
             letterSpacing: "0.03em",
           }}
         >
-          <li>・横のピンクの点線 = 1枚ずつの切り分け線</li>
-          <li>・中央の点線 = お名前側と半券を切り離すミシン目</li>
+          {variant === "ticket" ? (
+            <>
+              <li>・横のピンクの点線 = 1枚ずつの切り分け線</li>
+              <li>・中央の点線 = お名前側と半券を切り離すミシン目</li>
+            </>
+          ) : variant === "card91x110" ? (
+            <>
+              <li>・ピンクの点線 = 1枚ずつの切り分け線(隙間なく並びます)</li>
+              <li>・中央の点線 = 山折りにする折り線(91×55mmの二つ折りになります)</li>
+            </>
+          ) : (
+            <li>・ピンクの点線 = 1枚ずつの切り分け線(隙間なく並びます)</li>
+          )}
         </ul>
       </div>
     </div>,

@@ -1,6 +1,6 @@
 import { getAdminFirestore } from "./firebase-admin";
 import { collectionPrefix } from "./env";
-import type { EventDoc, LetterDoc } from "./schema";
+import type { EventDoc, InviteDoc, LetterDoc } from "./schema";
 
 export function eventsCollection() {
   return getAdminFirestore().collection(
@@ -12,4 +12,10 @@ export function lettersCollection() {
   return getAdminFirestore().collection(
     `${collectionPrefix()}letters`
   ) as FirebaseFirestore.CollectionReference<LetterDoc>;
+}
+
+export function invitesCollection() {
+  return getAdminFirestore().collection(
+    `${collectionPrefix()}invites`
+  ) as FirebaseFirestore.CollectionReference<InviteDoc>;
 }

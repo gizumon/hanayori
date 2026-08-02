@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { isoToJaDate } from "@/lib/date";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 const WEEKDAYS_JA = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -88,12 +89,12 @@ export function DatePicker({ value, onChange, disabled, placeholder = "日付を
         aria-expanded={open}
         className={`flex w-full items-center justify-between gap-2 rounded-[10px] border px-3 py-[9px] text-left transition-colors ${
           disabled
-            ? "cursor-default border-[#EBD9DF] bg-[#F2ECEC] text-[#B0A0A0]"
-            : "cursor-pointer border-[#EBD9DF] bg-white text-[#5C4A4A] focus:border-[#D3A5B4]"
+            ? "cursor-default border-[var(--c-border)] bg-[var(--c-surface-disabled)] text-[var(--c-ink-faint)]"
+            : "cursor-pointer border-[var(--c-border)] bg-white text-[var(--c-ink)] focus:border-[var(--c-accent)]"
         }`}
         style={{ fontSize: FONT_SIZE.input, outline: "none" }}
       >
-        <span className={value ? undefined : "text-[#B0A0A0]"}>
+        <span className={value ? undefined : "text-[var(--c-ink-faint)]"}>
           {value ? isoToJaDate(value) : placeholder}
         </span>
         <span className="flex flex-none items-center gap-1">
@@ -113,12 +114,12 @@ export function DatePicker({ value, onChange, disabled, placeholder = "日付を
                 }
               }}
               aria-label="日付をクリア"
-              className="flex h-5 w-5 items-center justify-center rounded-full text-[#B08A99] hover:bg-[#FBF1F4]"
+              className="flex h-5 w-5 items-center justify-center rounded-full text-[var(--c-accent-ink)] hover:bg-[var(--c-tint)]"
             >
               <X size={13} />
             </span>
           )}
-          <CalendarIcon size={16} className="text-[#B08A99]" aria-hidden="true" />
+          <CalendarIcon size={16} className="text-[var(--c-accent-ink)]" aria-hidden="true" />
         </span>
       </button>
 
@@ -132,14 +133,14 @@ export function DatePicker({ value, onChange, disabled, placeholder = "日付を
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label="日付を選択"
-            className="w-[300px] max-w-[92vw] overflow-hidden rounded-[22px] bg-[#FFFCF8]"
+            className="w-[300px] max-w-[92vw] overflow-hidden rounded-[22px] bg-[var(--c-surface)]"
             style={{ boxShadow: "0 24px 70px rgba(80,50,60,0.28)" }}
           >
             <div
               style={{
                 fontSize: FONT_SIZE.caption,
                 letterSpacing: "0.1em",
-                color: "#8C7676",
+                color: COLOR.inkSoft,
                 borderBottom: "1px solid rgba(211,165,180,0.3)",
               }}
               className="px-5 py-3.5"
@@ -152,22 +153,22 @@ export function DatePicker({ value, onChange, disabled, placeholder = "日付を
                   type="button"
                   onClick={() => changeMonth(-1)}
                   aria-label="前の月"
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-[#B08A99] transition-colors hover:bg-[#FBF1F4] hover:text-[#5C4A4A]"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--c-accent-ink)] transition-colors hover:bg-[var(--c-tint)] hover:text-[var(--c-ink)]"
                 >
                   <ChevronLeft size={15} strokeWidth={1.8} />
                 </button>
                 <span
-                  style={{ fontSize: FONT_SIZE.body, letterSpacing: "0.12em", color: "#5C4A4A" }}
+                  style={{ fontSize: FONT_SIZE.body, letterSpacing: "0.12em", color: COLOR.ink }}
                   className="font-semibold"
                 >
-                  {view.y}<span className="mx-[2px] font-normal text-[#B08A99]">年</span>
-                  {view.m + 1}<span className="mx-[1px] font-normal text-[#B08A99]">月</span>
+                  {view.y}<span className="mx-[2px] font-normal text-[var(--c-accent-ink)]">年</span>
+                  {view.m + 1}<span className="mx-[1px] font-normal text-[var(--c-accent-ink)]">月</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => changeMonth(1)}
                   aria-label="次の月"
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-[#B08A99] transition-colors hover:bg-[#FBF1F4] hover:text-[#5C4A4A]"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--c-accent-ink)] transition-colors hover:bg-[var(--c-tint)] hover:text-[var(--c-ink)]"
                 >
                   <ChevronRight size={15} strokeWidth={1.8} />
                 </button>
@@ -177,7 +178,7 @@ export function DatePicker({ value, onChange, disabled, placeholder = "日付を
                   <span
                     key={w}
                     style={{ fontSize: FONT_SIZE.micro, letterSpacing: "0.05em" }}
-                    className={i === 0 ? "text-[#C97D89]" : i === 6 ? "text-[#7A93B0]" : "text-[#B08A99]"}
+                    className={i === 0 ? "text-[var(--c-sunday)]" : i === 6 ? "text-[var(--c-saturday)]" : "text-[var(--c-accent-ink)]"}
                   >
                     {w}
                   </span>
@@ -196,18 +197,18 @@ export function DatePicker({ value, onChange, disabled, placeholder = "日付を
                             style={{
                               fontSize: FONT_SIZE.bodySm,
                               background: isSelected(d)
-                                ? "linear-gradient(135deg, #D9AEBC, #C393A5)"
+                                ? `linear-gradient(135deg, ${COLOR.accentPale}, ${COLOR.accentRose})`
                                 : undefined,
                               boxShadow: isSelected(d) ? "0 6px 16px rgba(150,90,110,0.35)" : undefined,
                             }}
                             className={`flex h-9 w-9 items-center justify-center rounded-full font-medium transition-all ${
                               isSelected(d)
-                                ? "text-[#FFF9F5]"
+                                ? "text-[var(--c-on-accent)]"
                                 : di === 0
-                                  ? "text-[#C97D89] hover:bg-[#FBF1F4]"
+                                  ? "text-[var(--c-sunday)] hover:bg-[var(--c-tint)]"
                                   : di === 6
-                                    ? "text-[#7A93B0] hover:bg-[#FBF1F4]"
-                                    : "text-[#5C4A4A] hover:bg-[#FBF1F4]"
+                                    ? "text-[var(--c-saturday)] hover:bg-[var(--c-tint)]"
+                                    : "text-[var(--c-ink)] hover:bg-[var(--c-tint)]"
                             }`}
                           >
                             {d}
@@ -215,7 +216,7 @@ export function DatePicker({ value, onChange, disabled, placeholder = "日付を
                           {isToday(d) && !isSelected(d) && (
                             <span
                               aria-hidden="true"
-                              className="pointer-events-none absolute bottom-[3px] h-[3px] w-[3px] rounded-full bg-[#CBA45C]"
+                              className="pointer-events-none absolute bottom-[3px] h-[3px] w-[3px] rounded-full bg-[var(--c-holiday)]"
                             />
                           )}
                         </>

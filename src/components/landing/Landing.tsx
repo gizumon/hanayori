@@ -7,6 +7,7 @@ import type { FontKey, ThemeKey } from "@/components/letter-studio/types";
 import { Petals } from "@/components/wedding-letter/Petals";
 import styles from "./landing.module.css";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 const FEATURES = [
   {
@@ -65,7 +66,7 @@ function MockQr() {
   return (
     <svg viewBox="0 0 21 21" style={{ width: "100%", height: "100%" }} aria-hidden="true">
       <path
-        fill="#5C4A4A"
+        fill={COLOR.ink}
         d="M1 1h5v5H1zM15 1h5v5h-5zM1 15h5v5H1zM8 1h1v2H8zM11 1h2v1h-2zM8 4h2v1H8zM12 3h1v3h-1zM8 8h1v1H8zM10 8h2v1h-2zM14 8h1v2h-1zM16 8h1v1h-1zM19 8h1v1h-1zM1 8h2v1H1zM4 8h1v1H4zM2 11h1v1H2zM4 11h2v1H4zM8 11h1v2H8zM10 12h2v1h-2zM8 15h1v1H8zM10 15h1v2h-1zM12 15h1v1h-1zM15 15h2v2h-2zM18 15h2v1h-2zM8 18h2v2H8zM12 18h1v2h-1zM15 19h3v1h-3zM19 18h1v2h-1zM2 2.5h3v2H2zM16 2.5h3v2H16zM2 16.5h3v2H2z"
       />
     </svg>
@@ -76,7 +77,7 @@ export function Landing() {
   return (
     <div className={styles.root}>
       <div className={styles.heroWrap}>
-        <Petals color="#E3C293" />
+        <Petals color={COLOR.gold} />
         <header
           style={{
             position: "relative",
@@ -93,7 +94,7 @@ export function Landing() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span aria-hidden="true" className={styles.logoMark} />
             <span style={{ fontSize: FONT_SIZE.heading, fontWeight: 600, letterSpacing: "0.12em" }}>Hanayori</span>
-            <span style={{ fontSize: FONT_SIZE.overline, letterSpacing: "0.22em", color: "#B08A99" }}>花嫁のお便り</span>
+            <span style={{ fontSize: FONT_SIZE.overline, letterSpacing: "0.22em", color: COLOR.accentInk }}>花嫁のお便り</span>
           </div>
           <Link href="/events" className={styles.navCta}>
             はじめる
@@ -114,7 +115,7 @@ export function Landing() {
           }}
         >
           <div className={styles.heroCopy} style={{ flex: 1.2, minWidth: 290 }}>
-            <p style={{ margin: "0 0 14px", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: "#B08A99" }}>
+            <p style={{ margin: "0 0 14px", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: COLOR.accentInk }}>
               花嫁のお便り — WEDDING LETTER SERVICE
             </p>
             <h1
@@ -138,7 +139,7 @@ export function Landing() {
                 fontSize: "clamp(14px, 2vw, 15.5px)",
                 lineHeight: 2.1,
                 letterSpacing: "0.06em",
-                color: "#8C7676",
+                color: COLOR.inkSoft,
               }}
             >
               Hanayori（はなより）は、「花嫁のお便り」から生まれた、
@@ -168,7 +169,7 @@ export function Landing() {
                   <svg
                     viewBox="0 0 120 28"
                     fill="none"
-                    stroke="#E3C293"
+                    stroke={COLOR.gold}
                     strokeWidth="1.1"
                     strokeLinecap="round"
                     className={styles.lineIn}
@@ -177,7 +178,7 @@ export function Landing() {
                     <path d="M14 15 H44 M76 15 H106" />
                     <path
                       d="M60 7.5 C56.8 11 56.8 17.5 60 21.5 C63.2 17.5 63.2 7.5 60 7.5 Z"
-                      fill="#E3C293"
+                      fill={COLOR.gold}
                       stroke="none"
                       opacity="0.8"
                     />
@@ -189,7 +190,7 @@ export function Landing() {
                       fontFamily: "'Yomogi', sans-serif",
                       fontSize: 16,
                       letterSpacing: "0.16em",
-                      color: "#5C4A4A",
+                      color: COLOR.ink,
                       textAlign: "center",
                       marginBottom: 8,
                       animationDelay: "3.7s",
@@ -203,7 +204,7 @@ export function Landing() {
                       fontSize: 12,
                       lineHeight: 2.15,
                       letterSpacing: "0.05em",
-                      color: "#5C4A4A",
+                      color: COLOR.ink,
                       textAlign: "center",
                     }}
                   >
@@ -217,7 +218,7 @@ export function Landing() {
                       fontFamily: "'Yomogi', sans-serif",
                       fontSize: 10.5,
                       letterSpacing: "0.2em",
-                      color: "#8C7676",
+                      color: COLOR.inkSoft,
                       textAlign: "center",
                       marginTop: 10,
                       animationDelay: "6s",
@@ -234,7 +235,7 @@ export function Landing() {
       </div>
 
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "clamp(50px, 7vw, 90px) clamp(18px, 4vw, 40px)" }}>
-        <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: "#B08A99" }}>
+        <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: COLOR.accentInk }}>
           FEATURES
         </p>
         <h2
@@ -255,7 +256,7 @@ export function Landing() {
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#B08A99"
+                  stroke={COLOR.accentInk}
                   strokeWidth="1.6"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -265,15 +266,15 @@ export function Landing() {
                 </svg>
               </div>
               <h3 style={{ margin: "0 0 10px", fontSize: FONT_SIZE.heading, fontWeight: 600, letterSpacing: "0.1em" }}>{f.title}</h3>
-              <p style={{ margin: 0, fontSize: FONT_SIZE.body, lineHeight: 2, letterSpacing: "0.04em", color: "#8C7676" }}>{f.body}</p>
+              <p style={{ margin: 0, fontSize: FONT_SIZE.body, lineHeight: 2, letterSpacing: "0.04em", color: COLOR.inkSoft }}>{f.body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section style={{ background: "#FFFCF8", padding: "clamp(50px, 7vw, 90px) clamp(18px, 4vw, 40px)" }}>
+      <section style={{ background: COLOR.surface, padding: "clamp(50px, 7vw, 90px) clamp(18px, 4vw, 40px)" }}>
         <div style={{ maxWidth: 1080, margin: "0 auto" }}>
-          <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: "#B08A99" }}>
+          <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: COLOR.accentInk }}>
             HOW IT WORKS
           </p>
           <h2
@@ -296,8 +297,8 @@ export function Landing() {
                     height: 40,
                     margin: "0 auto 14px",
                     borderRadius: "50%",
-                    border: "1px solid #D3A5B4",
-                    color: "#B08A99",
+                    border: `1px solid ${COLOR.accent}`,
+                    color: COLOR.accentInk,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -308,7 +309,7 @@ export function Landing() {
                   {st.n}
                 </div>
                 <h3 style={{ margin: "0 0 8px", fontSize: FONT_SIZE.subheading, fontWeight: 600, letterSpacing: "0.1em" }}>{st.title}</h3>
-                <p style={{ margin: 0, fontSize: FONT_SIZE.bodySm, lineHeight: 1.95, letterSpacing: "0.04em", color: "#8C7676" }}>
+                <p style={{ margin: 0, fontSize: FONT_SIZE.bodySm, lineHeight: 1.95, letterSpacing: "0.04em", color: COLOR.inkSoft }}>
                   {st.body}
                 </p>
               </div>
@@ -321,7 +322,7 @@ export function Landing() {
         id="letter-styles"
         style={{ maxWidth: 1080, margin: "0 auto", padding: "clamp(50px, 7vw, 90px) clamp(18px, 4vw, 40px)" }}
       >
-        <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: "#B08A99" }}>
+        <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: COLOR.accentInk }}>
           LETTER STYLES
         </p>
         <h2
@@ -335,7 +336,7 @@ export function Landing() {
         >
           選べる便箋と書体
         </h2>
-        <p style={{ margin: "0 0 36px", textAlign: "center", fontSize: FONT_SIZE.body, letterSpacing: "0.06em", color: "#8C7676" }}>
+        <p style={{ margin: "0 0 36px", textAlign: "center", fontSize: FONT_SIZE.body, letterSpacing: "0.06em", color: COLOR.inkSoft }}>
           4色の便箋と、5つの書体。おふたりらしい組み合わせを。
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 18 }}>
@@ -400,9 +401,9 @@ export function Landing() {
         </div>
       </section>
 
-      <section style={{ background: "#FFFCF8", padding: "clamp(50px, 7vw, 90px) clamp(18px, 4vw, 40px)" }}>
+      <section style={{ background: COLOR.surface, padding: "clamp(50px, 7vw, 90px) clamp(18px, 4vw, 40px)" }}>
         <div style={{ maxWidth: 1080, margin: "0 auto" }}>
-          <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: "#B08A99" }}>
+          <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.34em", color: COLOR.accentInk }}>
             PLACE CARDS
           </p>
           <h2
@@ -416,9 +417,10 @@ export function Landing() {
           >
             席札が、お手紙の入り口に
           </h2>
-          <p style={{ margin: "0 0 40px", textAlign: "center", fontSize: FONT_SIZE.body, letterSpacing: "0.06em", color: "#8C7676" }}>
+          <p style={{ margin: "0 0 40px", textAlign: "center", fontSize: FONT_SIZE.body, letterSpacing: "0.06em", color: COLOR.inkSoft }}>
             名刺サイズから二つ折りまで。QRコードを読み取ると、その方宛のお手紙がひらきます。
           </p>
+          {/* eslint-disable no-restricted-syntax -- 装飾カードのモックアップは「カードの意匠」の再現なので UI トークン対象外 */}
           <div style={{ display: "flex", gap: "clamp(20px, 4vw, 40px)", alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
               <div
@@ -538,12 +540,13 @@ export function Landing() {
               <div style={{ fontSize: FONT_SIZE.caption, letterSpacing: "0.14em", color: "#9D6F83" }}>二つ折りタイプ 91×110mm</div>
             </div>
           </div>
+          {/* eslint-enable no-restricted-syntax */}
         </div>
       </section>
 
       <section
         style={{
-          background: "linear-gradient(175deg, #F1E0E7 0%, #EDD8E1 100%)",
+          background: `linear-gradient(175deg, ${THEMES.rose.g1} 0%, ${THEMES.rose.g2} 100%)`,
           padding: "clamp(56px, 8vw, 100px) clamp(18px, 4vw, 40px)",
           textAlign: "center",
         }}
@@ -561,7 +564,7 @@ export function Landing() {
           <br />
           お手紙にのせて。
         </h2>
-        <p style={{ margin: "0 0 30px", fontSize: FONT_SIZE.body, letterSpacing: "0.08em", color: "#8C7676" }}>
+        <p style={{ margin: "0 0 30px", fontSize: FONT_SIZE.body, letterSpacing: "0.08em", color: COLOR.inkSoft }}>
           登録は無料。今日から書きはじめられます。
         </p>
         <Link href="/events" className={styles.ctaFinal}>
@@ -569,8 +572,17 @@ export function Landing() {
         </Link>
       </section>
 
-      <footer style={{ background: "#5C4A4A", color: "#D9C6CB", padding: "26px clamp(18px, 4vw, 40px)", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.14em" }}>
-        Hanayori — 花嫁のお便り、結婚式のお手紙サービス
+      <footer style={{ background: COLOR.ink, color: COLOR.onInk, padding: "26px clamp(18px, 4vw, 40px)", textAlign: "center", fontSize: FONT_SIZE.caption, letterSpacing: "0.14em" }}>
+        <div>Hanayori — 花嫁のお便り、結婚式のお手紙サービス</div>
+        <div style={{ marginTop: 12 }}>
+          <Link href="/terms" className={styles.footerLink}>
+            利用規約
+          </Link>
+          <span style={{ margin: "0 12px", opacity: 0.5 }}>|</span>
+          <Link href="/privacy" className={styles.footerLink}>
+            プライバシーポリシー
+          </Link>
+        </div>
       </footer>
     </div>
   );

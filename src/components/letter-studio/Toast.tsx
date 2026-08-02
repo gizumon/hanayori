@@ -1,6 +1,7 @@
 "use client";
 
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 interface ToastProps {
   message: string;
@@ -17,7 +18,7 @@ export function Toast({ message }: ToastProps) {
         transform: "translateX(-50%)",
         zIndex: 70,
         background: "rgba(92,74,74,0.92)",
-        color: "#FFF9F5",
+        color: COLOR.onAccent,
         fontSize: FONT_SIZE.bodySm,
         letterSpacing: "0.08em",
         padding: "10px 20px",

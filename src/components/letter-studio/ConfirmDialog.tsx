@@ -3,6 +3,7 @@
 import styles from "./letter-studio.module.css";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 interface ConfirmDialogProps {
   message: string;
@@ -37,7 +38,7 @@ export function ConfirmDialog({
       <div
         style={{
           width: "min(360px,92vw)",
-          background: "#FFFCF8",
+          background: COLOR.surface,
           borderRadius: 18,
           padding: "26px 26px",
           boxShadow: "0 24px 70px rgba(0,0,0,0.18)",
@@ -51,7 +52,7 @@ export function ConfirmDialog({
             margin: 0,
             fontSize: FONT_SIZE.body,
             lineHeight: 1.7,
-            color: "#5C4A4A",
+            color: COLOR.ink,
             letterSpacing: "0.04em",
           }}
         >
@@ -64,9 +65,9 @@ export function ConfirmDialog({
             style={{
               padding: "10px 18px",
               borderRadius: 999,
-              border: "1px solid #EBD9DF",
+              border: `1px solid ${COLOR.border}`,
               background: "transparent",
-              color: "#8C7676",
+              color: COLOR.inkSoft,
               fontSize: FONT_SIZE.bodySm,
               cursor: "pointer",
             }}
@@ -81,8 +82,8 @@ export function ConfirmDialog({
               padding: "10px 22px",
               borderRadius: 999,
               border: "none",
-              background: "#D3A5B4",
-              color: "#FFF9F5",
+              background: COLOR.accent,
+              color: COLOR.onAccent,
               fontSize: FONT_SIZE.bodySm,
               letterSpacing: "0.06em",
               cursor: "pointer",

@@ -13,13 +13,17 @@ export type CardFrame = "line" | "frame" | "minimal";
 export type EscortStyle = "ticket" | "card";
 /** イベント既定の敬称。"" = 敬称なし。 */
 export type Honor = "" | "様" | "さん";
-export type SettingsTab = "general" | "card" | "escort";
+export type SettingsTab = "general" | "card" | "escort" | "members";
 export type EditorTab = "letter" | "card" | "escort";
 /** イベント配下の画面タブ。一覧 / 一括編集 / 確認。 */
 export type EventTab = "list" | "bulk" | "review";
 
 export interface Letter {
   id: string;
+  /** 作成した人の uid。この機能より前の手紙には無いので null。 */
+  createdBy?: string | null;
+  /** 作成者の表示名(サーバーが users から解決したもの)。null = 不明。 */
+  createdByName?: string | null;
   to: string;
   body: string;
   theme: ThemeKey;
@@ -83,6 +87,8 @@ export interface Project {
   letterConfig: LetterConfig;
   cardConfig: CardConfig;
   escortConfig: EscortConfig;
+  /** 共同編集メンバーの人数。1 人なら作成者まわりの UI を出さない。 */
+  memberCount: number;
 }
 
 /** ホーム画面のイベント一覧用(手紙数はサーバーで集計)。 */
@@ -99,6 +105,25 @@ export interface EventSettingsPatch {
   letterConfig: LetterConfig;
   cardConfig: CardConfig;
   escortConfig: EscortConfig;
+}
+
+/** イベントの共同編集メンバー。メンバーは全員が同じ権限(共同オーナー)を持つ。 */
+export interface EventMember {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoUrl: string | null;
+  /** 最初にイベントを作った人。権限は同じで、表示と誤操作防止にだけ使う。 */
+  isCreator: boolean;
+}
+
+/** 招待リンク。受諾済みのものはサーバー側で除かれるので届かない。 */
+export interface EventInvite {
+  /** URL に載る ULID。`/join/{token}` */
+  token: string;
+  status: "active" | "expired";
+  createdAt: string;
+  expiresAt: string;
 }
 
 export type Draft = Partial<Letter>;
@@ -126,6 +151,8 @@ export type BulkLetterPatch = { id: string } & Partial<
 export interface StudioState {
   screen: Screen;
   userName: string;
+  /** ログイン中の uid。未ログインなら null。 */
+  userUid: string | null;
   projects: EventSummary[];
   curP: string | null;
   curL: string | null;

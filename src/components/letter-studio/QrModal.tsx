@@ -1,12 +1,13 @@
 "use client";
 
 import type { MouseEvent, RefObject } from "react";
-import { Download, Printer } from "lucide-react";
+import { Download } from "lucide-react";
 import { QrCardFace } from "./QrCardFace";
 import type { CardGeometry } from "./geometry";
 import type { CardConfig } from "./types";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 interface QrModalProps {
   paper: string;
@@ -25,7 +26,6 @@ interface QrModalProps {
   qrUrl: string;
   cardRef: RefObject<HTMLDivElement | null>;
   onSaveImage: () => void;
-  onPrint: () => void;
   onClose: () => void;
 }
 
@@ -53,7 +53,6 @@ export function QrModal({
   qrUrl,
   cardRef,
   onSaveImage,
-  onPrint,
   onClose,
 }: QrModalProps) {
   useScrollLock();
@@ -67,7 +66,7 @@ export function QrModal({
     borderRadius: 999,
     border: "none",
     background: "rgba(255,249,245,0.9)",
-    color: "#5C4A4A",
+    color: COLOR.ink,
     fontSize: FONT_SIZE.label,
     letterSpacing: "0.06em",
     cursor: "pointer",
@@ -116,10 +115,6 @@ export function QrModal({
           <button type="button" onClick={onSaveImage} style={actionStyle}>
             <Download size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
             画像として保存
-          </button>
-          <button type="button" onClick={onPrint} style={actionStyle}>
-            <Printer size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
-            印刷する
           </button>
           <button type="button" onClick={onClose} style={actionStyle}>
             閉じる

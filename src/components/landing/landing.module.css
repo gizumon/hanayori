@@ -1,7 +1,7 @@
 .root {
   margin: 0;
   font-family: "Shippori Mincho", serif;
-  color: #5c4a4a;
+  color: var(--c-ink);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -41,22 +41,22 @@
   height: 9px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: #d3a5b4;
+  background: var(--c-accent);
 }
 
 .navCta,
 .ctaPrimary,
 .ctaFinal {
   border-radius: 999px;
-  background: #d3a5b4;
-  color: #fff9f5;
+  background: var(--c-accent);
+  color: var(--c-on-accent);
   text-decoration: none;
   transition: background 0.15s ease;
 }
 .navCta:hover,
 .ctaPrimary:hover,
 .ctaFinal:hover {
-  background: #c393a5;
+  background: var(--c-accent-rose);
 }
 
 .navCta {
@@ -84,8 +84,8 @@
 .ctaSecondary {
   padding: 14px 28px;
   border-radius: 999px;
-  border: 1px solid #d3a5b4;
-  color: #b08a99;
+  border: 1px solid var(--c-accent);
+  color: var(--c-accent-ink);
   font-size: 14px;
   letter-spacing: 0.08em;
   text-decoration: none;
@@ -168,7 +168,7 @@
   left: 50%;
   top: 6%;
   width: 82%;
-  background: #fffcf8;
+  background: var(--c-surface);
   box-shadow: 0 -6px 22px rgba(150, 110, 130, 0.16);
   padding: 20px 18px 16px;
   animation: paperRise 3.2s cubic-bezier(0.25, 1, 0.4, 1) 1.7s both;
@@ -217,7 +217,7 @@
 }
 
 .featureCard {
-  background: #fffcf8;
+  background: var(--c-surface);
   border-radius: 18px;
   padding: 30px 26px;
   box-shadow: 0 10px 30px rgba(150, 110, 130, 0.13);
@@ -253,9 +253,18 @@
 }
 
 .placeCard {
-  background: #fffcf8;
+  background: var(--c-surface);
   box-shadow: 0 14px 36px rgba(150, 110, 130, 0.2);
   position: relative;
   overflow: hidden;
   font-family: "Shippori Mincho", serif;
+}
+
+.footerLink {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.footerLink:hover {
+  color: var(--c-on-accent);
 }

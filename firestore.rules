@@ -17,22 +17,18 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.memberUids == [request.auth.uid];
+      // メンバーは全員共同オーナー。メンバー構成の変更も含めて許可し、
+      // 作成者の記録(createdBy)だけは書き換えさせない。
       allow update: if isSignedIn()
         && request.auth.uid in resource.data.memberUids
-        && (
-          // 作成者は全フィールド変更可
-          request.auth.uid == resource.data.createdBy
-          // メンバーはメンバー構成・招待トークン以外を変更可
-          || (
-            request.resource.data.createdBy == resource.data.createdBy
-            && request.resource.data.memberUids == resource.data.memberUids
-            && request.resource.data.inviteToken == resource.data.inviteToken
-          )
-          // 自分自身の脱退のみ例外的に許可
-          || request.resource.data.memberUids ==
-               resource.data.memberUids.removeAll([request.auth.uid])
-        );
+        && request.resource.data.createdBy == resource.data.createdBy;
       allow delete: if isSignedIn() && request.auth.uid == resource.data.createdBy;
+    }
+
+    // 招待リンク。トークン照合と受諾はサーバー(Admin SDK)専用なので
+    // クライアントからの直接アクセスは全面拒否する。
+    match /invites/{token} {
+      allow read, write: if false;
     }
 
     match /letters/{letterId} {

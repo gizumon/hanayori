@@ -59,14 +59,37 @@ export interface EscortConfigDoc {
 export interface EventDoc {
   name: string;
   date: string | null;
+  /** 最初にイベントを作った uid。権限差は無く(メンバーは全員共同オーナー)、表示と保護のためだけに持つ。 */
   createdBy: string;
   memberUids: string[];
-  inviteToken: string | null;
   letterConfig: LetterConfigDoc;
   cardConfig: CardConfigDoc;
   escortConfig: EscortConfigDoc;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+/**
+ * Firestore `{prefix}invites/{token}` ドキュメント(token は ULID)。
+ *
+ * 1 リンク 1 人の使い切り + 発行から 7 日で失効。イベント側の 1 フィールドでは
+ * 「複数の未使用リンクが同時に存在する」を表現できないため独立コレクションにした。
+ * ドキュメント ID をトークンそのものにしてあるので、受諾はトークンだけで単一
+ * `get` に落ちる(letters/{ulid} と同じ発想)。
+ *
+ * ステータスは保存せず acceptedBy / expiresAt から派生する(§inviteStatus)。
+ * 取消は物理削除。受諾済みレコードは「誰がいつ参加したか」の記録として残す。
+ */
+export interface InviteDoc {
+  eventId: string;
+  /** 発行者の uid。 */
+  createdBy: string;
+  createdAt: Timestamp;
+  /** createdAt + 7 日。これを過ぎたリンクは受諾できない。 */
+  expiresAt: Timestamp;
+  /** 受諾者の uid。null 以外 = 消費済みで再利用不可。 */
+  acceptedBy: string | null;
+  acceptedAt: Timestamp | null;
 }
 
 /** お手紙ごとのエスコートカード情報。 */
@@ -95,6 +118,11 @@ export interface LetterPhoto {
 /** Firestore `{prefix}letters/{letterId}` ドキュメント(letterId は ULID) */
 export interface LetterDoc {
   eventId: string;
+  /**
+   * 作成した人の uid。共同編集で「誰が書いた手紙か」を示すために持つ。
+   * この機能より前に作られた手紙には無いので optional(表示は「作成者不明」)。
+   */
+  createdBy?: string;
   to: string;
   body: string;
   theme: ThemeKey;

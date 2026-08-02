@@ -3,14 +3,7 @@
 import { Share, X } from "lucide-react";
 import { Portal } from "@/components/Portal";
 import { FONT_SIZE } from "@/lib/typography";
-
-const C = {
-  accent: "#D3A5B4",
-  text: "#5C4A4A",
-  textSec: "#8C7676",
-  textTer: "#B4A2A2",
-  bgAlt: "#FFF9F5",
-};
+import { COLOR } from "@/lib/palette";
 
 interface PWAInstallModalProps {
   onClose: () => void;
@@ -40,22 +33,22 @@ export function PWAInstallModal({ onClose }: PWAInstallModalProps) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={{ fontSize: FONT_SIZE.subheading, fontWeight: 700, color: C.text }}>ホーム画面に追加</div>
+          <div style={{ fontSize: FONT_SIZE.subheading, fontWeight: 700, color: COLOR.ink }}>ホーム画面に追加</div>
           <button
             onClick={onClose}
-            style={{ padding: 6, border: "none", background: "transparent", color: C.textTer, cursor: "pointer", display: "flex" }}
+            style={{ padding: 6, border: "none", background: "transparent", color: COLOR.inkFaint, cursor: "pointer", display: "flex" }}
             aria-label="閉じる"
           >
             <X size={18} />
           </button>
         </div>
-        <div style={{ fontSize: FONT_SIZE.caption, color: C.textSec, marginBottom: 14, lineHeight: 1.6 }}>
+        <div style={{ fontSize: FONT_SIZE.caption, color: COLOR.inkSoft, marginBottom: 14, lineHeight: 1.6 }}>
           Safari からホーム画面に追加すると、アプリのようにすぐ開けます。
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <ModalStep number={1}>
             Safari 下部の{" "}
-            <span style={{ display: "inline-flex", verticalAlign: "middle", color: C.accent, margin: "0 2px" }}>
+            <span style={{ display: "inline-flex", verticalAlign: "middle", color: COLOR.accent, margin: "0 2px" }}>
               <Share size={13} />
             </span>{" "}
             <strong>共有</strong> をタップ
@@ -80,8 +73,8 @@ function ModalStep({ number, children }: { number: number; children: React.React
         alignItems: "center",
         gap: 10,
         fontSize: FONT_SIZE.bodySm,
-        color: C.text,
-        background: C.bgAlt,
+        color: COLOR.ink,
+        background: COLOR.bg,
         borderRadius: 10,
         padding: "10px 12px",
       }}
@@ -91,7 +84,7 @@ function ModalStep({ number, children }: { number: number; children: React.React
           width: 20,
           height: 20,
           borderRadius: "50%",
-          background: C.accent,
+          background: COLOR.accent,
           color: "white",
           display: "flex",
           alignItems: "center",

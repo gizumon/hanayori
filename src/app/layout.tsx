@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { PWAInstallBanner } from "@/components/pwa/PWAInstallBanner";
 import "./globals.css";
+import { COLOR } from "@/lib/palette";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#D3A5B4",
+  themeColor: COLOR.accent,
 };
 
 export default function RootLayout({

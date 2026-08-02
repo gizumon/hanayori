@@ -17,6 +17,14 @@
       ]
     },
     {
+      "collectionGroup": "dev_invites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "eventId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "stg_events",
       "queryScope": "COLLECTION",
       "fields": [
@@ -33,6 +41,14 @@
       ]
     },
     {
+      "collectionGroup": "stg_invites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "eventId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "prod_events",
       "queryScope": "COLLECTION",
       "fields": [
@@ -46,6 +62,14 @@
       "fields": [
         { "fieldPath": "eventId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "prod_invites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "eventId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],

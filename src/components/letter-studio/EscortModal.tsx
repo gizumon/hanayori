@@ -1,12 +1,13 @@
 "use client";
 
 import type { MouseEvent, RefObject } from "react";
-import { Download, Printer } from "lucide-react";
+import { Download } from "lucide-react";
 import { EscortCardFace } from "./EscortCardFace";
 import type { EscortGeometry } from "./geometry";
 import type { EscortStyle } from "./types";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 interface EscortModalProps {
   style: EscortStyle;
@@ -26,7 +27,6 @@ interface EscortModalProps {
   footText: string;
   cardRef: RefObject<HTMLDivElement | null>;
   onSaveImage: () => void;
-  onPrint: () => void;
   onClose: () => void;
 }
 
@@ -52,7 +52,6 @@ export function EscortModal({
   footText,
   cardRef,
   onSaveImage,
-  onPrint,
   onClose,
 }: EscortModalProps) {
   useScrollLock();
@@ -66,7 +65,7 @@ export function EscortModal({
     borderRadius: 999,
     border: "none",
     background: "rgba(255,249,245,0.9)",
-    color: "#5C4A4A",
+    color: COLOR.ink,
     fontSize: FONT_SIZE.label,
     letterSpacing: "0.06em",
     cursor: "pointer",
@@ -115,10 +114,6 @@ export function EscortModal({
           <button type="button" onClick={onSaveImage} style={actionStyle}>
             <Download size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
             画像として保存
-          </button>
-          <button type="button" onClick={onPrint} style={actionStyle}>
-            <Printer size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
-            印刷する
           </button>
           <button type="button" onClick={onClose} style={actionStyle}>
             閉じる

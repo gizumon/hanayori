@@ -17,7 +17,7 @@
 | 経路 | 対象 | 認可 |
 | --- | --- | --- |
 | **ブラウザ → Route Handler**(`fetch`) | スタジオ(ログイン中の編集画面)の読み書き全般 | Firebase Auth の ID トークンから発行した **httpOnly セッションクッキー**をサーバーが検証し、`memberUids` を手動チェック |
-| **Next.js サーバー(Admin SDK)** | 上記に加え、ゲストの手紙閲覧 `/letter/{ulid}`、招待リンクの受諾(未実装) | サーバー側コードで検証(Admin SDK は Firestore セキュリティルールをバイパスする) |
+| **Next.js サーバー(Admin SDK)** | 上記に加え、ゲストの手紙閲覧 `/letter/{ulid}`、招待リンクの表示・受諾 `/join/{token}` | サーバー側コードで検証(Admin SDK は Firestore セキュリティルールをバイパスする) |
 
 Admin SDK は常にルールをバイパスするため、`firestore.rules` はこの用途では実行されない。ルールは「将来クライアントから直接 Firestore を叩く経路(例: リアルタイム購読)を足す場合の防御層」として維持している。ルール上のパス(`/events/{eventId}`)は環境プレフィックスなしの前提で書かれている点に注意 — プレフィックス付きコレクションに直接アクセスする経路を追加する場合はルールも合わせて調整すること。
 
@@ -38,6 +38,7 @@ Admin SDK は常にルールをバイパスするため、`firestore.rules` は�
 users/{uid}          … ユーザープロフィール
 events/{eventId}     … イベント(アクセス制御の起点)
 letters/{letterId}   … お手紙(ULID キー)
+invites/{token}      … 招待リンク(ULID キー、使い切り)
 ```
 
 **手紙をイベントのサブコレクションにしない理由**: ゲストは URL の ULID だけで手紙に到達する。トップレベルで ULID をドキュメント ID にすれば、サーバーは単一の `get` で手紙を引け、パスに `eventId` を含める必要がない。
@@ -67,9 +68,8 @@ Firebase Authentication の `uid` をキーとするプロフィール。
 | --- | --- | --- |
 | `name` | string | イベント名(例: 「ゆい & 蓮 の結婚式」) |
 | `date` | string \| null | 挙式日の表示文字列。**null = 日付を使わない** |
-| `createdBy` | string | 作成者の uid |
+| `createdBy` | string | 最初に作った人の uid。**権限差は無い**(§4 参照)、表示と保護のためだけに持つ |
 | `memberUids` | string[] | **作成者を含む**全編集メンバーの uid。ルール判定・一覧クエリの両方でこの配列だけを見る |
-| `inviteToken` | string \| null | 招待リンク用トークン(ULID)。**null = 招待リンク無効** |
 | `font` | string | お手紙フォント (`yomogi` \| `klee` \| `mincho` \| `gothic` \| `maru`) |
 | `cardFont` | string | 席札フォント(同上) |
 | `cardEnabled` | boolean | 席札を作成するか |
@@ -88,7 +88,7 @@ Firebase Authentication の `uid` をキーとするプロフィール。
 | `note` | string | QR 案内文(改行含む) |
 
 - 読み書きとも `memberUids` に含まれるユーザーのみ。
-- `createdBy` / `memberUids` / `inviteToken` の変更は作成者のみ(メンバーが自分を脱退させる更新だけ例外的に許可)。
+- **メンバーは全員が同じ権限(共同オーナー)**。招待の発行・取消、他メンバーの削除も含めて誰でも行える。`createdBy` だけは書き換え不可で、作成者を他人が外すこともできない(招待した相手に締め出される事故を防ぐ)。
 - 手紙数のカウンタは持たない。イベント一覧で件数が必要になったら `letters` への集計クエリ(`count()`)で取得する。
 - 想定規模は 1 イベントあたり数名なので `memberUids` 配列で十分。役割が増えたらサブコレクション `members/{uid}` への移行を検討する。
 
@@ -99,6 +99,7 @@ Firebase Authentication の `uid` をキーとするプロフィール。
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
 | `eventId` | string | 所属イベント(権限判定と、閲覧時の日付・フォント解決に使用) |
+| `createdBy` | string \| 無し | 作成した人の uid。共同編集で「誰が書いた手紙か」を示す。**この機能より前の手紙にはフィールドが無い**ので、読み出し側は「作成者不明」にフォールバックする |
 | `to` | string | 宛名(例: 「さくらへ」) |
 | `body` | string | 本文 |
 | `theme` | string | `rose` \| `blue` \| `sage` \| `kinari` |
@@ -117,24 +118,57 @@ Firebase Authentication の `uid` をキーとするプロフィール。
 | `ratio` | number \| null | アスペクト比(横/縦) |
 
 - 挙式日・フォントは**持たない**。イベント側の値が唯一の情報源(single source of truth)で、閲覧時に `eventId` から解決する。設定変更時のファンアウト更新は不要。
+- 作成者の**表示名も持たない**(`createdBy` は uid のみ)。名前は返却時に `users` から解決する — distinct な uid をまとめて 1 回の `getAll` で引くので、何通あっても往復は 1 回。ニックネーム変更が全手紙に波及しないのはこのため。
 - 読み書きはイベントメンバーのみ。Route Handler 内でイベントの `memberUids` を確認してから Admin SDK で読み書きする。
 
 必要なインデックス:
 
 - `letters`: `eventId ASC, createdAt ASC`(イベント詳細画面の手紙一覧用)
 
+### 3.4 `invites/{token}`
+
+招待リンク。**ドキュメント ID = ULID トークン**。`/join/{token}` の URL に載る。
+
+| フィールド | 型 | 説明 |
+| --- | --- | --- |
+| `eventId` | string | 対象イベント |
+| `createdBy` | string | 発行者の uid |
+| `createdAt` | timestamp | 発行日時 |
+| `expiresAt` | timestamp | `createdAt + 7 日`。これを過ぎたリンクは受諾できない |
+| `acceptedBy` | string \| null | 受諾者の uid。**null 以外 = 消費済み**で再利用不可 |
+| `acceptedAt` | timestamp \| null | 受諾日時 |
+
+**イベントのサブコレクションにしない理由**: 受諾者が持っているのはトークンだけ。トップレベルでトークンをドキュメント ID にすれば単一 `get` で引ける(`letters/{ulid}` と同じ発想)。サブコレクションにすると `eventId` が要るか collection group query になる。
+
+- **ステータスは保存しない**。`acceptedBy` と `expiresAt` から `active` / `expired` / `accepted` を派生させる(時刻依存の状態をドキュメントに固定しない)。
+- **取消は物理削除**。`revoked` 状態は持たない。受諾済みレコードは「誰がいつ参加したか」の記録として残す。
+- クライアントからは一切読めない(§6)。トークン照合と受諾はサーバー専用。
+
+必要なインデックス:
+
+- `invites`: `eventId ASC, createdAt DESC`(メンバータブの招待一覧用)
+
 ## 4. 招待フロー
 
-**未実装**(設計のみ)。`events.inviteToken` フィールドはスキーマに用意済みだが、発行・受諾の API はまだない。
+**実装済み**。招待は**リンク共有のみ**で、メール送信は行わない。参加した人は共同オーナー(既存メンバーと同じ権限)になる。
 
-招待は専用コレクションを持たず、**イベントドキュメント上の `inviteToken` 1 フィールド**で実現する。
+1. **リンク発行**: メンバーが共通設定 →「メンバー」タブ →「招待リンクを発行」→ `POST /api/events/{eventId}/invites`。ULID を発行し、`expiresAt = now + 7 日` で `invites/{token}` を作る。発行と同時にクライアントが URL をクリップボードへコピーする。
+2. **共有**: `https://…/join/{token}` を LINE 等で相手に渡す。`navigator.share` が使える端末では共有シートから直接送れる。
+3. **受諾**: 相手が `/join/{token}` を開く → サーバーが状態を読んで画面を出し分ける(未ログインならイベント名を見せてログインへ誘導)。「参加する」ボタンで `POST /api/invites/{token}/accept` → トランザクション内で `memberUids` へ追加し、`acceptedBy` を埋めて消費する。
+4. **取消**: メンバーが招待行の ✕ → `DELETE /api/events/{eventId}/invites/{token}` でドキュメントごと削除。そのリンクは即座に失効する。
 
-1. **リンク発行**: 作成者が「招待リンクを発行」→ `inviteToken` に ULID をセット。URL は `https://…/join/{token}`。
-2. **受諾**: 招待された人がログインした状態でリンクを開く → Next.js のルートハンドラが Admin SDK で `events.where("inviteToken", "==", token)` を照合し、一致すれば `memberUids` に uid を追加してイベント画面へリダイレクト。
-3. **無効化**: 作成者が `inviteToken` を null に(または再発行で差し替え)。過去のリンクは即座に失効する。
+設計上の要点:
 
-- Cloud Functions・招待メール・ステータス管理は持たない。「リンクを知っている人が参加できる、リンクはいつでも無効化できる」という手紙と同じメンタルモデルに揃える。
-- 有効期限が必要になったら `inviteTokenExpiresAt`(timestamp)を追加する程度の拡張で対応可能。
+- **リンクは使い切り(1 リンク 1 人)**。発行済みの有効なリンクは 1 イベント 5 件まで(乱発と管理不能化の防止)。
+- **`GET` では絶対にトークンを消費しない**。消費は `POST .../accept` だけ。SNS のリンクプレビューやブラウザの prefetch で使い切りのリンクが潰れるのを防ぐため、受諾は必ず明示的なボタン操作を経由させる。
+- **受諾はトランザクション**。「未受諾であることの確認」と「消費」を同一トランザクションに入れる。同じリンクを 2 人が同時に開くレースは実際に起こる。
+- すでにメンバーの人が開いた場合はリンクを消費せず、そのままイベントへ通す。
+- Cloud Functions・招待メール・ステータス管理コレクションは持たない。
+
+メンバー管理:
+
+- メンバーは全員が招待の発行・取消・他メンバーの削除を行える。
+- 例外は 2 つだけ — **最後の 1 人は外せない**(イベントが誰からも触れなくなる)、**作成者は他人から外せない**(本人の「退出」は可)。
 
 ## 5. Cloud Storage 構成と写真のアクセス制御
 
@@ -174,22 +208,18 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.memberUids == [request.auth.uid];
+      // メンバーは全員共同オーナー。メンバー構成の変更も含めて許可し、
+      // 作成者の記録(createdBy)だけは書き換えさせない。
       allow update: if isSignedIn()
         && request.auth.uid in resource.data.memberUids
-        && (
-          // 作成者は全フィールド変更可
-          request.auth.uid == resource.data.createdBy
-          // メンバーはメンバー構成・招待トークン以外を変更可
-          || (
-            request.resource.data.createdBy == resource.data.createdBy
-            && request.resource.data.memberUids == resource.data.memberUids
-            && request.resource.data.inviteToken == resource.data.inviteToken
-          )
-          // 自分自身の脱退のみ例外的に許可
-          || request.resource.data.memberUids ==
-               resource.data.memberUids.removeAll([request.auth.uid])
-        );
+        && request.resource.data.createdBy == resource.data.createdBy;
       allow delete: if isSignedIn() && request.auth.uid == resource.data.createdBy;
+    }
+
+    // 招待リンク。トークン照合と受諾はサーバー(Admin SDK)専用なので
+    // クライアントからの直接アクセスは全面拒否する。
+    match /invites/{token} {
+      allow read, write: if false;
     }
 
     match /letters/{letterId} {
@@ -226,8 +256,12 @@ service cloud.firestore {
 | 手紙の作成 | `POST /api/events/{eventId}/letters` | メンバー確認 → ULID 発行 → `letters/{ulid}` へ `set` | ✅ |
 | 手紙の更新 | `PATCH /api/letters/{letterId}` | 手紙 `get` →`eventId` からメンバー確認 → 部分更新 | ✅ |
 | ゲストの手紙閲覧 `/letter/{ulid}` | サーバー SSR | 手紙 `get` → `eventId` からイベント `get`(日付・フォントを解決)。開封アニメーション(`WeddingLetter.dc.html` を移植)付き | ✅ |
-| 招待リンク発行 / 無効化 | サーバー API | 作成者が `inviteToken` を更新 | ⬜ |
-| 招待の受諾 `/join/{token}` | サーバー API | トークン照合 → `memberUids` へ追加 | ⬜ |
+| メンバー / 招待リンク一覧 | `GET /api/events/{eventId}/members` | メンバー確認 → `memberUids` を `users` へ `getAll` + `invites.where("eventId","==",…)` | ✅ |
+| 招待リンク発行 | `POST /api/events/{eventId}/invites` | メンバー確認 → 有効なリンクが 5 件未満か確認 → `invites/{ulid}` へ `set` | ✅ |
+| 招待リンク取消 | `DELETE /api/events/{eventId}/invites/{token}` | メンバー確認 → 未受諾を確認 → 物理削除 | ✅ |
+| メンバーを外す / 退出 | `DELETE /api/events/{eventId}/members/{uid}` | メンバー確認 → 最後の 1 人・作成者のガード → `arrayRemove` | ✅ |
+| 招待ページの表示 `/join/{token}` | サーバー SSR | 招待 `get` → イベント `get`(名前を解決)。**トークンは消費しない** | ✅ |
+| 招待の受諾 | `POST /api/invites/{token}/accept` | トランザクション: 未受諾・未期限を確認 → `memberUids` へ追加 → `acceptedBy` を埋める | ✅ |
 
 ## 8. localStorage モックからの移行
 
@@ -260,6 +294,7 @@ stg/prod は同一 Firestore データベースを共有する(`infrastructure/e
 
 ### 未実装・今後の課題
 
-- 招待リンクの発行・受諾 API(`events.inviteToken` を使った §4 のフロー)
 - 写真の Cloud Storage 移行(§5)。Storage バケット作成用の Terraform モジュールがまだない
-- リアルタイム更新(現状は各操作後にクライアントが明示的に再取得する方式。複数メンバーが同時編集するケースは考慮していない)
+- **同時編集の競合検出**。現状は各操作後にクライアントが明示的に再取得する方式で、複数メンバーが同じ手紙を開いて片方の変更が消えるケースを防げない。招待機能(§4)で共同編集が現実に起こるようになったため、最小対応として保存時に `updatedAt` を突き合わせる楽観ロックを入れるのが次の一手
+- イベントの削除 API(ルール上は作成者のみ許可しているが、Route Handler が無い)
+- 期限切れ・受諾済み招待ドキュメントの掃除(件数はごく少ないので当面は放置で問題ない)

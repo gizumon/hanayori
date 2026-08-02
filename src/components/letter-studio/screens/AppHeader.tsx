@@ -1,12 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Download, LogOut, Pencil } from "lucide-react";
+import Link from "next/link";
+import { Download, FileText, LogOut, Pencil, ShieldCheck } from "lucide-react";
 import { fieldStyle } from "../controls";
 import styles from "../letter-studio.module.css";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { PWAInstallModal } from "@/components/pwa/PWAInstallModal";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
+
+/** アカウントメニューの行（規約・ポリシーのリンク）の見た目。隣の button 群と揃える。 */
+const menuItemStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  textAlign: "left",
+  borderRadius: 8,
+  padding: "9px 8px",
+  fontSize: FONT_SIZE.bodySm,
+  color: COLOR.inkSoft,
+  letterSpacing: "0.04em",
+  textDecoration: "none",
+} as const;
 
 interface AppHeaderProps {
   userName: string;
@@ -116,12 +132,12 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
             fontSize: FONT_SIZE.heading,
             fontWeight: 500,
             letterSpacing: "0.1em",
-            color: "#5C4A4A",
+            color: COLOR.ink,
           }}
         >
           Hanayori
         </span>
-        <span style={{ fontSize: FONT_SIZE.overline, letterSpacing: "0.28em", color: "#B08A99" }}>
+        <span style={{ fontSize: FONT_SIZE.overline, letterSpacing: "0.28em", color: COLOR.accentInk }}>
           花嫁のお便り
         </span>
       </button>
@@ -141,7 +157,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
             padding: "4px 10px 4px 4px",
             cursor: "pointer",
             fontSize: FONT_SIZE.label,
-            color: "#8C7676",
+            color: COLOR.inkSoft,
             letterSpacing: "0.05em",
           }}
         >
@@ -150,11 +166,11 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
               width: 26,
               height: 26,
               borderRadius: "50%",
-              background: "linear-gradient(135deg,#E2B6C3,#D3A5B4)",
+              background: `linear-gradient(135deg,${COLOR.accentPale},${COLOR.accent})`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#FFF9F5",
+              color: COLOR.onAccent,
               fontSize: FONT_SIZE.caption,
               flexShrink: 0,
             }}
@@ -171,10 +187,10 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
               top: "calc(100% + 8px)",
               right: 0,
               width: 240,
-              background: "#FFFCF8",
+              background: COLOR.surface,
               borderRadius: 14,
               boxShadow: "0 12px 32px rgba(150,110,130,0.24)",
-              border: "1px solid #F0E2E7",
+              border: `1px solid ${COLOR.borderSoft}`,
               padding: 10,
               display: "flex",
               flexDirection: "column",
@@ -185,7 +201,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
             {editing ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "6px 8px" }}>
                 <label
-                  style={{ fontSize: FONT_SIZE.caption, letterSpacing: "0.08em", color: "#8C7676" }}
+                  style={{ fontSize: FONT_SIZE.caption, letterSpacing: "0.08em", color: COLOR.inkSoft }}
                 >
                   ニックネーム
                 </label>
@@ -208,8 +224,8 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                       padding: "8px 0",
                       borderRadius: 999,
                       border: "none",
-                      background: "#D3A5B4",
-                      color: "#FFF9F5",
+                      background: COLOR.accent,
+                      color: COLOR.onAccent,
                       fontSize: FONT_SIZE.label,
                       letterSpacing: "0.06em",
                       cursor: "pointer",
@@ -224,9 +240,9 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                       flex: 1,
                       padding: "8px 0",
                       borderRadius: 999,
-                      border: "1px solid #EBD9DF",
+                      border: `1px solid ${COLOR.border}`,
                       background: "transparent",
-                      color: "#8C7676",
+                      color: COLOR.inkSoft,
                       fontSize: FONT_SIZE.label,
                       letterSpacing: "0.06em",
                       cursor: "pointer",
@@ -252,7 +268,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                     padding: "9px 8px",
                     cursor: "pointer",
                     fontSize: FONT_SIZE.bodySm,
-                    color: "#5C4A4A",
+                    color: COLOR.ink,
                     letterSpacing: "0.04em",
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(211,165,180,0.12)")}
@@ -262,7 +278,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                     size={13}
                     strokeWidth={1.8}
                     aria-hidden="true"
-                    style={{ color: "#B08A99", flex: "none" }}
+                    style={{ color: COLOR.accentInk, flex: "none" }}
                   />
                   ニックネームを変更
                 </button>
@@ -281,7 +297,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                       padding: "9px 8px",
                       cursor: "pointer",
                       fontSize: FONT_SIZE.bodySm,
-                      color: "#5C4A4A",
+                      color: COLOR.ink,
                       letterSpacing: "0.04em",
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(211,165,180,0.12)")}
@@ -291,12 +307,48 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                       size={13}
                       strokeWidth={1.8}
                       aria-hidden="true"
-                      style={{ color: "#B08A99", flex: "none" }}
+                      style={{ color: COLOR.accentInk, flex: "none" }}
                     />
                     アプリをインストール
                   </button>
                 )}
-                <div style={{ height: 1, background: "#F0E2E7", margin: "4px 2px" }} />
+                <div style={{ height: 1, background: COLOR.borderSoft, margin: "4px 2px" }} />
+                {/* 作成中の内容を残したいので、規約類は別タブで開く。 */}
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeAll}
+                  style={menuItemStyle}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(211,165,180,0.12)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <FileText
+                    size={13}
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                    style={{ color: COLOR.accentInk, flex: "none" }}
+                  />
+                  利用規約
+                </Link>
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeAll}
+                  style={menuItemStyle}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(211,165,180,0.12)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <ShieldCheck
+                    size={13}
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                    style={{ color: COLOR.accentInk, flex: "none" }}
+                  />
+                  プライバシーポリシー
+                </Link>
+                <div style={{ height: 1, background: COLOR.borderSoft, margin: "4px 2px" }} />
                 <button
                   type="button"
                   onClick={() => {
@@ -314,7 +366,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                     padding: "9px 8px",
                     cursor: "pointer",
                     fontSize: FONT_SIZE.bodySm,
-                    color: "#8C7676",
+                    color: COLOR.inkSoft,
                     letterSpacing: "0.04em",
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(211,165,180,0.12)")}
@@ -324,7 +376,7 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
                     size={13}
                     strokeWidth={1.8}
                     aria-hidden="true"
-                    style={{ color: "#B08A99", flex: "none" }}
+                    style={{ color: COLOR.accentInk, flex: "none" }}
                   />
                   ログアウト
                 </button>

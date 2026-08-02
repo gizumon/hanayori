@@ -12,6 +12,7 @@ import type { CardGeometry, EscortGeometry } from "../geometry";
 import styles from "../letter-studio.module.css";
 import type { CardConfig, Draft, EditorTab, EscortConfig, Letter, Project } from "../types";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 interface EditorScreenProps {
   project: Project;
@@ -84,7 +85,7 @@ export function EditorScreen({
         style={{
           border: "none",
           background: "none",
-          color: "#B08A99",
+          color: COLOR.accentInk,
           fontSize: FONT_SIZE.label,
           letterSpacing: "0.08em",
           padding: 0,
@@ -118,15 +119,15 @@ export function EditorScreen({
                 gap: 6,
                 padding: "8px 16px",
                 borderRadius: 999,
-                border: "1px solid #EBD9DF",
-                background: "#FFFFFF",
-                color: "#5C4A4A",
+                border: `1px solid ${COLOR.border}`,
+                background: COLOR.surfaceRaised,
+                color: COLOR.ink,
                 fontSize: FONT_SIZE.label,
                 letterSpacing: "0.06em",
                 flex: "none",
               }}
             >
-              <Settings size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: "#B08A99" }} />
+              <Settings size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: COLOR.accentInk }} />
               共通設定
             </button>
           </div>
@@ -160,8 +161,8 @@ export function EditorScreen({
                     cursor: "pointer",
                     fontSize: FONT_SIZE.bodySm,
                     letterSpacing: "0.08em",
-                    background: edTab === k ? "#FFFCF8" : "transparent",
-                    color: edTab === k ? "#5C4A4A" : "#A38A93",
+                    background: edTab === k ? COLOR.surface : "transparent",
+                    color: edTab === k ? COLOR.ink : COLOR.inkMuted,
                     fontWeight: edTab === k ? 600 : 400,
                     boxShadow: edTab === k ? "0 2px 8px rgba(150,110,130,0.18)" : "none",
                   }}
@@ -193,7 +194,7 @@ export function EditorScreen({
         </div>
 
         <div style={{ flex: 1.2, minWidth: 300, position: "sticky", top: 20 }}>
-          <div style={{ fontSize: FONT_SIZE.label, letterSpacing: "0.14em", color: "#8C7676", marginBottom: 10 }}>
+          <div style={{ fontSize: FONT_SIZE.label, letterSpacing: "0.14em", color: COLOR.inkSoft, marginBottom: 10 }}>
             {showCardFields
               ? "席札プレビュー"
               : showEscortFields
@@ -244,7 +245,7 @@ export function EditorScreen({
                   boxShadow="0 14px 40px rgba(150,110,130,0.22)"
                 />
               </div>
-              <p style={{ margin: "10px 0 0", fontSize: FONT_SIZE.caption, color: "#B4A2A2", letterSpacing: "0.05em", textAlign: "center" }}>
+              <p style={{ margin: "10px 0 0", fontSize: FONT_SIZE.caption, color: COLOR.inkFaint, letterSpacing: "0.05em", textAlign: "center" }}>
                 実寸 {g.sizeLabel}
               </p>
             </>
@@ -281,7 +282,7 @@ export function EditorScreen({
                   boxShadow="0 14px 40px rgba(150,110,130,0.22)"
                 />
               </div>
-              <p style={{ margin: "10px 0 0", fontSize: FONT_SIZE.caption, color: "#B4A2A2", letterSpacing: "0.05em", textAlign: "center" }}>
+              <p style={{ margin: "10px 0 0", fontSize: FONT_SIZE.caption, color: COLOR.inkFaint, letterSpacing: "0.05em", textAlign: "center" }}>
                 実寸 {eg.sizeLabel}
               </p>
             </>
@@ -296,7 +297,7 @@ export function EditorScreen({
           right: 0,
           bottom: 0,
           zIndex: 40,
-          background: "#FFFCF8",
+          background: COLOR.surface,
           borderTop: "1px solid rgba(211,165,180,0.3)",
           padding: "10px clamp(16px,4vw,40px) calc(10px + env(safe-area-inset-bottom))",
         }}
@@ -321,14 +322,14 @@ export function EditorScreen({
               gap: 7,
               padding: "12px 22px",
               borderRadius: 999,
-              border: "1px solid #EBD9DF",
-              background: "#FFFFFF",
-              color: "#5C4A4A",
+              border: `1px solid ${COLOR.border}`,
+              background: COLOR.surfaceRaised,
+              color: COLOR.ink,
               fontSize: FONT_SIZE.body,
               letterSpacing: "0.08em",
             }}
           >
-            <Eye size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: "#B08A99" }} />
+            <Eye size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: COLOR.accentInk }} />
             プレビュー
           </button>
           <button
@@ -340,8 +341,8 @@ export function EditorScreen({
               padding: "12px 26px",
               borderRadius: 999,
               border: "none",
-              background: "#D3A5B4",
-              color: "#FFF9F5",
+              background: COLOR.accent,
+              color: COLOR.onAccent,
               fontSize: FONT_SIZE.body,
               letterSpacing: "0.08em",
               boxShadow: "0 6px 16px rgba(150,110,130,0.28)",
@@ -362,9 +363,9 @@ export function EditorScreen({
               gap: 7,
               padding: "12px 22px",
               borderRadius: 999,
-              border: "1px solid #EBD9DF",
-              background: "#FFFFFF",
-              color: "#5C4A4A",
+              border: `1px solid ${COLOR.border}`,
+              background: COLOR.surfaceRaised,
+              color: COLOR.ink,
               fontSize: FONT_SIZE.body,
               letterSpacing: "0.08em",
               textDecoration: "none",
@@ -379,7 +380,7 @@ export function EditorScreen({
               flex: "1 1 260px",
               minWidth: 0,
               fontSize: FONT_SIZE.caption,
-              color: "#B4A2A2",
+              color: COLOR.inkFaint,
               letterSpacing: "0.05em",
             }}
           >

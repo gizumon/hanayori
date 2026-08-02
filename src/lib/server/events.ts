@@ -78,6 +78,8 @@ export interface EventJson {
   cardConfig: CardConfigDoc;
   escortConfig: EscortConfigDoc;
   letterCount: number;
+  /** 共同編集メンバーの人数。1 人なら UI は作成者まわりの表示を省く。 */
+  memberCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,6 +105,7 @@ async function serializeEvent(
     cardConfig: data.cardConfig,
     escortConfig: data.escortConfig,
     letterCount: countSnap.data().count,
+    memberCount: data.memberUids.length,
     createdAt: toIso(data.createdAt),
     updatedAt: toIso(data.updatedAt),
   };
@@ -141,7 +144,6 @@ export async function createEvent(
     date: input.date,
     createdBy: uid,
     memberUids: [uid],
-    inviteToken: null,
     letterConfig: DEFAULT_LETTER_CONFIG,
     cardConfig: DEFAULT_CARD_CONFIG,
     escortConfig: DEFAULT_ESCORT_CONFIG,

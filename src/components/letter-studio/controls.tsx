@@ -8,6 +8,7 @@ import styles from "./letter-studio.module.css";
 import type { FontKey } from "./types";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
+import { COLOR } from "@/lib/palette";
 
 interface PillButtonProps {
   label: string;
@@ -39,9 +40,9 @@ export function PillButton({
         fontSize: size === "sm" ? FONT_SIZE.caption : FONT_SIZE.label,
         letterSpacing: "0.06em",
         cursor: "pointer",
-        background: active ? "#D3A5B4" : "#FFFFFF",
-        color: active ? "#FFF9F5" : "#5C4A4A",
-        border: active ? "1px solid #D3A5B4" : "1px solid #EBD9DF",
+        background: active ? COLOR.accent : COLOR.surfaceRaised,
+        color: active ? COLOR.onAccent : COLOR.ink,
+        border: active ? `1px solid ${COLOR.accent}` : `1px solid ${COLOR.border}`,
       }}
     >
       {label}
@@ -97,10 +98,10 @@ export function FontSelect({ value, onChange, sample }: FontSelectProps) {
           {sample}
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 8, flex: "none" }}>
-          <span style={{ fontSize: FONT_SIZE.micro, color: "#B08A99", letterSpacing: "0.04em" }}>
+          <span style={{ fontSize: FONT_SIZE.micro, color: COLOR.accentInk, letterSpacing: "0.04em" }}>
             {FONTS[value].label}
           </span>
-          <ChevronDown size={15} style={{ color: "#B08A99" }} />
+          <ChevronDown size={15} style={{ color: COLOR.accentInk }} />
         </span>
       </button>
       {open && (
@@ -123,7 +124,7 @@ export function FontSelect({ value, onChange, sample }: FontSelectProps) {
             style={{
               width: "min(360px,92vw)",
               maxHeight: "min(480px,80vh)",
-              background: "#FFFCF8",
+              background: COLOR.surface,
               borderRadius: 18,
               boxShadow: "0 24px 70px rgba(0,0,0,0.18)",
               display: "flex",
@@ -137,7 +138,7 @@ export function FontSelect({ value, onChange, sample }: FontSelectProps) {
                 borderBottom: "1px solid rgba(211,165,180,0.3)",
                 fontSize: FONT_SIZE.caption,
                 letterSpacing: "0.1em",
-                color: "#8C7676",
+                color: COLOR.inkSoft,
               }}
             >
               フォントを選ぶ
@@ -163,7 +164,7 @@ export function FontSelect({ value, onChange, sample }: FontSelectProps) {
                     padding: "12px 14px",
                     border: "none",
                     borderRadius: 10,
-                    background: value === k ? "#FBF1F4" : "transparent",
+                    background: value === k ? COLOR.tint : "transparent",
                     textAlign: "left",
                   }}
                 >
@@ -171,7 +172,7 @@ export function FontSelect({ value, onChange, sample }: FontSelectProps) {
                     style={{
                       fontFamily: FONTS[k].family,
                       fontSize: FONT_SIZE.input,
-                      color: "#5C4A4A",
+                      color: COLOR.ink,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
@@ -182,7 +183,7 @@ export function FontSelect({ value, onChange, sample }: FontSelectProps) {
                   <span
                     style={{
                       fontSize: FONT_SIZE.micro,
-                      color: "#B08A99",
+                      color: COLOR.accentInk,
                       letterSpacing: "0.04em",
                       flex: "none",
                     }}
@@ -213,14 +214,14 @@ export function Toggle({ checked, onChange, label }: ToggleProps) {
         alignItems: "center",
         gap: 9,
         fontSize: FONT_SIZE.label,
-        color: "#8C7676",
+        color: COLOR.inkSoft,
         letterSpacing: "0.06em",
         cursor: "pointer",
       }}
     >
       <span
         className={styles.toggleTrack}
-        style={{ background: checked ? "#D3A5B4" : "#E3D2D8" }}
+        style={{ background: checked ? COLOR.accent : COLOR.accentOff }}
       >
         <input
           type="checkbox"
@@ -243,10 +244,10 @@ export function fieldStyle(extra?: CSSProperties): CSSProperties {
   return {
     padding: "9px 12px",
     borderRadius: 10,
-    border: "1px solid #EBD9DF",
-    background: "#FFFFFF",
+    border: `1px solid ${COLOR.border}`,
+    background: COLOR.surfaceRaised,
     fontSize: FONT_SIZE.input,
-    color: "#5C4A4A",
+    color: COLOR.ink,
     outline: "none",
     ...extra,
   };
