@@ -62,6 +62,15 @@ export interface EventDoc {
   /** 最初にイベントを作った uid。権限差は無く(メンバーは全員共同オーナー)、表示と保護のためだけに持つ。 */
   createdBy: string;
   memberUids: string[];
+  /**
+   * 自分が作ったお手紙を他のメンバーにも見せることにした人の uid。
+   *
+   * 既定(未設定)は空 = 誰も見せていない。つまり各メンバーには自分が作った
+   * お手紙と、見せる設定にした人のお手紙だけが見える(席札・エスコートカードは
+   * 対象外で、常に全員ぶんが見える)。この配列を書き換えられるのは本人だけで、
+   * 他のメンバーから見せる設定に変えられることはない。
+   */
+  letterSharingUids?: string[];
   letterConfig: LetterConfigDoc;
   cardConfig: CardConfigDoc;
   escortConfig: EscortConfigDoc;

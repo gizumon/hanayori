@@ -38,6 +38,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
           <>
             <AppHeader
               userName={state.userName}
+              userPhoto={state.userPhoto}
               onLogout={() => api.logout()}
               onUpdateName={api.updateNickname}
               onGoHome={api.goHome}
@@ -68,24 +69,32 @@ export function StudioShell({ children }: { children: ReactNode }) {
             )}
 
             {/* 確認タブ・一覧から開く 1 通ぶんの編集、および「お手紙を作る」の新規作成。
-                同じドロワーを使い、新規作成モードはヘッダー表示だけが変わる。 */}
-            {curProject && cardConf && escortConf && (state.editLetter || state.creatingLetter) && (
-              <LetterEditDrawer
-                letter={state.editLetter}
-                letters={state.letters}
-                project={curProject}
-                cardConf={cardConf}
-                escortConf={escortConf}
-                tab={state.edTab}
-                onTabChange={api.setEdTab}
-                onSelectLetter={(id) => api.openLetterDrawer(id, state.edTab)}
-                onClose={api.closeLetterDrawer}
-                onSave={api.bulkSaveLetters}
-                onCreate={api.createLetterFromDrawer}
-                saving={api.savingBulk}
-                letterUrl={api.letterUrl}
-              />
-            )}
+                同じドロワーを使い、新規作成モードはヘッダー表示だけが変わる。
+                中身が伏せられたお手紙は、直せる対象(席札・エスコート)が残っている
+                ときだけ開ける。 */}
+            {curProject &&
+              cardConf &&
+              escortConf &&
+              (state.editLetter || state.creatingLetter) &&
+              (!state.editLetter?.hidden || cardConf.enabled || escortConf.enabled) && (
+                <LetterEditDrawer
+                  letter={state.editLetter}
+                  // 前後移動の対象。伏せられたお手紙(確認タブの席札・エスコートから
+                  // 開いた分)を直しているときだけ全件、それ以外は一覧と同じ並び。
+                  letters={state.editLetter?.hidden ? state.letters : state.visibleLetters}
+                  project={curProject}
+                  cardConf={cardConf}
+                  escortConf={escortConf}
+                  tab={state.edTab}
+                  onTabChange={api.setEdTab}
+                  onSelectLetter={(id) => api.openLetterDrawer(id, state.edTab)}
+                  onClose={api.closeLetterDrawer}
+                  onSave={api.bulkSaveLetters}
+                  onCreate={api.createLetterFromDrawer}
+                  saving={api.savingBulk}
+                  letterUrl={api.letterUrl}
+                />
+              )}
           </>
         )}
 

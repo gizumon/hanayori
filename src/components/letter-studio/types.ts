@@ -24,6 +24,13 @@ export interface Letter {
   createdBy?: string | null;
   /** 作成者の表示名(サーバーが users から解決したもの)。null = 不明。 */
   createdByName?: string | null;
+  /** 作成者のアバター URL。null なら頭文字で描く。 */
+  createdByPhoto?: string | null;
+  /**
+   * 他のメンバーが作ったお手紙で、中身が伏せられている(サーバーが本文・写真を
+   * 返していない)。作った人が「見せる」を選んでいないときに立つ。
+   */
+  hidden?: boolean;
   to: string;
   body: string;
   theme: ThemeKey;
@@ -84,6 +91,12 @@ export interface Project {
   id: string;
   name: string;
   date: string | null;
+  /**
+   * 自分が作ったお手紙を他のメンバーにも見せる設定にしているか。既定は false で、
+   * 見せていない人のお手紙は一覧・確認タブの「お手紙」に出ない(席札・エスコート
+   * カードは設定にかかわらず全員ぶんが見える)。他のメンバーの設定は分からない。
+   */
+  shareMyLetters: boolean;
   letterConfig: LetterConfig;
   cardConfig: CardConfig;
   escortConfig: EscortConfig;
@@ -153,11 +166,18 @@ export interface StudioState {
   userName: string;
   /** ログイン中の uid。未ログインなら null。 */
   userUid: string | null;
+  /** プロフィール写真の URL。無ければ null(頭文字を表示する)。 */
+  userPhoto: string | null;
   projects: EventSummary[];
   curP: string | null;
   curL: string | null;
   /** 開いているイベントの手紙一覧。イベントを開いたときに取得する。 */
   letters: Letter[];
+  /**
+   * そのうち中身を見せてよいもの(伏せられたお手紙を除いたもの)。お手紙として
+   * 並べる場所はこちらを使い、席札・エスコートカードは `letters` を使う。
+   */
+  visibleLetters: Letter[];
   draft: Draft;
   modalShown: boolean;
   /** 宛名まとめて追加モーダル。 */

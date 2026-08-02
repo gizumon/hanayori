@@ -14,10 +14,11 @@ export function ReviewConnected() {
     <ReviewScreen
       project={curProject}
       letters={state.letters}
+      visibleLetters={state.visibleLetters}
       loading={api.loadingLetters}
       onBack={api.goHome}
       onSelectTab={api.selectEventTab}
-      onOpenSettings={() => api.openSettings("general")}
+      onOpenSettings={api.openSettings}
       onEdit={(letter, tab) => api.openLetterDrawer(letter.id, tab)}
       letterUrl={api.letterUrl}
       saveCardImage={api.saveCardImage}

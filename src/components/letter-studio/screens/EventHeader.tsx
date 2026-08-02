@@ -1,7 +1,7 @@
 "use client";
 
-import { Settings } from "lucide-react";
-import type { EventTab, Project } from "../types";
+import { Settings, Users } from "lucide-react";
+import type { EventTab, Project, SettingsTab } from "../types";
 import styles from "../letter-studio.module.css";
 import { EventTabs } from "./EventTabs";
 import { FONT_SIZE } from "@/lib/typography";
@@ -12,8 +12,23 @@ interface EventHeaderProps {
   currentTab: EventTab;
   onBack: () => void;
   onSelectTab: (tab: EventTab) => void;
-  onOpenSettings: () => void;
+  /** 共通設定ドロワーを開く。タブ指定なしなら「基本」。 */
+  onOpenSettings: (tab?: SettingsTab) => void;
 }
+
+const pillButton = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "8px 14px",
+  borderRadius: 999,
+  border: `1px solid ${COLOR.border}`,
+  background: COLOR.surfaceRaised,
+  color: COLOR.ink,
+  fontSize: FONT_SIZE.label,
+  letterSpacing: "0.06em",
+  flex: "none",
+} as const;
 
 /**
  * 一覧・一括編集・確認の3画面で共通のヘッダー(戻る・タイトル・共通設定・タブ)。
@@ -57,27 +72,31 @@ export function EventHeader({ project, currentTab, onBack, onSelectTab, onOpenSe
             {project.date}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          className={styles.btnOutline}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "8px 14px",
-            borderRadius: 999,
-            border: `1px solid ${COLOR.border}`,
-            background: COLOR.surfaceRaised,
-            color: COLOR.ink,
-            fontSize: FONT_SIZE.label,
-            letterSpacing: "0.06em",
-            flex: "none",
-          }}
-        >
-          <Settings size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: COLOR.accentInk }} />
-          共通設定
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "none" }}>
+          {/* 共同編集はドロワーの奥(メンバータブ)にあって気づけないので、
+              入口をヘッダーにも出す。人数はイベント取得ぶんで足りる。 */}
+          <button
+            type="button"
+            onClick={() => onOpenSettings("members")}
+            className={styles.btnOutline}
+            style={pillButton}
+          >
+            <Users size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: COLOR.accentInk }} />
+            メンバー
+            <span style={{ color: COLOR.inkSoft, fontVariantNumeric: "tabular-nums" }}>
+              {project.memberCount}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenSettings("general")}
+            className={styles.btnOutline}
+            style={pillButton}
+          >
+            <Settings size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none", color: COLOR.accentInk }} />
+            共通設定
+          </button>
+        </div>
       </div>
 
       <EventTabs current={currentTab} onSelect={onSelectTab} />

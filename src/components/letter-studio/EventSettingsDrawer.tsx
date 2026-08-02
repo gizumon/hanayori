@@ -230,18 +230,24 @@ export function EventSettingsDrawer({
           style={{
             display: "flex",
             flexWrap: "nowrap",
-            gap: 8,
+            gap: 4,
             overflowX: "auto",
+            // 横帯の上では縦に動かさない(指の縦ぶれでドロワーごと動くのを防ぐ)
+            overflowY: "hidden",
+            touchAction: "pan-x",
+            overscrollBehavior: "contain",
             WebkitOverflowScrolling: "touch",
             borderBottom: "1px solid rgba(211,165,180,0.3)",
             padding: "8px 22px 0",
           }}
         >
+          {/* ラベルは 4 つが狭い画面でも同時に見えるよう短く保つ
+              (「メンバー」が隠れると、あることに気づけない) */}
           {(
             [
               ["general", "基本"],
-              ["card", "席札 / QRカード"],
-              ["escort", "エスコートカード"],
+              ["card", "席札・QR"],
+              ["escort", "エスコート"],
               ["members", "メンバー"],
             ] as const
           ).map(([k, label]) => (
@@ -250,7 +256,7 @@ export function EventSettingsDrawer({
               type="button"
               onClick={() => onTabChange(k)}
               style={{
-                padding: "8px 14px",
+                padding: "8px 10px",
                 border: "none",
                 background: "none",
                 cursor: "pointer",

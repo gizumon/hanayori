@@ -18,7 +18,7 @@ export function BulkEditConnected() {
       saving={api.savingBulk}
       onBack={api.goHome}
       onSelectTab={api.selectEventTab}
-      onOpenSettings={() => api.openSettings("general")}
+      onOpenSettings={api.openSettings}
       onSave={api.bulkSaveLetters}
       cardNameFor={api.cardNameFor}
       escortNameFor={api.escortNameFor}

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { THEMES } from "../constants";
 import { encodeImageFile } from "../imageEncode";
 import styles from "../letter-studio.module.css";
-import type { BulkLetterPatch, EventTab, Honor, Letter, Project } from "../types";
+import type { BulkLetterPatch, EventTab, Honor, Letter, Project, SettingsTab } from "../types";
 import { EventHeader } from "./EventHeader";
 import { FONT_SIZE } from "@/lib/typography";
 import { COLOR } from "@/lib/palette";
@@ -49,7 +49,8 @@ interface BulkEditScreenProps {
   saving: boolean;
   onBack: () => void;
   onSelectTab: (tab: EventTab) => void;
-  onOpenSettings: () => void;
+  /** 共通設定ドロワーを開く。タブ指定なしなら「基本」。 */
+  onOpenSettings: (tab?: SettingsTab) => void;
   onSave: (patches: BulkLetterPatch[]) => Promise<boolean>;
   cardNameFor: (l: Letter) => string;
   escortNameFor: (l: Letter) => string;
@@ -198,6 +199,10 @@ export function BulkEditScreen({
   }
 
   const baseline = useMemo(() => new Map(letters.map((l) => [l.id, l])), [letters]);
+
+  // 「お手紙」の項目(宛名・色・写真)はお手紙の中身そのものなので、伏せられた
+  // お手紙の行は出さない。席札・エスコートは全員ぶんを編集できるままにする。
+  const shownRows = category.key === "letter" ? rows.filter((r) => !r.hidden) : rows;
 
   const cellKey = (id: string, f: BulkField) => `${id}:${f}`;
   const changedForField = (f: BulkField) =>
@@ -387,13 +392,13 @@ export function BulkEditScreen({
         {field.desc}
       </p>
 
-      {loading && rows.length === 0 ? (
+      {loading && shownRows.length === 0 ? (
         <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>読み込んでいます…</p>
-      ) : rows.length === 0 ? (
+      ) : shownRows.length === 0 ? (
         <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>まだお手紙がありません。</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {rows.map((row) => (
+          {shownRows.map((row) => (
             <Row
               key={row.id}
               row={row}

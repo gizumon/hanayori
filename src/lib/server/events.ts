@@ -52,6 +52,8 @@ export function normalizeEventDoc(data: EventDoc): EventDoc {
   const legacy = data as EventDoc & LegacyEventFields;
   return {
     ...data,
+    // 既存イベントにはこのフィールドが無い。既定は「誰も見せていない」。
+    letterSharingUids: data.letterSharingUids ?? [],
     letterConfig: {
       ...DEFAULT_LETTER_CONFIG,
       ...(legacy.font ? { font: legacy.font } : {}),
@@ -74,6 +76,11 @@ export interface EventJson {
   id: string;
   name: string;
   date: string | null;
+  /**
+   * 自分が作ったお手紙を他のメンバーにも見せる設定にしているか(取得した本人の分)。
+   * 他のメンバーがどうしているかは返さない。
+   */
+  shareMyLetters: boolean;
   letterConfig: LetterConfigDoc;
   cardConfig: CardConfigDoc;
   escortConfig: EscortConfigDoc;
@@ -88,9 +95,11 @@ function toIso(ts: Timestamp | undefined): string {
   return (ts ?? Timestamp.now()).toDate().toISOString();
 }
 
+/** `uid` は取得した本人。自分の「お手紙を見せる」設定を返すために要る。 */
 async function serializeEvent(
   id: string,
-  rawData: EventDoc
+  rawData: EventDoc,
+  uid: string
 ): Promise<EventJson> {
   const data = normalizeEventDoc(rawData);
   const countSnap = await lettersCollection()
@@ -101,6 +110,7 @@ async function serializeEvent(
     id,
     name: data.name,
     date: data.date,
+    shareMyLetters: (data.letterSharingUids ?? []).includes(uid),
     letterConfig: data.letterConfig,
     cardConfig: data.cardConfig,
     escortConfig: data.escortConfig,
@@ -126,7 +136,7 @@ export async function listEventsForUser(uid: string): Promise<EventJson[]> {
     .where("memberUids", "array-contains", uid)
     .orderBy("createdAt", "asc")
     .get();
-  return Promise.all(snap.docs.map((doc) => serializeEvent(doc.id, doc.data())));
+  return Promise.all(snap.docs.map((doc) => serializeEvent(doc.id, doc.data(), uid)));
 }
 
 export async function createEvent(
@@ -144,6 +154,7 @@ export async function createEvent(
     date: input.date,
     createdBy: uid,
     memberUids: [uid],
+    letterSharingUids: [],
     letterConfig: DEFAULT_LETTER_CONFIG,
     cardConfig: DEFAULT_CARD_CONFIG,
     escortConfig: DEFAULT_ESCORT_CONFIG,
@@ -152,12 +163,14 @@ export async function createEvent(
   };
   const ref = await eventsCollection().add(doc as unknown as EventDoc);
   const snap = await ref.get();
-  return serializeEvent(snap.id, snap.data()!);
+  return serializeEvent(snap.id, snap.data()!, uid);
 }
 
 export interface UpdateEventInput {
   name?: string;
   date?: string | null;
+  /** 自分が作ったお手紙を他のメンバーにも見せるか。触れるのは常に自分の分だけ。 */
+  shareMyLetters?: boolean;
   letterConfig?: Partial<LetterConfigDoc>;
   cardConfig?: Partial<CardConfigDoc>;
   escortConfig?: Partial<EscortConfigDoc>;
@@ -174,6 +187,12 @@ export async function updateEvent(
   const update: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
   if (patch.name !== undefined) update.name = patch.name;
   if (patch.date !== undefined) update.date = patch.date;
+  // 自分の uid を出し入れするだけなので、他のメンバーの設定は変えられない。
+  if (patch.shareMyLetters !== undefined) {
+    update.letterSharingUids = patch.shareMyLetters
+      ? FieldValue.arrayUnion(uid)
+      : FieldValue.arrayRemove(uid);
+  }
   // 部分マージした完全形を書き戻す。旧形式ドキュメントもこの時点で新形式に移行し、
   // 残っていた旧トップレベルフィールドは削除する。
   if (patch.letterConfig !== undefined) {
@@ -191,7 +210,7 @@ export async function updateEvent(
 
   await ref.update(update);
   const snap = await ref.get();
-  return serializeEvent(snap.id, snap.data()!);
+  return serializeEvent(snap.id, snap.data()!, uid);
 }
 
 /** letters.ts からも使うメンバーシップ確認(イベント側)。 */

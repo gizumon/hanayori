@@ -31,6 +31,11 @@ export function EventTabs({ current, onSelect }: EventTabsProps) {
         display: "flex",
         borderBottom: `1px solid ${COLOR.border}`,
         overflowX: "auto",
+        // タブ帯の上でのスクロールは横だけ(縦に引っぱってもページは動かさない)
+        overflowY: "hidden",
+        touchAction: "pan-x",
+        overscrollBehavior: "contain",
+        WebkitOverflowScrolling: "touch",
       }}
     >
       {TABS.map(({ key, label, icon: Icon }) => {

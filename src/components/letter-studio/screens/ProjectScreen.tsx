@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FONTS } from "../constants";
 import { fieldStyle } from "../controls";
 import styles from "../letter-studio.module.css";
-import type { EventTab, Letter, Project } from "../types";
+import type { EventTab, Letter, Project, SettingsTab } from "../types";
 import { EventHeader } from "./EventHeader";
 import { LetterRow } from "./LetterRow";
 import { ListToolbar, type SortOption } from "./ListToolbar";
@@ -96,7 +96,8 @@ interface ProjectScreenProps {
   currentUid: string | null;
   loadingLetters: boolean;
   onBack: () => void;
-  onOpenSettings: () => void;
+  /** 共通設定ドロワーを開く。タブ指定なしなら「基本」。 */
+  onOpenSettings: (tab?: SettingsTab) => void;
   onSelectTab: (tab: EventTab) => void;
   onBulkAdd: () => void;
   onNewLetter: () => void;
@@ -479,7 +480,11 @@ export function ProjectScreen({
               cFont={cFont}
               cardName={cardNameFor(l)}
               escortName={escortNameFor(l)}
-              creatorLabel={showCreators ? creatorLabelOf(l) : null}
+              creator={
+                showCreators
+                  ? { label: creatorLabelOf(l), photoUrl: l.createdByPhoto ?? null }
+                  : null
+              }
               letterUrl={letterUrl(l.id)}
               deletingLetter={deletingLetter}
               onEdit={() => onEditLetter(l)}
@@ -512,44 +517,6 @@ export function ProjectScreen({
         )}
       </div>
 
-      <h4
-        style={{
-          margin: "36px 0 4px",
-          fontSize: FONT_SIZE.body,
-          fontWeight: 600,
-          letterSpacing: "0.12em",
-          color: COLOR.inkSoft,
-        }}
-      >
-        全手紙共通ページ
-      </h4>
-      <p style={{ margin: "0 0 14px", fontSize: FONT_SIZE.caption, color: COLOR.inkFaint, letterSpacing: "0.05em" }}>
-        お手紙の最後からリンクできる共通コンテンツ(近日公開)
-      </p>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))",
-          gap: 14,
-          maxWidth: 680,
-        }}
-      >
-        {["新郎新婦プロフィール", "座席表", "お料理メニュー"].map((label) => (
-          <div
-            key={label}
-            style={{
-              background: "rgba(255,252,248,0.55)",
-              border: `1px dashed ${COLOR.borderDash}`,
-              borderRadius: 14,
-              padding: 18,
-              color: COLOR.inkFaint,
-            }}
-          >
-            <div style={{ fontSize: FONT_SIZE.body, letterSpacing: "0.1em", marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: FONT_SIZE.overline, letterSpacing: "0.08em" }}>Coming soon</div>
-          </div>
-        ))}
-      </div>
     </main>
   );
 }

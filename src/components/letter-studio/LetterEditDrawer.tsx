@@ -132,13 +132,16 @@ export function LetterEditDrawer({
   const theme = THEMES[local.theme];
   const cardEnabled = cardConf.enabled;
   const escortEnabled = escortConf.enabled;
+  // 中身が伏せられたお手紙(他のメンバーの分)は、席札・エスコートだけを直せる。
+  // 本文も写真も手元に無いので、お手紙のタブは出さない。
+  const letterHidden = Boolean(local.hidden);
   const tabs: { key: EditorTab; label: string }[] = [
-    { key: "letter", label: "お手紙" },
+    ...(letterHidden ? [] : [{ key: "letter" as const, label: "お手紙" }]),
     ...(cardEnabled ? [{ key: "card" as const, label: "席札" }] : []),
     ...(escortEnabled ? [{ key: "escort" as const, label: "エスコート" }] : []),
   ];
-  // 無効化された対象のタブが URL に残っていても、お手紙にフォールバックする。
-  const curTab = tabs.some((t) => t.key === tab) ? tab : "letter";
+  // 無効化された対象のタブが URL に残っていても、先頭のタブにフォールバックする。
+  const curTab = tabs.some((t) => t.key === tab) ? tab : tabs[0]?.key ?? "letter";
 
   /** 新規作成モードは全フィールドを作成ペイロードとして送る。 */
   async function persistNew(): Promise<boolean> {

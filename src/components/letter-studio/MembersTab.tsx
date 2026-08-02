@@ -2,7 +2,9 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { Check, Copy, Link2, Share2, UserMinus, X } from "lucide-react";
+import { Avatar } from "./Avatar";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { Toggle } from "./controls";
 import styles from "./letter-studio.module.css";
 import { useStudio } from "./StudioContext";
 import { inviteUrl, useEventMembers } from "./useEventMembers";
@@ -42,33 +44,6 @@ function displayNameOf(member: EventMember): string {
   return member.displayName?.trim() || member.email?.split("@")[0] || "名前未設定";
 }
 
-function Avatar({ member }: { member: EventMember }) {
-  const name = displayNameOf(member);
-  return (
-    <span
-      aria-hidden="true"
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: "50%",
-        flex: "none",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: member.photoUrl
-          ? `center/cover no-repeat url(${member.photoUrl})`
-          : `linear-gradient(135deg,${COLOR.tintRose},${COLOR.tintRoseDeep})`,
-        border: `1px solid ${COLOR.borderSoft}`,
-        color: COLOR.accentInk,
-        fontSize: FONT_SIZE.bodySm,
-        fontWeight: 600,
-      }}
-    >
-      {member.photoUrl ? "" : name.charAt(0)}
-    </span>
-  );
-}
-
 function Badge({ label }: { label: string }) {
   return (
     <span
@@ -95,7 +70,7 @@ function Badge({ label }: { label: string }) {
  * ドロワー側は未保存判定にもこのタブを含めない。
  */
 export function MembersTab({ project, onLeaveEvent }: MembersTabProps) {
-  const { toast, refreshEvents } = useStudio();
+  const { toast, refreshEvents, updateProject } = useStudio();
   const {
     members,
     invites,
@@ -108,6 +83,9 @@ export function MembersTab({ project, onLeaveEvent }: MembersTabProps) {
   } = useEventMembers(project.id, true);
   const [pending, setPending] = useState<Pending | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  // 他タブと同じくローカルに持たず即時保存するが、往復のあいだトグルが戻って
+  // 見えないよう、送信中だけ楽観的な値を優先する。
+  const [sharePending, setSharePending] = useState<boolean | null>(null);
   // navigator.share の有無はサーバーでは分からないので、クライアントでだけ true に
   // なる値として読む(値は変化しないので購読は no-op)。
   const canShare = useSyncExternalStore(
@@ -150,6 +128,19 @@ export function MembersTab({ project, onLeaveEvent }: MembersTabProps) {
       toast(ok ? "招待リンクを発行してコピーしました" : "招待リンクを発行しました");
     } catch (err) {
       toast(err instanceof Error ? err.message : "招待リンクの発行に失敗しました");
+    }
+  };
+
+  const handleShareMyLetters = async (shareMyLetters: boolean) => {
+    setSharePending(shareMyLetters);
+    const ok = await updateProject({ shareMyLetters });
+    setSharePending(null);
+    if (ok) {
+      toast(
+        shareMyLetters
+          ? "自分のお手紙が他のメンバーにも見えるようになりました"
+          : "自分のお手紙を他のメンバーから隠しました"
+      );
     }
   };
 
@@ -223,7 +214,7 @@ export function MembersTab({ project, onLeaveEvent }: MembersTabProps) {
                 borderTop: i === 0 ? "none" : `1px solid ${COLOR.divider}`,
               }}
             >
-              <Avatar member={member} />
+              <Avatar photoUrl={member.photoUrl} name={displayNameOf(member)} size={36} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
@@ -288,6 +279,28 @@ export function MembersTab({ project, onLeaveEvent }: MembersTabProps) {
             </div>
           );
         })}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
+        <span style={sectionLabel}>お手紙の見せ方</span>
+        <Toggle
+          checked={sharePending ?? project.shareMyLetters}
+          onChange={handleShareMyLetters}
+          label="自分が作ったお手紙を他のメンバーにも見せる"
+        />
+        <p
+          style={{
+            margin: 0,
+            fontSize: FONT_SIZE.caption,
+            lineHeight: 1.7,
+            color: COLOR.inkSoft,
+          }}
+        >
+          これはあなたのお手紙だけの設定です。他のメンバーが切り替えることはできません。
+          オフのあいだ、あなたのお手紙は一覧にも確認タブにも他のメンバーには出ません。
+          同じように、他のメンバーのお手紙もその人が見せる設定にしているときだけ見えます。
+          席札とエスコートカードは、この設定にかかわらず全員ぶんを確認タブから見られます。
+        </p>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>

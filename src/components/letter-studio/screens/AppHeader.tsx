@@ -26,12 +26,20 @@ const menuItemStyle = {
 
 interface AppHeaderProps {
   userName: string;
+  /** プロフィール写真(Google ログイン等)。null なら頭文字を表示する。 */
+  userPhoto: string | null;
   onLogout: () => void;
   onUpdateName: (name: string) => void | Promise<void>;
   onGoHome: () => void;
 }
 
-export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHeaderProps) {
+export function AppHeader({
+  userName,
+  userPhoto,
+  onLogout,
+  onUpdateName,
+  onGoHome,
+}: AppHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [iosGuideOpen, setIosGuideOpen] = useState(false);
@@ -161,21 +169,25 @@ export function AppHeader({ userName, onLogout, onUpdateName, onGoHome }: AppHea
             letterSpacing: "0.05em",
           }}
         >
+          {/* 写真があればそれを、無ければ従来どおりアクセント色の頭文字を出す。 */}
           <span
             style={{
               width: 26,
               height: 26,
               borderRadius: "50%",
-              background: `linear-gradient(135deg,${COLOR.accentPale},${COLOR.accent})`,
+              background: userPhoto
+                ? `center/cover no-repeat url(${userPhoto})`
+                : `linear-gradient(135deg,${COLOR.accentPale},${COLOR.accent})`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: COLOR.onAccent,
               fontSize: FONT_SIZE.caption,
               flexShrink: 0,
+              overflow: "hidden",
             }}
           >
-            {initial}
+            {userPhoto ? "" : initial}
           </span>
           {userName ? `${userName} さん` : "ゲスト"}
         </button>

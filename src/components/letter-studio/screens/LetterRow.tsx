@@ -10,9 +10,9 @@ import {
   QrCode,
   Ticket,
   Trash2,
-  UserRound,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Avatar } from "../Avatar";
 import { THEMES } from "../constants";
 import styles from "../letter-studio.module.css";
 import type { Letter } from "../types";
@@ -29,10 +29,10 @@ interface LetterRowProps {
   /** エスコートカードに載る名前(イベント既定の敬称込み)。 */
   escortName: string;
   /**
-   * 作成者として表示する文字列。null = 表示しない。
+   * カード左下に「By …」として出す作成者。null = 表示しない。
    * 1 人だけのイベントでは意味がないので、呼び出し側で null にして省く。
    */
-  creatorLabel: string | null;
+  creator: { label: string; photoUrl: string | null } | null;
   letterUrl: string;
   deletingLetter: boolean;
   onEdit: () => void;
@@ -114,7 +114,7 @@ export function LetterRow({
   cFont,
   cardName,
   escortName,
-  creatorLabel,
+  creator,
   letterUrl,
   deletingLetter,
   onEdit,
@@ -359,17 +359,8 @@ export function LetterRow({
         >
           {preview || "本文はまだ書かれていません"}
         </p>
-        {/* 下段。設定チップと編集マークを同じ行に置く。 */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-            marginTop: 6,
-          }}
-        >
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
+        {/* 設定チップ。 */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0, marginTop: 6 }}>
             {cardEnabled && (
               <Chip icon={<QrCode size={11} strokeWidth={1.9} />} accent={accent} font={cFont}>
                 席札 {cardName}
@@ -395,12 +386,31 @@ export function LetterRow({
                 写真あり
               </Chip>
             )}
-            {creatorLabel && (
-              <Chip icon={<UserRound size={11} strokeWidth={1.9} />} accent={accent} muted>
-                {creatorLabel}
-              </Chip>
-            )}
-          </div>
+        </div>
+        {/* 最下段。左に差出人の署名、右に編集。 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
+          {creator && (
+            <span
+              title={`${creator.label}が作成`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                minWidth: 0,
+                fontSize: FONT_SIZE.caption,
+                letterSpacing: "0.06em",
+                color: COLOR.inkFaint,
+              }}
+            >
+              <Avatar photoUrl={creator.photoUrl} name={creator.label} size={20} />
+              <span
+                style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                By{" "}
+                <span style={{ color: COLOR.inkSoft, fontWeight: 600 }}>{creator.label}</span>
+              </span>
+            </span>
+          )}
           <button
             type="button"
             onClick={(e) => {
@@ -413,6 +423,7 @@ export function LetterRow({
               alignItems: "center",
               gap: 5,
               marginLeft: "auto",
+              flex: "none",
               padding: "4px 6px",
               border: "none",
               borderRadius: 6,

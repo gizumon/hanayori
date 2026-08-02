@@ -20,6 +20,10 @@ export interface LetterJson {
   createdBy: string | null;
   /** 作成者の表示名。`withCreatorNames` が users から解決して埋める。 */
   createdByName: string | null;
+  /** 作成者のアバター URL(Google ログイン等)。無ければ null。 */
+  createdByPhoto: string | null;
+  /** 他の人が作ったお手紙で、中身(本文・写真)を伏せて返した場合 true。 */
+  hidden: boolean;
   to: string;
   body: string;
   theme: ThemeKey;
@@ -78,6 +82,8 @@ function serializeLetter(id: string, data: LetterDoc): LetterJson {
     id,
     createdBy: data.createdBy ?? null,
     createdByName: null,
+    createdByPhoto: null,
+    hidden: false,
     to: data.to,
     body: data.body,
     theme: data.theme,
@@ -124,28 +130,52 @@ async function withCreatorNames(letters: LetterJson[]): Promise<LetterJson[]> {
     return {
       ...letter,
       createdByName: profile?.displayName?.trim() || profile?.email?.split("@")[0] || null,
+      createdByPhoto: profile?.photoUrl ?? null,
     };
   });
+}
+
+/**
+ * 他のメンバーが作ったお手紙の中身を伏せる。
+ *
+ * お手紙の中身(本文・写真)を返すのは、作った本人と、作った人が「見せる」を
+ * 選んでいる(= `letterSharingUids` に入っている)場合だけ。席札・エスコート
+ * カードは全員ぶんを扱えるままにしたいので、宛名・席札名・卓番といったカード系の
+ * フィールドは残す。`createdBy` を持たない旧データは持ち主が決まらないので伏せない。
+ */
+function maskHiddenLetters(
+  letters: LetterJson[],
+  uid: string,
+  sharingUids: string[]
+): LetterJson[] {
+  return letters.map((letter) =>
+    !letter.createdBy || letter.createdBy === uid || sharingUids.includes(letter.createdBy)
+      ? letter
+      : { ...letter, hidden: true, body: "", photo: null, photoRatio: undefined }
+  );
 }
 
 async function requireLetterMembership(uid: string, letterId: string) {
   const snap = await lettersCollection().doc(letterId).get();
   const data = snap.data();
   if (!snap.exists || !data) throw new HttpError(404, "お手紙が見つかりません");
-  await requireEventMembership(uid, data.eventId);
-  return { ref: snap.ref, data };
+  const { data: event } = await requireEventMembership(uid, data.eventId);
+  return { ref: snap.ref, data, event };
 }
 
 export async function listLettersForEvent(
   uid: string,
   eventId: string
 ): Promise<LetterJson[]> {
-  await requireEventMembership(uid, eventId);
+  const { data: event } = await requireEventMembership(uid, eventId);
   const snap = await lettersCollection()
     .where("eventId", "==", eventId)
     .orderBy("createdAt", "asc")
     .get();
-  return withCreatorNames(snap.docs.map((doc) => serializeLetter(doc.id, doc.data())));
+  const letters = await withCreatorNames(
+    snap.docs.map((doc) => serializeLetter(doc.id, doc.data()))
+  );
+  return maskHiddenLetters(letters, uid, event.letterSharingUids ?? []);
 }
 
 export interface CreateLetterInput extends EscortInput {
@@ -293,10 +323,12 @@ export async function updateLetter(
   letterId: string,
   patch: UpdateLetterInput
 ): Promise<LetterJson> {
-  const { ref, data } = await requireLetterMembership(uid, letterId);
+  const { ref, data, event } = await requireLetterMembership(uid, letterId);
   await ref.update(buildLetterUpdate(patch, data));
   const snap = await ref.get();
-  const [letter] = await withCreatorNames([serializeLetter(snap.id, snap.data()!)]);
+  const letters = await withCreatorNames([serializeLetter(snap.id, snap.data()!)]);
+  // 他の人のお手紙の席札・卓番だけを直したときも、返す中身は伏せたままにする。
+  const [letter] = maskHiddenLetters(letters, uid, event.letterSharingUids ?? []);
   return letter;
 }
 
@@ -315,7 +347,7 @@ export async function bulkUpdateLetters(
   eventId: string,
   patches: BulkLetterPatch[]
 ): Promise<LetterJson[]> {
-  await requireEventMembership(uid, eventId);
+  const { data: event } = await requireEventMembership(uid, eventId);
   if (patches.length === 0) return [];
 
   const col = lettersCollection();
@@ -333,7 +365,8 @@ export async function bulkUpdateLetters(
   await batch.commit();
 
   const updated = await Promise.all(refs.map((r) => r.get()));
-  return withCreatorNames(updated.map((s) => serializeLetter(s.id, s.data()!)));
+  const letters = await withCreatorNames(updated.map((s) => serializeLetter(s.id, s.data()!)));
+  return maskHiddenLetters(letters, uid, event.letterSharingUids ?? []);
 }
 
 export async function deleteLetter(uid: string, letterId: string): Promise<void> {

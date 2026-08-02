@@ -90,6 +90,8 @@ export function useLetterStudio() {
   const [userName, setUserName] = useState("");
   /** ログイン中の uid。手紙の作成者が自分かどうかの判定に使う。 */
   const [userUid, setUserUid] = useState<string | null>(null);
+  /** プロフィール写真(Google ログイン等)。無ければ null で、頭文字表示に落ちる。 */
+  const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [projects, setProjects] = useState<EventSummary[]>([]);
   // 手紙一覧はイベント単位でスコープする。lettersFor が現在の eventId と一致
   // するときだけ lettersRaw を採用し、切替時の「クリア」を synchronous な
@@ -152,6 +154,7 @@ export function useLetterStudio() {
         setAuthed(false);
         setUserName("");
         setUserUid(null);
+        setUserPhoto(null);
         setProjects([]);
         setLettersFor(null);
         setLettersRaw([]);
@@ -161,6 +164,7 @@ export function useLetterStudio() {
       setAuthed(true);
       setUserName(user.displayName || user.email?.split("@")[0] || "");
       setUserUid(user.uid);
+      setUserPhoto(user.photoURL);
       setHydrated(true);
       try {
         await refreshEvents();
@@ -207,6 +211,10 @@ export function useLetterStudio() {
     };
   }, [authed, curP, lettersFor, toast]);
 
+  // 伏せられたお手紙(他のメンバーの分)を除いた一覧。中身を見せない設定でも
+  // 席札・エスコートカードは全員ぶんを扱うので、`letters` の方も残しておく。
+  const visibleLetters = useMemo(() => letters.filter((l) => !l.hidden), [letters]);
+
   const curProject = projects.find((p) => p.id === curP) || null;
   const cardConf: CardConfig | null = curProject?.cardConfig ?? null;
   const escortConf: EscortConfig | null = curProject?.escortConfig ?? null;
@@ -237,17 +245,35 @@ export function useLetterStudio() {
     }
   }
 
-  // 不正な eventId / letterId(取得後に見つからない)は一覧へ戻す。
+  // 不正な eventId / letterId(取得後に見つからない)は一覧へ戻す。中身が伏せられた
+  // お手紙も同じ扱いにする(編集画面は本文ごと丸ごと保存するため、開かせない)。
   useEffect(() => {
     if (!authed) return;
     if (curP && !loadingEvents && !curProject) {
       router.replace("/events");
       return;
     }
-    if (curL && !isNew && !loadingLetters && letters.length > 0 && !letters.some((l) => l.id === curL)) {
+    if (
+      curL &&
+      !isNew &&
+      !loadingLetters &&
+      letters.length > 0 &&
+      !visibleLetters.some((l) => l.id === curL)
+    ) {
       router.replace(`/events/${curP}`);
     }
-  }, [authed, curP, curL, isNew, loadingEvents, loadingLetters, curProject, letters, router]);
+  }, [
+    authed,
+    curP,
+    curL,
+    isNew,
+    loadingEvents,
+    loadingLetters,
+    curProject,
+    letters,
+    visibleLetters,
+    router,
+  ]);
 
   // --- ナビゲーション(パスは router、オーバーレイは nuqs setter)---
   const goHome = useCallback(() => {
@@ -814,10 +840,12 @@ export function useLetterStudio() {
       screen,
       userName,
       userUid,
+      userPhoto,
       projects,
       curP,
       curL,
       letters,
+      visibleLetters,
       draft,
       modalShown: newModal,
       addModal,
@@ -836,10 +864,12 @@ export function useLetterStudio() {
       screen,
       userName,
       userUid,
+      userPhoto,
       projects,
       curP,
       curL,
       letters,
+      visibleLetters,
       draft,
       newModal,
       addModal,

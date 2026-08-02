@@ -9,7 +9,7 @@ import { cardNameFor, escortGeom, escortNameFor, geom } from "../geometry";
 import styles from "../letter-studio.module.css";
 import { LetterPreviewFace } from "../LetterPreviewFace";
 import { QrCardFace } from "../QrCardFace";
-import type { EditorTab, EventTab, Letter, Project } from "../types";
+import type { EditorTab, EventTab, Letter, Project, SettingsTab } from "../types";
 import { EventHeader } from "./EventHeader";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
@@ -20,11 +20,15 @@ const PAGE_SIZE = 12;
 
 interface ReviewScreenProps {
   project: Project;
+  /** 全ゲストぶん。席札・エスコートカードは伏せられたお手紙のものも確認できる。 */
   letters: Letter[];
+  /** そのうち中身を見せてよいもの。「お手紙」の確認はこちらだけを並べる。 */
+  visibleLetters: Letter[];
   loading: boolean;
   onBack: () => void;
   onSelectTab: (tab: EventTab) => void;
-  onOpenSettings: () => void;
+  /** 共通設定ドロワーを開く。タブ指定なしなら「基本」。 */
+  onOpenSettings: (tab?: SettingsTab) => void;
   onEdit: (letter: Letter, tab: EditorTab) => void;
   letterUrl: (id: string) => string;
   /** 任意のカードDOMを画像として保存する(確認タブの各アイテムから使う)。 */
@@ -58,6 +62,7 @@ function warningOf(letter: Letter, kind: EditorTab): string {
 export function ReviewScreen({
   project,
   letters,
+  visibleLetters,
   loading,
   onBack,
   onSelectTab,
@@ -90,18 +95,20 @@ export function ReviewScreen({
   }
 
   const curKind = kinds.includes(kind) ? kind : "letter";
-  const warned = letters.filter((l) => warningOf(l, curKind)).length;
-  const visible = letters.slice(0, shown);
+  // お手紙は中身を見せてよいものだけ、席札・エスコートカードは全ゲストぶんを並べる。
+  const target = curKind === "letter" ? visibleLetters : letters;
+  const warned = target.filter((l) => warningOf(l, curKind)).length;
+  const visible = target.slice(0, shown);
 
   // 一括印刷ボタン: エスコートカードはどちらのスタイルでも、席札は
   // 横向き/縦向き(91×55mm・55×91mm)と tent-l(91×110mm)のときだけ対応する
   // (tent-p は対象外)。
-  const showEscortPrint = curKind === "escort" && escortEnabled && letters.length > 0;
+  const showEscortPrint = curKind === "escort" && escortEnabled && target.length > 0;
   const showCardPrint =
     curKind === "card" &&
     cardEnabled &&
     (cardOrient === "landscape" || cardOrient === "portrait" || cardOrient === "tent-l") &&
-    letters.length > 0;
+    target.length > 0;
   const guideVariant: GuideVariant =
     showEscortPrint && project.escortConfig.style === "ticket"
       ? "ticket"
@@ -227,7 +234,7 @@ export function ReviewScreen({
         <PrintGuideModal variant={guideVariant} onClose={() => setShowPrintGuide(false)} />
       )}
 
-      {loading || letters.length === 0 ? (
+      {loading || target.length === 0 ? (
         <p
           style={{
             margin: "0 0 18px",
@@ -259,7 +266,7 @@ export function ReviewScreen({
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {letters.length}
+              {target.length}
             </strong>
             通
           </span>
@@ -307,7 +314,7 @@ export function ReviewScreen({
         ))}
       </div>
 
-      {letters.length > shown && (
+      {target.length > shown && (
         <button
           type="button"
           onClick={() => setShown((n) => n + PAGE_SIZE)}
@@ -326,7 +333,7 @@ export function ReviewScreen({
             cursor: "pointer",
           }}
         >
-          さらに表示（残り {letters.length - shown} 件）
+          さらに表示（残り {target.length - shown} 件）
         </button>
       )}
     </main>

@@ -13,11 +13,12 @@ export function ProjectConnected() {
   return (
     <ProjectScreen
       project={curProject}
-      letters={state.letters}
+      // 一覧に並ぶのはお手紙そのものなので、伏せられた分は出さない。
+      letters={state.visibleLetters}
       currentUid={state.userUid}
       loadingLetters={api.loadingLetters}
       onBack={api.goHome}
-      onOpenSettings={() => api.openSettings("general")}
+      onOpenSettings={api.openSettings}
       onSelectTab={api.selectEventTab}
       onBulkAdd={api.openBulkAdd}
       onNewLetter={api.newLetter}

@@ -19,9 +19,13 @@ service cloud.firestore {
         && request.resource.data.memberUids == [request.auth.uid];
       // メンバーは全員共同オーナー。メンバー構成の変更も含めて許可し、
       // 作成者の記録(createdBy)だけは書き換えさせない。
+      // お手紙を見せる設定(letterSharingUids)は本人だけのものなので、
+      // クライアントからは触らせない(アプリは Admin SDK 経由で更新する)。
       allow update: if isSignedIn()
         && request.auth.uid in resource.data.memberUids
-        && request.resource.data.createdBy == resource.data.createdBy;
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.get('letterSharingUids', [])
+             == resource.data.get('letterSharingUids', []);
       allow delete: if isSignedIn() && request.auth.uid == resource.data.createdBy;
     }
 
@@ -32,8 +36,11 @@ service cloud.firestore {
     }
 
     match /letters/{letterId} {
-      // list は必ず where("eventId", "==", …) 付きクエリで行う前提
-      allow read: if isEventMember(resource.data.eventId);
+      // 読み取りはサーバー(Admin SDK)専用。お手紙の中身を返してよいかは
+      // 「作った本人か、作った人が見せる設定にしているか」で決まり、これは
+      // /api 側(letters.ts の maskHiddenLetters)でしか判断していないため、
+      // クライアントからの直接読み取りは許さない。
+      allow read: if false;
       allow create: if isEventMember(request.resource.data.eventId)
         && request.resource.data.photos == [];   // photos はサーバー経由でのみ更新
       allow update: if isEventMember(resource.data.eventId)
