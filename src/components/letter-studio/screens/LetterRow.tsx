@@ -5,6 +5,7 @@ import {
   Eye,
   ImageIcon,
   Link2,
+  Lock,
   MoreVertical,
   Pencil,
   QrCode,
@@ -56,6 +57,13 @@ const menuItemStyle = {
   color: COLOR.ink,
   cursor: "pointer",
 };
+
+/**
+ * 非公開の本文の代わりにぼかして敷くダミー文字。サーバーは本文を返していないので、
+ * ぼかしの下にあるのはこの文言だけ(本物の中身はクライアントに届いていない)。
+ */
+const HIDDEN_FILLER =
+  "このお手紙の本文は非公開に設定されています。ぼかしの下にあるのはダミーの文字で、本文ではありません。";
 
 /** カード下段の情報チップ。席札名・卓番などを小さく並べる。 */
 function Chip({
@@ -128,6 +136,24 @@ export function LetterRow({
   const theme = THEMES[l.theme];
   const accent = theme.accent;
   const preview = l.body.replace(/\s+/g, " ").trim();
+  // 中身が伏せられたお手紙。カード自体は並べて、本文の位置だけをぼかす。
+  const hidden = Boolean(l.hidden);
+  // 席札・エスコートが無効なら、伏せられたお手紙には直せるところが残っていない。
+  const canEdit = !hidden || cardEnabled || escortEnabled;
+
+  // 本文プレビューは便箋の罫線の上に書いたように見せる(行送り 26px に罫線を合わせる)。
+  const previewStyle = {
+    margin: "2px 0 0",
+    fontSize: FONT_SIZE.bodySm,
+    letterSpacing: "0.04em",
+    lineHeight: "26px",
+    fontFamily: pFont,
+    backgroundImage: `repeating-linear-gradient(180deg, transparent 0 25px, ${theme.rule} 25px 26px)`,
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical" as const,
+    overflow: "hidden",
+  };
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -142,11 +168,13 @@ export function LetterRow({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={onEdit}
+      // 直せるところが何も無いお手紙(非公開かつ席札・エスコートも無効)は、
+      // カードを押しても開けないのでボタンにしない。
+      role={canEdit ? "button" : undefined}
+      tabIndex={canEdit ? 0 : undefined}
+      onClick={canEdit ? onEdit : undefined}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+        if (canEdit && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault();
           onEdit();
         }
@@ -163,6 +191,7 @@ export function LetterRow({
         border: `1px solid ${theme.rule}`,
         padding: "16px 16px 14px 32px",
         boxShadow: "0 6px 20px rgba(150,110,130,0.12)",
+        cursor: canEdit ? undefined : "default",
       }}
     >
       {/* 便箋の左余白罫(細い二重線)。メニューを切らないよう overflow は掛けない。 */}
@@ -332,24 +361,43 @@ export function LetterRow({
         </div>
       </div>
       <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 6 }}>
-        {/* 本文プレビューは便箋の罫線の上に書いたように見せる(行送り 26px に罫線を合わせる)。 */}
-        <p
-          style={{
-            margin: "2px 0 0",
-            fontSize: FONT_SIZE.bodySm,
-            color: preview ? COLOR.inkSoft : COLOR.inkFaint,
-            letterSpacing: "0.04em",
-            lineHeight: "26px",
-            fontFamily: pFont,
-            backgroundImage: `repeating-linear-gradient(180deg, transparent 0 25px, ${theme.rule} 25px 26px)`,
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-          }}
-        >
-          {preview || "本文はまだ書かれていません"}
-        </p>
+        {hidden ? (
+          // 非公開の本文。ダミー文字をぼかして便箋の見た目だけ残し、その上に理由を出す。
+          <div style={{ position: "relative" }}>
+            <p
+              aria-hidden="true"
+              style={{
+                ...previewStyle,
+                color: COLOR.inkFaint,
+                filter: "blur(3.5px)",
+                opacity: 0.7,
+                userSelect: "none",
+              }}
+            >
+              {HIDDEN_FILLER}
+            </p>
+            <span
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 5,
+                fontSize: FONT_SIZE.caption,
+                letterSpacing: "0.06em",
+                color: COLOR.inkMuted,
+              }}
+            >
+              <Lock size={12} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
+              本文は作成した人だけが見られます
+            </span>
+          </div>
+        ) : (
+          <p style={{ ...previewStyle, color: preview ? COLOR.inkSoft : COLOR.inkFaint }}>
+            {preview || "本文はまだ書かれていません"}
+          </p>
+        )}
         {/* 設定チップ。 */}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0, marginTop: 6 }}>
             {cardEnabled && (
@@ -390,31 +438,33 @@ export function LetterRow({
               <Avatar photoUrl={creator.photoUrl} name={creator.label} size={22} />
             </span>
           )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            className={styles.optionRow}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              marginLeft: "auto",
-              flex: "none",
-              padding: "4px 6px",
-              border: "none",
-              borderRadius: 6,
-              background: "none",
-              color: COLOR.inkFaint,
-              fontSize: FONT_SIZE.caption,
-              letterSpacing: "0.08em",
-            }}
-          >
-            <Pencil size={13} strokeWidth={1.8} aria-hidden="true" />
-            編集
-          </button>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              className={styles.optionRow}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                marginLeft: "auto",
+                flex: "none",
+                padding: "4px 6px",
+                border: "none",
+                borderRadius: 6,
+                background: "none",
+                color: COLOR.inkFaint,
+                fontSize: FONT_SIZE.caption,
+                letterSpacing: "0.08em",
+              }}
+            >
+              <Pencil size={13} strokeWidth={1.8} aria-hidden="true" />
+              編集
+            </button>
+          )}
         </div>
       </div>
     </div>

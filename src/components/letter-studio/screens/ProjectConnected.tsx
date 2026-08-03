@@ -13,8 +13,8 @@ export function ProjectConnected() {
   return (
     <ProjectScreen
       project={curProject}
-      // 一覧に並ぶのはお手紙そのものなので、伏せられた分は出さない。
-      letters={state.visibleLetters}
+      // 伏せられたお手紙も一覧には並べる(本文の位置がぼかしになる)。
+      letters={state.letters}
       currentUid={state.userUid}
       loadingLetters={api.loadingLetters}
       onBack={api.goHome}

@@ -142,6 +142,10 @@ async function withCreatorNames(letters: LetterJson[]): Promise<LetterJson[]> {
  * 選んでいる(= `letterSharingUids` に入っている)場合だけ。席札・エスコート
  * カードは全員ぶんを扱えるままにしたいので、宛名・席札名・卓番といったカード系の
  * フィールドは残す。`createdBy` を持たない旧データは持ち主が決まらないので伏せない。
+ *
+ * 一覧にはお手紙自体は並び、本文の位置だけがぼかしになる(`hidden` を見て
+ * クライアントが描き分ける)。本文と写真はここで落として返さないので、
+ * ぼかしの下に本物の中身は無い。
  */
 function maskHiddenLetters(
   letters: LetterJson[],

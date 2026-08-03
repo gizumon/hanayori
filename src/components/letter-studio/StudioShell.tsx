@@ -79,9 +79,11 @@ export function StudioShell({ children }: { children: ReactNode }) {
               (!state.editLetter?.hidden || cardConf.enabled || escortConf.enabled) && (
                 <LetterEditDrawer
                   letter={state.editLetter}
-                  // 前後移動の対象。伏せられたお手紙(確認タブの席札・エスコートから
-                  // 開いた分)を直しているときだけ全件、それ以外は一覧と同じ並び。
-                  letters={state.editLetter?.hidden ? state.letters : state.visibleLetters}
+                  // 前後移動の対象。席札・エスコートのどちらかが有効なら伏せられた
+                  // お手紙も開けるので全件、どちらも無効なら開ける分だけに絞る。
+                  letters={
+                    cardConf.enabled || escortConf.enabled ? state.letters : state.visibleLetters
+                  }
                   project={curProject}
                   cardConf={cardConf}
                   escortConf={escortConf}
