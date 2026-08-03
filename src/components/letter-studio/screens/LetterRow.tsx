@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "../Avatar";
-import { THEMES } from "../constants";
+import { HIDDEN_BODY_FILLER, HIDDEN_BODY_NOTE, THEMES } from "../constants";
 import styles from "../letter-studio.module.css";
 import type { Letter } from "../types";
 import { FONT_SIZE } from "@/lib/typography";
@@ -57,13 +57,6 @@ const menuItemStyle = {
   color: COLOR.ink,
   cursor: "pointer",
 };
-
-/**
- * 非公開の本文の代わりにぼかして敷くダミー文字。サーバーは本文を返していないので、
- * ぼかしの下にあるのはこの文言だけ(本物の中身はクライアントに届いていない)。
- */
-const HIDDEN_FILLER =
-  "このお手紙の本文は非公開に設定されています。ぼかしの下にあるのはダミーの文字で、本文ではありません。";
 
 /** カード下段の情報チップ。席札名・卓番などを小さく並べる。 */
 function Chip({
@@ -374,7 +367,7 @@ export function LetterRow({
                 userSelect: "none",
               }}
             >
-              {HIDDEN_FILLER}
+              {HIDDEN_BODY_FILLER}
             </p>
             <span
               style={{
@@ -390,7 +383,7 @@ export function LetterRow({
               }}
             >
               <Lock size={12} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
-              本文は作成した人だけが見られます
+              {HIDDEN_BODY_NOTE}
             </span>
           </div>
         ) : (

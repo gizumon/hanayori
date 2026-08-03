@@ -14,7 +14,6 @@ export function ReviewConnected() {
     <ReviewScreen
       project={curProject}
       letters={state.letters}
-      visibleLetters={state.visibleLetters}
       currentUid={state.userUid}
       loading={api.loadingLetters}
       onBack={api.goHome}

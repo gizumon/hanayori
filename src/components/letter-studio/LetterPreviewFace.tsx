@@ -1,5 +1,7 @@
 "use client";
 
+import { Lock } from "lucide-react";
+import { HIDDEN_BODY_FILLER, HIDDEN_BODY_NOTE } from "./constants";
 import { withAlpha } from "@/lib/color";
 import { FONT_SIZE } from "@/lib/typography";
 
@@ -23,6 +25,11 @@ interface LetterPreviewFaceProps {
   font: string;
   theme: LetterPreviewTheme;
   padding?: string;
+  /**
+   * 他のメンバーが「見せない」に設定したお手紙。本文の位置だけをぼかしで塞ぐ
+   * (宛名・日付・便箋の意匠はそのまま)。写真も届いていないので出さない。
+   */
+  hiddenBody?: boolean;
 }
 
 /** お手紙本体のビジュアル(便箋風のカード)。編集画面のサイドプレビューとプレビューポップアップで共用する。 */
@@ -35,7 +42,19 @@ export function LetterPreviewFace({
   font,
   theme,
   padding,
+  hiddenBody,
 }: LetterPreviewFaceProps) {
+  const bodyStyle = {
+    fontFamily: font,
+    fontSize: FONT_SIZE.body,
+    lineHeight: "2.3em",
+    letterSpacing: "0.06em",
+    color: theme.ink,
+    whiteSpace: "pre-wrap" as const,
+    maxHeight: 320,
+    overflow: "hidden",
+  };
+
   return (
     <div
       style={{
@@ -109,21 +128,41 @@ export function LetterPreviewFace({
         >
           {to || "宛名"}
         </div>
-        <div
-          style={{
-            fontFamily: font,
-            fontSize: FONT_SIZE.body,
-            lineHeight: "2.3em",
-            letterSpacing: "0.06em",
-            color: theme.ink,
-            whiteSpace: "pre-wrap",
-            maxHeight: 320,
-            overflow: "hidden",
-          }}
-        >
-          {body || "ここに本文が入ります"}
-        </div>
-        {photo && (
+        {hiddenBody ? (
+          <div style={{ position: "relative" }}>
+            <div
+              aria-hidden="true"
+              style={{
+                ...bodyStyle,
+                filter: "blur(5px)",
+                opacity: 0.6,
+                userSelect: "none",
+              }}
+            >
+              {HIDDEN_BODY_FILLER}
+            </div>
+            <span
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                fontFamily: font,
+                fontSize: FONT_SIZE.caption,
+                letterSpacing: "0.08em",
+                color: theme.inkSoft,
+              }}
+            >
+              <Lock size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
+              {HIDDEN_BODY_NOTE}
+            </span>
+          </div>
+        ) : (
+          <div style={bodyStyle}>{body || "ここに本文が入ります"}</div>
+        )}
+        {!hiddenBody && photo && (
           <div
             style={{
               margin: "20px auto 4px",

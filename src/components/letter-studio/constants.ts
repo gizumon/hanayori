@@ -1,5 +1,18 @@
 import type { FontKey, ThemeKey } from "./types";
 
+/**
+ * 非公開の本文の代わりにぼかして敷くダミー文字。
+ *
+ * 「見せない」設定のお手紙は、サーバーが本文も写真も落として `hidden` だけを
+ * 付けて返す。だから一覧・一括編集・確認のどこでも、ぼかしの下にあるのはこの
+ * 文言だけで、本物の中身はクライアントに届いていない。
+ */
+export const HIDDEN_BODY_FILLER =
+  "このお手紙の本文は非公開に設定されています。ぼかしの下にあるのはダミーの文字で、本文ではありません。";
+
+/** 非公開のお手紙に添える一言。錠前アイコンと並べて使う。 */
+export const HIDDEN_BODY_NOTE = "本文は作成した人だけが見られます";
+
 export const THEMES: Record<
   ThemeKey,
   {

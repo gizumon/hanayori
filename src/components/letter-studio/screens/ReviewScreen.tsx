@@ -2,8 +2,8 @@
 
 import { useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { CircleAlert, CircleQuestionMark, Download, Pencil, Printer, X } from "lucide-react";
-import { FONTS, THEMES } from "../constants";
+import { CircleAlert, CircleQuestionMark, Download, Lock, Pencil, Printer, X } from "lucide-react";
+import { FONTS, HIDDEN_BODY_NOTE, THEMES } from "../constants";
 import { EscortCardFace } from "../EscortCardFace";
 import { cardNameFor, escortGeom, escortNameFor, geom } from "../geometry";
 import styles from "../letter-studio.module.css";
@@ -21,10 +21,11 @@ const PAGE_SIZE = 12;
 
 interface ReviewScreenProps {
   project: Project;
-  /** 全ゲストぶん。席札・エスコートカードは伏せられたお手紙のものも確認できる。 */
+  /**
+   * 全ゲストぶん。伏せられたお手紙も並べる(「お手紙」では本文の位置がぼかしになり、
+   * 席札・エスコートカードはこれまでどおり中身まで確認できる)。
+   */
   letters: Letter[];
-  /** そのうち中身を見せてよいもの。「お手紙」の確認はこちらだけを並べる。 */
-  visibleLetters: Letter[];
   /** ログイン中の uid。作成者フィルタで自分を「あなた」と表示するために使う。 */
   currentUid: string | null;
   loading: boolean;
@@ -56,6 +57,8 @@ const KIND_LABEL: Record<EditorTab, string> = {
 /** その対象で「まだ埋まっていない」ものを一言で返す。空文字なら問題なし。 */
 function warningOf(letter: Letter, kind: EditorTab): string {
   if (!letter.to.trim()) return "宛名が未入力";
+  // 伏せられたお手紙は本文が手元に無いだけで、書かれているかは分からない。
+  if (kind === "letter" && letter.hidden) return "";
   if (kind === "letter" && !letter.body.trim()) return "本文が未入力";
   if (kind === "escort" && !(letter.tableNo ?? "").trim()) return "卓番が未入力";
   return "";
@@ -68,7 +71,6 @@ function warningOf(letter: Letter, kind: EditorTab): string {
 export function ReviewScreen({
   project,
   letters,
-  visibleLetters,
   currentUid,
   loading,
   onBack,
@@ -96,8 +98,9 @@ export function ReviewScreen({
   const [showPrintGuide, setShowPrintGuide] = useState(false);
 
   const curKind = kinds.includes(kind) ? kind : "letter";
-  // お手紙は中身を見せてよいものだけ、席札・エスコートカードは全ゲストぶんを並べる。
-  const base = curKind === "letter" ? visibleLetters : letters;
+  // どの対象でも全ゲストぶんを並べる。伏せられたお手紙は「お手紙」でも枚数に入り、
+  // 本文の位置だけがぼかしになる(作成者フィルタのアイコンにも出る)。
+  const base = letters;
   const creatorFilter = useCreatorFilter(base, currentUid, project.memberCount);
   const target = creatorFilter.apply(base);
 
@@ -388,6 +391,8 @@ function ReviewCard({ letter, index, kind, project, warning, qrUrl, onEdit, save
   const cardConf = project.cardConfig;
   const escortConf = project.escortConfig;
   const faceRef = useRef<HTMLDivElement>(null);
+  // 伏せられたお手紙の「お手紙」。中身が手元に無いので、画像保存も編集もできない。
+  const locked = kind === "letter" && Boolean(letter.hidden);
 
   return (
     <article
@@ -413,6 +418,7 @@ function ReviewCard({ letter, index, kind, project, warning, qrUrl, onEdit, save
             font={FONTS[project.letterConfig.font].family}
             theme={theme}
             padding="18px 14px"
+            hiddenBody={locked}
           />
         </div>
       )}
@@ -506,26 +512,39 @@ function ReviewCard({ letter, index, kind, project, warning, qrUrl, onEdit, save
             {warning}
           </span>
         )}
-        <button
-          type="button"
-          onClick={() => saveCardImage(faceRef, `${CARD_KIND_FILE_PREFIX[kind]}-${index}.png`)}
-          aria-label="画像として保存"
-          title="画像として保存"
-          className={styles.btnOutline}
-          style={iconBtnStyle}
-        >
-          <Download size={14} strokeWidth={1.8} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={onEdit}
-          aria-label="編集"
-          title="編集"
-          className={styles.btnOutline}
-          style={iconBtnStyle}
-        >
-          <Pencil size={14} strokeWidth={1.8} aria-hidden="true" />
-        </button>
+        {locked ? (
+          <span
+            role="img"
+            aria-label={HIDDEN_BODY_NOTE}
+            title={HIDDEN_BODY_NOTE}
+            style={{ ...iconBtnStyle, color: COLOR.inkMuted, cursor: "default" }}
+          >
+            <Lock size={14} strokeWidth={1.8} aria-hidden="true" />
+          </span>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => saveCardImage(faceRef, `${CARD_KIND_FILE_PREFIX[kind]}-${index}.png`)}
+              aria-label="画像として保存"
+              title="画像として保存"
+              className={styles.btnOutline}
+              style={iconBtnStyle}
+            >
+              <Download size={14} strokeWidth={1.8} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label="編集"
+              title="編集"
+              className={styles.btnOutline}
+              style={iconBtnStyle}
+            >
+              <Pencil size={14} strokeWidth={1.8} aria-hidden="true" />
+            </button>
+          </>
+        )}
       </div>
     </article>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { Lock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { THEMES } from "../constants";
 import { encodeImageFile } from "../imageEncode";
@@ -59,6 +60,9 @@ interface BulkEditScreenProps {
   escortNameFor: (l: Letter) => string;
 }
 
+
+/** 伏せられたお手紙の行に出す一言。一覧・確認のぼかしと同じ趣旨。 */
+const HIDDEN_ROW_NOTE = "作成した人だけが直せます";
 
 const HONOR_OPTIONS = (def: Honor): { value: Honor | null; label: string }[] => [
   { value: null, label: `既定(${def || "なし"})` },
@@ -204,18 +208,13 @@ export function BulkEditScreen({
 
   const baseline = useMemo(() => new Map(letters.map((l) => [l.id, l])), [letters]);
 
-  // 「お手紙」の項目(宛名・色・写真)はお手紙の中身そのものなので、伏せられた
-  // お手紙の行は出さない。席札・エスコートは全員ぶんを編集できるままにする。
-  const editable = category.key === "letter" ? rows.filter((r) => !r.hidden) : rows;
+  // 伏せられたお手紙も行としては並べる(どの対象でも、作成者フィルタのアイコンにも
+  // 出る)。ただし「お手紙」の項目(宛名・色・写真)はお手紙の中身そのものなので、
+  // その行のコントロールは錠前に差し替えて作成者本人だけが直せるようにする。
+  const lockedRow = (l: Letter) => category.key === "letter" && Boolean(l.hidden);
 
-  // 作成者フィルタの選択肢は、いま編集できる行と同じ範囲から作る
-  // (「お手紙」では伏せられた分を数に入れない)。
-  const filterSource = useMemo(
-    () => (category.key === "letter" ? letters.filter((l) => !l.hidden) : letters),
-    [letters, category.key]
-  );
-  const creatorFilter = useCreatorFilter(filterSource, currentUid, project.memberCount);
-  const shownRows = creatorFilter.apply(editable);
+  const creatorFilter = useCreatorFilter(letters, currentUid, project.memberCount);
+  const shownRows = creatorFilter.apply(rows);
 
   const cellKey = (id: string, f: BulkField) => `${id}:${f}`;
   const changedForField = (f: BulkField) =>
@@ -421,9 +420,7 @@ export function BulkEditScreen({
         <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>読み込んでいます…</p>
       ) : shownRows.length === 0 ? (
         <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>
-          {editable.length > 0
-            ? "この作成者のお手紙はありません。"
-            : "まだお手紙がありません。"}
+          {rows.length > 0 ? "この作成者のお手紙はありません。" : "まだお手紙がありません。"}
         </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -434,6 +431,7 @@ export function BulkEditScreen({
               field={field}
               identity={identityFor(row)}
               showTable={project.escortConfig.enabled}
+              locked={lockedRow(row)}
               narrow={narrow}
               changed={changed.has(cellKey(row.id, field.key))}
               onText={(v) => setField(row.id, field.key, v)}
@@ -559,6 +557,8 @@ interface RowProps {
   /** 行の識別名(宛名 → 席札名 → エスコート名)。どの手紙か分かるよう常に表示。 */
   identity: string;
   showTable: boolean;
+  /** 他のメンバーが「見せない」に設定したお手紙。並べるが直せない。 */
+  locked: boolean;
   narrow: boolean;
   changed: boolean;
   onText: (v: string) => void;
@@ -573,6 +573,7 @@ function Row({
   field,
   identity,
   showTable,
+  locked,
   narrow,
   changed,
   onText,
@@ -649,16 +650,37 @@ function Row({
           justifyContent: narrow ? "flex-start" : "flex-end",
         }}
       >
-        <Control
-          row={row}
-          field={field}
-          narrow={narrow}
-          onText={onText}
-          onTheme={onTheme}
-          onHonor={onHonor}
-          onPickPhoto={onPickPhoto}
-          onRemovePhoto={onRemovePhoto}
-        />
+        {locked ? (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 13px",
+              borderRadius: 999,
+              border: `1px solid ${COLOR.border}`,
+              background: COLOR.surfaceRaised,
+              color: COLOR.inkMuted,
+              fontSize: FONT_SIZE.caption,
+              letterSpacing: "0.04em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <Lock size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
+            {HIDDEN_ROW_NOTE}
+          </span>
+        ) : (
+          <Control
+            row={row}
+            field={field}
+            narrow={narrow}
+            onText={onText}
+            onTheme={onTheme}
+            onHonor={onHonor}
+            onPickPhoto={onPickPhoto}
+            onRemovePhoto={onRemovePhoto}
+          />
+        )}
       </div>
     </div>
   );
