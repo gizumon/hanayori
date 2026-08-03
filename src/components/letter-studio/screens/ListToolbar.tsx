@@ -11,22 +11,14 @@ export interface SortOption<T extends string> {
   label: string;
 }
 
-/** 並び替えの左に置く任意の絞り込み(作成者フィルタなど)。 */
-export interface ToolbarFilter {
-  value: string;
-  options: SortOption<string>[];
-  onChange: (value: string) => void;
-  icon: ReactNode;
-  ariaLabel: string;
-}
-
 interface ListToolbarProps<T extends string> {
   totalCount: number;
   countUnit: string;
   sortValue: T;
   sortOptions: SortOption<T>[];
   onSortChange: (value: T) => void;
-  filter?: ToolbarFilter;
+  /** 並び替えの左に置く任意の絞り込み(作成者フィルタなど)。 */
+  filter?: ReactNode;
   page?: number;
   pageCount?: number;
   onPageChange?: (page: number) => void;
@@ -91,15 +83,7 @@ export function ListToolbar<T extends string>({
         {countUnit}
       </span>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        {filter && (
-          <SelectMenu
-            value={filter.value}
-            options={filter.options}
-            onChange={filter.onChange}
-            icon={filter.icon}
-            ariaLabel={filter.ariaLabel}
-          />
-        )}
+        {filter}
         <SelectMenu
           value={sortValue}
           options={sortOptions}

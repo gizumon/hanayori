@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronDown, Plus, Search, SquarePen, UserPlus, UserRound, X } from "lucide-react";
+import { ChevronDown, Plus, Search, SquarePen, UserPlus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FONTS } from "../constants";
 import { fieldStyle } from "../controls";
 import styles from "../letter-studio.module.css";
 import type { EventTab, Letter, Project, SettingsTab } from "../types";
+import { CREATOR_ALL, CreatorFilter, useCreatorFilter } from "./CreatorFilter";
 import { EventHeader } from "./EventHeader";
 import { LetterRow } from "./LetterRow";
 import { ListToolbar, type SortOption } from "./ListToolbar";
@@ -61,16 +62,6 @@ const SORT_OPTIONS: SortOption<SortKey>[] = [
 ];
 
 const PAGE_SIZE = 8;
-
-/** 作成者フィルタの「すべて」。uid と衝突しない値にする。 */
-const CREATOR_ALL = "__all__";
-/** 作成者フィルタの「作成者不明」(この機能より前に作られた手紙)。 */
-const CREATOR_UNKNOWN = "__unknown__";
-
-/** 手紙の createdBy をフィルタのキーに落とす。未設定は「不明」にまとめる。 */
-function creatorKeyOf(letter: Letter): string {
-  return letter.createdBy || CREATOR_UNKNOWN;
-}
 
 function sortLetters(letters: Letter[], sort: SortKey): Letter[] {
   const sorted = [...letters];
@@ -140,42 +131,12 @@ export function ProjectScreen({
   const [sort, setSort] = useState<SortKey>("createdDesc");
   const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
-  const [creator, setCreator] = useState<string>(CREATOR_ALL);
   const [shown, setShown] = useState(PAGE_SIZE);
 
   // 1 人だけのイベントでは「誰が書いたか」は自明なので、作成者まわりは一切出さない。
   const showCreators = project.memberCount > 1;
-
-  /** 作成者の表示名。自分は「あなた」、名前が引けない人は「作成者不明」。 */
-  const creatorLabelOf = (letter: Letter): string => {
-    if (letter.createdBy && letter.createdBy === currentUid) return "あなた";
-    return letter.createdByName || "作成者不明";
-  };
-
-  // 絞り込みの選択肢は、実際に手紙を持っている作成者だけから作る。
-  // メンバー一覧から作ると「1 通も書いていない人」が並んで選びにくくなる。
-  const creatorOptions = useMemo(() => {
-    const byKey = new Map<string, { label: string; count: number }>();
-    for (const letter of letters) {
-      const key = creatorKeyOf(letter);
-      const entry = byKey.get(key);
-      if (entry) entry.count += 1;
-      else byKey.set(key, { label: creatorLabelOf(letter), count: 1 });
-    }
-    const rest = [...byKey.entries()]
-      // 「あなた」を先頭に、残りは名前順。不明は常に末尾。
-      .sort(([aKey, a], [bKey, b]) => {
-        if (aKey === CREATOR_UNKNOWN) return 1;
-        if (bKey === CREATOR_UNKNOWN) return -1;
-        if (aKey === currentUid) return -1;
-        if (bKey === currentUid) return 1;
-        return a.label.localeCompare(b.label, "ja");
-      })
-      .map(([value, { label, count }]) => ({ value, label: `${label}（${count}）` }));
-    return [{ value: CREATOR_ALL, label: "すべての作成者" }, ...rest];
-    // creatorLabelOf は currentUid にしか依存しない。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [letters, currentUid]);
+  const creatorFilter = useCreatorFilter(letters, currentUid, project.memberCount);
+  const creator = creatorFilter.value;
 
   // 入力から300ms経ってから絞り込みに反映する(打鍵のたびに再計算しない)。
   useEffect(() => {
@@ -191,10 +152,6 @@ export function ProjectScreen({
     setPrevQuery(query);
     setPrevCreator(creator);
     setShown(PAGE_SIZE);
-  }
-  // 選んでいた作成者の手紙が全部消えたら「すべて」に戻す(空の一覧に固定されないように)。
-  if (creator !== CREATOR_ALL && !creatorOptions.some((o) => o.value === creator)) {
-    setCreator(CREATOR_ALL);
   }
 
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -220,8 +177,7 @@ export function ProjectScreen({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const byCreator =
-      creator === CREATOR_ALL ? letters : letters.filter((l) => creatorKeyOf(l) === creator);
+    const byCreator = creatorFilter.apply(letters);
     if (!q) return byCreator;
     return byCreator.filter((l) => {
       const to = l.to.toLowerCase();
@@ -230,6 +186,8 @@ export function ProjectScreen({
       const table = (l.tableNo ?? "").toLowerCase();
       return to.includes(q) || card.includes(q) || escort.includes(q) || table.includes(q);
     });
+    // creatorFilter.apply は creator(選択中の作成者)にしか依存しない。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [letters, query, creator, cardNameFor, escortNameFor]);
   const sorted = useMemo(() => sortLetters(filtered, sort), [filtered, sort]);
   const visible = sorted.slice(0, shown);
@@ -350,24 +308,15 @@ export function ProjectScreen({
             sortOptions={SORT_OPTIONS}
             onSortChange={setSort}
             filter={
-              // 作成者が実質 1 人なら選択肢にならないので出さない。
-              showCreators && creatorOptions.length > 2
-                ? {
-                    value: creator,
-                    options: creatorOptions,
-                    onChange: setCreator,
-                    ariaLabel: "作成者で絞り込む",
-                    icon: (
-                      <UserRound
-                        size={13}
-                        strokeWidth={1.8}
-                        color={COLOR.accentInk}
-                        aria-hidden="true"
-                        style={{ flex: "none" }}
-                      />
-                    ),
-                  }
-                : undefined
+              // 作成者が実質 1 人なら絞り込む意味がないので出さない。
+              creatorFilter.show ? (
+                <CreatorFilter
+                  options={creatorFilter.options}
+                  value={creator}
+                  allValue={CREATOR_ALL}
+                  onChange={creatorFilter.setValue}
+                />
+              ) : undefined
             }
           />
         )}
@@ -482,7 +431,7 @@ export function ProjectScreen({
               escortName={escortNameFor(l)}
               creator={
                 showCreators
-                  ? { label: creatorLabelOf(l), photoUrl: l.createdByPhoto ?? null }
+                  ? { label: creatorFilter.labelOf(l), photoUrl: l.createdByPhoto ?? null }
                   : null
               }
               letterUrl={letterUrl(l.id)}

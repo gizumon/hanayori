@@ -5,6 +5,7 @@ import { THEMES } from "../constants";
 import { encodeImageFile } from "../imageEncode";
 import styles from "../letter-studio.module.css";
 import type { BulkLetterPatch, EventTab, Honor, Letter, Project, SettingsTab } from "../types";
+import { CREATOR_ALL, CreatorFilter, useCreatorFilter } from "./CreatorFilter";
 import { EventHeader } from "./EventHeader";
 import { FONT_SIZE } from "@/lib/typography";
 import { COLOR } from "@/lib/palette";
@@ -45,6 +46,8 @@ interface CategoryDef {
 interface BulkEditScreenProps {
   project: Project;
   letters: Letter[];
+  /** ログイン中の uid。作成者フィルタで自分を「あなた」と表示するために使う。 */
+  currentUid: string | null;
   loading: boolean;
   saving: boolean;
   onBack: () => void;
@@ -67,6 +70,7 @@ const HONOR_OPTIONS = (def: Honor): { value: Honor | null; label: string }[] => 
 export function BulkEditScreen({
   project,
   letters,
+  currentUid,
   loading,
   saving,
   onBack,
@@ -202,7 +206,16 @@ export function BulkEditScreen({
 
   // 「お手紙」の項目(宛名・色・写真)はお手紙の中身そのものなので、伏せられた
   // お手紙の行は出さない。席札・エスコートは全員ぶんを編集できるままにする。
-  const shownRows = category.key === "letter" ? rows.filter((r) => !r.hidden) : rows;
+  const editable = category.key === "letter" ? rows.filter((r) => !r.hidden) : rows;
+
+  // 作成者フィルタの選択肢は、いま編集できる行と同じ範囲から作る
+  // (「お手紙」では伏せられた分を数に入れない)。
+  const filterSource = useMemo(
+    () => (category.key === "letter" ? letters.filter((l) => !l.hidden) : letters),
+    [letters, category.key]
+  );
+  const creatorFilter = useCreatorFilter(filterSource, currentUid, project.memberCount);
+  const shownRows = creatorFilter.apply(editable);
 
   const cellKey = (id: string, f: BulkField) => `${id}:${f}`;
   const changedForField = (f: BulkField) =>
@@ -388,6 +401,18 @@ export function BulkEditScreen({
         </div>
       </div>
 
+      {/* 作成者フィルタ。並ぶ行そのものを絞るので、項目の説明より上に置く。 */}
+      {creatorFilter.show && (
+        <div style={{ display: "flex", marginBottom: 12 }}>
+          <CreatorFilter
+            options={creatorFilter.options}
+            value={creatorFilter.value}
+            allValue={CREATOR_ALL}
+            onChange={creatorFilter.setValue}
+          />
+        </div>
+      )}
+
       <p style={{ margin: "0 0 14px", fontSize: FONT_SIZE.caption, color: COLOR.inkFaint, letterSpacing: "0.03em" }}>
         {field.desc}
       </p>
@@ -395,7 +420,11 @@ export function BulkEditScreen({
       {loading && shownRows.length === 0 ? (
         <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>読み込んでいます…</p>
       ) : shownRows.length === 0 ? (
-        <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>まだお手紙がありません。</p>
+        <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>
+          {editable.length > 0
+            ? "この作成者のお手紙はありません。"
+            : "まだお手紙がありません。"}
+        </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {shownRows.map((row) => (

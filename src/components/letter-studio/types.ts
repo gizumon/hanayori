@@ -102,6 +102,11 @@ export interface Project {
   escortConfig: EscortConfig;
   /** 共同編集メンバーの人数。1 人なら作成者まわりの UI を出さない。 */
   memberCount: number;
+  /**
+   * 共同編集メンバー(作成者が先頭、以降は参加順)。顔アイコンの表示用。
+   * 招待リンクの発行・取消はここには載らないので、メンバータブは別途取得する。
+   */
+  members: EventMember[];
 }
 
 /** ホーム画面のイベント一覧用(手紙数はサーバーで集計)。 */

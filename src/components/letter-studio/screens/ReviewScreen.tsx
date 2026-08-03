@@ -10,6 +10,7 @@ import styles from "../letter-studio.module.css";
 import { LetterPreviewFace } from "../LetterPreviewFace";
 import { QrCardFace } from "../QrCardFace";
 import type { EditorTab, EventTab, Letter, Project, SettingsTab } from "../types";
+import { CREATOR_ALL, CreatorFilter, useCreatorFilter } from "./CreatorFilter";
 import { EventHeader } from "./EventHeader";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
@@ -24,6 +25,8 @@ interface ReviewScreenProps {
   letters: Letter[];
   /** そのうち中身を見せてよいもの。「お手紙」の確認はこちらだけを並べる。 */
   visibleLetters: Letter[];
+  /** ログイン中の uid。作成者フィルタで自分を「あなた」と表示するために使う。 */
+  currentUid: string | null;
   loading: boolean;
   onBack: () => void;
   onSelectTab: (tab: EventTab) => void;
@@ -33,11 +36,14 @@ interface ReviewScreenProps {
   letterUrl: (id: string) => string;
   /** 任意のカードDOMを画像として保存する(確認タブの各アイテムから使う)。 */
   saveCardImage: (ref: RefObject<HTMLDivElement | null>, filename: string) => void;
-  /** エスコートカードを A4 にまとめて印刷する(チケット風は4枚、カード風は10枚/A4)。 */
-  onPrintAllEscort: () => void;
+  /**
+   * エスコートカードを A4 にまとめて印刷する(チケット風は4枚、カード風は10枚/A4)。
+   * 作成者で絞り込んでいるときは、いま並んでいるぶんだけを渡す。
+   */
+  onPrintAllEscort: (letters: Letter[]) => void;
   printingAllEscort: boolean;
   /** 席札を A4 1枚に10枚ずつまとめて印刷する(横向き・縦向きのみ対応)。 */
-  onPrintAllCards: () => void;
+  onPrintAllCards: (letters: Letter[]) => void;
   printingAllCards: boolean;
 }
 
@@ -63,6 +69,7 @@ export function ReviewScreen({
   project,
   letters,
   visibleLetters,
+  currentUid,
   loading,
   onBack,
   onSelectTab,
@@ -87,16 +94,22 @@ export function ReviewScreen({
   const [kind, setKind] = useState<EditorTab>("letter");
   const [shown, setShown] = useState(PAGE_SIZE);
   const [showPrintGuide, setShowPrintGuide] = useState(false);
-  // 対象を切り替えたら先頭から数え直す(render 中の派生)。
-  const [prevKind, setPrevKind] = useState(kind);
-  if (prevKind !== kind) {
-    setPrevKind(kind);
-    setShown(PAGE_SIZE);
-  }
 
   const curKind = kinds.includes(kind) ? kind : "letter";
   // お手紙は中身を見せてよいものだけ、席札・エスコートカードは全ゲストぶんを並べる。
-  const target = curKind === "letter" ? visibleLetters : letters;
+  const base = curKind === "letter" ? visibleLetters : letters;
+  const creatorFilter = useCreatorFilter(base, currentUid, project.memberCount);
+  const target = creatorFilter.apply(base);
+
+  // 対象・作成者を切り替えたら先頭から数え直す(render 中の派生)。
+  const [prevKind, setPrevKind] = useState(kind);
+  const [prevCreator, setPrevCreator] = useState(creatorFilter.value);
+  if (prevKind !== kind || prevCreator !== creatorFilter.value) {
+    setPrevKind(kind);
+    setPrevCreator(creatorFilter.value);
+    setShown(PAGE_SIZE);
+  }
+
   const warned = target.filter((l) => warningOf(l, curKind)).length;
   const visible = target.slice(0, shown);
 
@@ -181,11 +194,20 @@ export function ReviewScreen({
           </div>
         )}
 
+        {creatorFilter.show && (
+          <CreatorFilter
+            options={creatorFilter.options}
+            value={creatorFilter.value}
+            allValue={CREATOR_ALL}
+            onChange={creatorFilter.setValue}
+          />
+        )}
+
         {(showEscortPrint || showCardPrint) && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
             <button
               type="button"
-              onClick={bulkPrintHandler}
+              onClick={() => bulkPrintHandler(target)}
               disabled={bulkPrinting}
               className={styles.btnOutline}
               style={{
@@ -243,7 +265,11 @@ export function ReviewScreen({
             letterSpacing: "0.05em",
           }}
         >
-          {loading ? "読み込んでいます…" : "まだお手紙がありません"}
+          {loading
+            ? "読み込んでいます…"
+            : base.length > 0
+              ? "この作成者のお手紙はありません"
+              : "まだお手紙がありません"}
         </p>
       ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 18px", flexWrap: "wrap" }}>

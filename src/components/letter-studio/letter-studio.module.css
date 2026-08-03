@@ -81,6 +81,31 @@
   background: rgba(255, 255, 255, 0.5) !important;
 }
 
+/* overlapping member avatars (event header) */
+.avatarStack {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.avatarStack:hover {
+  opacity: 0.75;
+}
+
+/* creator filter: tap an avatar to narrow the list */
+.avatarToggle {
+  cursor: pointer;
+  transition:
+    opacity 0.18s ease,
+    filter 0.18s ease,
+    transform 0.18s ease;
+}
+/* hover は「押したらこの人が戻る」の予告。inline の filter/opacity より強く効かせる */
+.avatarToggle:hover {
+  opacity: 1 !important;
+  filter: none !important;
+  transform: translateY(-2px);
+  z-index: 3;
+}
+
 /* text-only back link */
 .linkBack {
   cursor: pointer;

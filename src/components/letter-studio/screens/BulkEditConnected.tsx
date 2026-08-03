@@ -14,6 +14,7 @@ export function BulkEditConnected() {
     <BulkEditScreen
       project={curProject}
       letters={state.letters}
+      currentUid={state.userUid}
       loading={api.loadingLetters}
       saving={api.savingBulk}
       onBack={api.goHome}

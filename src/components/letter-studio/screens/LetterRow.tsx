@@ -29,7 +29,7 @@ interface LetterRowProps {
   /** エスコートカードに載る名前(イベント既定の敬称込み)。 */
   escortName: string;
   /**
-   * カード左下に「By …」として出す作成者。null = 表示しない。
+   * カード左下に署名として出す作成者。null = 表示しない。
    * 1 人だけのイベントでは意味がないので、呼び出し側で null にして省く。
    */
   creator: { label: string; photoUrl: string | null } | null;
@@ -210,15 +210,6 @@ export function LetterRow({
         >
           {l.to}
         </span>
-        <span
-          style={{
-            fontSize: FONT_SIZE.micro,
-            letterSpacing: "0.14em",
-            color: COLOR.inkFaint,
-          }}
-        >
-          {theme.label}
-        </span>
         <span style={{ flex: 1 }} />
         {/* その他の操作。カード全体がクリック対象なので伝播は止める。 */}
         <div
@@ -387,28 +378,16 @@ export function LetterRow({
               </Chip>
             )}
         </div>
-        {/* 最下段。左に差出人の署名、右に編集。 */}
+        {/* 最下段。左に差出人の署名(アイコンだけ)、右に編集。 */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
           {creator && (
             <span
+              role="img"
+              aria-label={`${creator.label}が作成`}
               title={`${creator.label}が作成`}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                minWidth: 0,
-                fontSize: FONT_SIZE.caption,
-                letterSpacing: "0.06em",
-                color: COLOR.inkFaint,
-              }}
+              style={{ display: "inline-flex", flex: "none" }}
             >
-              <Avatar photoUrl={creator.photoUrl} name={creator.label} size={20} />
-              <span
-                style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-              >
-                By{" "}
-                <span style={{ color: COLOR.inkSoft, fontWeight: 600 }}>{creator.label}</span>
-              </span>
+              <Avatar photoUrl={creator.photoUrl} name={creator.label} size={22} />
             </span>
           )}
           <button

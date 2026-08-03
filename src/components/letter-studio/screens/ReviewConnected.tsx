@@ -15,6 +15,7 @@ export function ReviewConnected() {
       project={curProject}
       letters={state.letters}
       visibleLetters={state.visibleLetters}
+      currentUid={state.userUid}
       loading={api.loadingLetters}
       onBack={api.goHome}
       onSelectTab={api.selectEventTab}
@@ -22,9 +23,10 @@ export function ReviewConnected() {
       onEdit={(letter, tab) => api.openLetterDrawer(letter.id, tab)}
       letterUrl={api.letterUrl}
       saveCardImage={api.saveCardImage}
-      onPrintAllEscort={() => api.printAllEscortCards(state.letters)}
+      // 絞り込み中は、画面に並んでいるぶんだけを印刷する。
+      onPrintAllEscort={(letters) => api.printAllEscortCards(letters)}
       printingAllEscort={api.printingAllEscort}
-      onPrintAllCards={() => api.printAllCards(state.letters)}
+      onPrintAllCards={(letters) => api.printAllCards(letters)}
       printingAllCards={api.printingAllCards}
     />
   );

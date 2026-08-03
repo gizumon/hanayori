@@ -1,6 +1,7 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { eventsCollection, lettersCollection } from "./collections";
 import { HttpError } from "./http-error";
+import type { MemberJson } from "./members";
 import type {
   CardConfigDoc,
   EscortConfigDoc,
@@ -8,6 +9,7 @@ import type {
   FontKey,
   LetterConfigDoc,
 } from "./schema";
+import { getUserProfiles, type UserProfile } from "./users";
 
 const DEFAULT_LETTER_CONFIG: LetterConfigDoc = {
   font: "yomogi",
@@ -87,6 +89,12 @@ export interface EventJson {
   letterCount: number;
   /** 共同編集メンバーの人数。1 人なら UI は作成者まわりの表示を省く。 */
   memberCount: number;
+  /**
+   * 共同編集メンバー(memberUids の順 = 作成者が先頭、以降は参加順)。
+   * 一覧・イベントヘッダーで顔アイコンを出すために載せている。招待リンクは
+   * 含まないので、その操作が要る「メンバー」タブは別途 members API を叩く。
+   */
+  members: MemberJson[];
   createdAt: string;
   updatedAt: string;
 }
@@ -95,17 +103,40 @@ function toIso(ts: Timestamp | undefined): string {
   return (ts ?? Timestamp.now()).toDate().toISOString();
 }
 
-/** `uid` は取得した本人。自分の「お手紙を見せる」設定を返すために要る。 */
+/** uid の並びとプロフィールから、そのままクライアントに返せるメンバー配列を作る。 */
+export function toMemberJson(
+  memberUids: string[],
+  createdBy: string,
+  profiles: Map<string, UserProfile>
+): MemberJson[] {
+  return memberUids.map((memberUid) => {
+    const profile = profiles.get(memberUid);
+    return {
+      uid: memberUid,
+      displayName: profile?.displayName ?? null,
+      email: profile?.email ?? null,
+      photoUrl: profile?.photoUrl ?? null,
+      isCreator: memberUid === createdBy,
+    };
+  });
+}
+
+/**
+ * `uid` は取得した本人。自分の「お手紙を見せる」設定を返すために要る。
+ * `profiles` は解決済みのプロフィール表。一覧のように複数イベントを並べるときは、
+ * 呼び出し側が全イベントぶんを 1 回で引いて渡す(イベント数ぶん往復させない)。
+ */
 async function serializeEvent(
   id: string,
   rawData: EventDoc,
-  uid: string
+  uid: string,
+  profiles?: Map<string, UserProfile>
 ): Promise<EventJson> {
   const data = normalizeEventDoc(rawData);
-  const countSnap = await lettersCollection()
-    .where("eventId", "==", id)
-    .count()
-    .get();
+  const [countSnap, resolvedProfiles] = await Promise.all([
+    lettersCollection().where("eventId", "==", id).count().get(),
+    profiles ?? getUserProfiles(data.memberUids),
+  ]);
   return {
     id,
     name: data.name,
@@ -116,6 +147,7 @@ async function serializeEvent(
     escortConfig: data.escortConfig,
     letterCount: countSnap.data().count,
     memberCount: data.memberUids.length,
+    members: toMemberJson(data.memberUids, data.createdBy, resolvedProfiles),
     createdAt: toIso(data.createdAt),
     updatedAt: toIso(data.updatedAt),
   };
@@ -136,7 +168,16 @@ export async function listEventsForUser(uid: string): Promise<EventJson[]> {
     .where("memberUids", "array-contains", uid)
     .orderBy("createdAt", "asc")
     .get();
-  return Promise.all(snap.docs.map((doc) => serializeEvent(doc.id, doc.data(), uid)));
+  // 顔アイコン用のプロフィールは、全イベントの uid をまとめて 1 回で引く。
+  // イベントごとに引くと件数ぶんの N+1 になるため。
+  const uids = new Set<string>();
+  for (const doc of snap.docs) {
+    for (const memberUid of doc.data().memberUids) uids.add(memberUid);
+  }
+  const profiles = await getUserProfiles([...uids]);
+  return Promise.all(
+    snap.docs.map((doc) => serializeEvent(doc.id, doc.data(), uid, profiles))
+  );
 }
 
 export async function createEvent(

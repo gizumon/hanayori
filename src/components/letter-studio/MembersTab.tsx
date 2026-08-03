@@ -7,7 +7,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { Toggle } from "./controls";
 import styles from "./letter-studio.module.css";
 import { useStudio } from "./StudioContext";
-import { inviteUrl, useEventMembers } from "./useEventMembers";
+import { inviteUrl, memberDisplayName, useEventMembers } from "./useEventMembers";
 import { copyText } from "@/lib/clipboard";
 import { FONT_SIZE } from "@/lib/typography";
 import type { EventInvite, EventMember, Project } from "./types";
@@ -40,9 +40,7 @@ function expiryLabel(expiresAt: string): string {
   return `あと${Math.floor(hours / 24)}日`;
 }
 
-function displayNameOf(member: EventMember): string {
-  return member.displayName?.trim() || member.email?.split("@")[0] || "名前未設定";
-}
+const displayNameOf = memberDisplayName;
 
 function Badge({ label }: { label: string }) {
   return (
@@ -170,11 +168,11 @@ export function MembersTab({ project, onLeaveEvent }: MembersTabProps) {
   const confirmMessage = (target: Pending): string => {
     switch (target.kind) {
       case "revoke":
-        return "この招待リンクを取り消します。すでに送った相手はこのリンクから参加できなくなります。";
+        return "この招待リンクを取り消します。送った相手は参加できなくなります。";
       case "remove":
-        return `${displayNameOf(target.member)}さんをこのイベントから外します。相手はイベントを開けなくなります。`;
+        return `${displayNameOf(target.member)}さんをイベントから外します。相手はイベントを開けなくなります。`;
       case "leave":
-        return `「${project.name}」から退出します。もう一度参加するには、他のメンバーから招待リンクをもらう必要があります。`;
+        return `「${project.name}」から退出します。再参加には招待リンクが必要です。`;
     }
   };
 
@@ -282,11 +280,10 @@ export function MembersTab({ project, onLeaveEvent }: MembersTabProps) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
-        <span style={sectionLabel}>お手紙の見せ方</span>
         <Toggle
           checked={sharePending ?? project.shareMyLetters}
           onChange={handleShareMyLetters}
-          label="自分が作ったお手紙を他のメンバーにも見せる"
+          label="自分のお手紙を見せる"
         />
         <p
           style={{
@@ -296,10 +293,8 @@ export function MembersTab({ project, onLeaveEvent }: MembersTabProps) {
             color: COLOR.inkSoft,
           }}
         >
-          これはあなたのお手紙だけの設定です。他のメンバーが切り替えることはできません。
-          オフのあいだ、あなたのお手紙は一覧にも確認タブにも他のメンバーには出ません。
-          同じように、他のメンバーのお手紙もその人が見せる設定にしているときだけ見えます。
-          席札とエスコートカードは、この設定にかかわらず全員ぶんを確認タブから見られます。
+          オフの間、あなたの作成したお手紙は他のメンバーに公開されません。
+          席札とエスコートカードは常に全員分が公開されます。
         </p>
       </div>
 
@@ -313,8 +308,8 @@ export function MembersTab({ project, onLeaveEvent }: MembersTabProps) {
             color: COLOR.inkSoft,
           }}
         >
-          リンクを開いた人 1 人だけがこのイベントに参加できます。発行から 7 日で失効し、
-          参加した人はあなたと同じようにお手紙と設定を編集できます。
+          リンクは 7 日で失効します。
+          参加した人は、このイベントのお手紙や設定を編集できます。
         </p>
       </div>
 

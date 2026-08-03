@@ -10,6 +10,11 @@ interface MembersResponse {
   currentUid: string;
 }
 
+/** メンバーの表示名。名前未設定ならメールのローカル部で代用する。 */
+export function memberDisplayName(member: EventMember): string {
+  return member.displayName?.trim() || member.email?.split("@")[0] || "名前未設定";
+}
+
 /** 招待リンクの共有 URL。`/join/{token}` はログイン不要で開ける受諾ページ。 */
 export function inviteUrl(token: string): string {
   const origin = typeof window === "undefined" ? "" : window.location.origin;

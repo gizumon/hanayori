@@ -3,6 +3,7 @@
 import { CalendarDays, CalendarHeart, Mail } from "lucide-react";
 import { useMemo, useState } from "react";
 import styles from "../letter-studio.module.css";
+import { MemberAvatars } from "../MemberAvatars";
 import type { EventSummary } from "../types";
 import { ListToolbar, type SortOption } from "./ListToolbar";
 import { FONT_SIZE } from "@/lib/typography";
@@ -232,7 +233,8 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
                   marginTop: 8,
                   display: "flex",
                   alignItems: "center",
-                  gap: 6,
+                  justifyContent: "space-between",
+                  gap: 10,
                   fontSize: FONT_SIZE.caption,
                   color: COLOR.accentInk,
                   letterSpacing: "0.06em",
@@ -241,21 +243,28 @@ export function HomeScreen({ projects, loading, onOpen, onNew }: HomeScreenProps
                   width: "100%",
                 }}
               >
-                <Mail size={13} strokeWidth={1.7} aria-hidden="true" style={{ flex: "none" }} />
-                <span>
-                  お手紙{" "}
-                  <strong
-                    style={{
-                      fontSize: FONT_SIZE.bodySm,
-                      fontWeight: 700,
-                      color: COLOR.ink,
-                      fontVariantNumeric: "tabular-nums",
-                    }}
-                  >
-                    {p.letterCount}
-                  </strong>{" "}
-                  通
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Mail size={13} strokeWidth={1.7} aria-hidden="true" style={{ flex: "none" }} />
+                  <span>
+                    お手紙{" "}
+                    <strong
+                      style={{
+                        fontSize: FONT_SIZE.bodySm,
+                        fontWeight: 700,
+                        color: COLOR.ink,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {p.letterCount}
+                    </strong>{" "}
+                    通
+                  </span>
                 </span>
+                {/* 1 人だけのイベントでは自分の顔が並ぶだけなので出さない。
+                    カードはそれ自体がボタンなので、ここのアイコンは押せない表示に留める。 */}
+                {p.members.length > 1 && (
+                  <MemberAvatars members={p.members} size={22} max={3} ringColor={COLOR.surface} />
+                )}
               </span>
             </button>
           ))}

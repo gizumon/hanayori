@@ -1,6 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { eventsCollection } from "./collections";
-import { requireEventMembership } from "./events";
+import { requireEventMembership, toMemberJson } from "./events";
 import { HttpError } from "./http-error";
 import { getUserProfiles } from "./users";
 
@@ -23,16 +23,7 @@ export async function listMembersForEvent(
 ): Promise<MemberJson[]> {
   const { data } = await requireEventMembership(uid, eventId);
   const profiles = await getUserProfiles(data.memberUids);
-  return data.memberUids.map((memberUid) => {
-    const profile = profiles.get(memberUid);
-    return {
-      uid: memberUid,
-      displayName: profile?.displayName ?? null,
-      email: profile?.email ?? null,
-      photoUrl: profile?.photoUrl ?? null,
-      isCreator: memberUid === data.createdBy,
-    };
-  });
+  return toMemberJson(data.memberUids, data.createdBy, profiles);
 }
 
 export interface RemoveMemberResult {
