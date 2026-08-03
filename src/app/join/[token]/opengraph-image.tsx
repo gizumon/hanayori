@@ -16,6 +16,12 @@ export const alt = "Hanayori のイベントへの招待";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+/**
+ * 正方形クロップ（Slack や LINE のサムネイル、X の summary カード）で残る幅。
+ * 見出しはこの内側で折り返させ、どの経路でも文字が切れないようにする。
+ */
+const SAFE_WIDTH = size.height - 60;
+
 const MINCHO = "Shippori Mincho";
 const GOTHIC = "Zen Kaku Gothic New";
 
@@ -93,9 +99,9 @@ export default async function Image({ params }: { params: Promise<{ token: strin
     { family: GOTHIC, weight: 500, text: `${lead}${BRAND_JA}${OVERLINE}` },
   ]);
 
-  // イベント名が長いほど字を詰める（2 行までは崩れずに収まる）。
+  // イベント名が長いほど字を詰める（SAFE_WIDTH の中で 3 行までに収まる大きさ）。
   const titleLen = [...title].length;
-  const titleSize = titleLen <= 10 ? 60 : titleLen <= 18 ? 48 : titleLen <= 28 ? 38 : 32;
+  const titleSize = titleLen <= 8 ? 60 : titleLen <= 14 ? 46 : titleLen <= 24 ? 38 : 32;
 
   return new ImageResponse(
     (
@@ -155,7 +161,7 @@ export default async function Image({ params }: { params: Promise<{ token: strin
           <div
             style={{
               display: "flex",
-              maxWidth: "92%",
+              maxWidth: SAFE_WIDTH,
               textAlign: "center",
               fontSize: titleSize,
               lineHeight: 1.4,
