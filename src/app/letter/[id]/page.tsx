@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getLetterForGuest } from "@/lib/server/letters";
 import { LetterView } from "@/components/wedding-letter/LetterView";
@@ -8,25 +7,15 @@ interface LetterPageProps {
   params: Promise<{ id: string }>;
 }
 
-/** OGP 画像を絶対 URL で配信するためのベース URL(Cloud Run のホストから解決)。 */
-async function resolveMetadataBase(): Promise<URL | undefined> {
-  const h = await headers();
-  const host = h.get("host");
-  if (!host) return undefined;
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  return new URL(`${proto}://${host}`);
-}
-
 export async function generateMetadata({ params }: LetterPageProps): Promise<Metadata> {
   const { id } = await params;
   const letter = await getLetterForGuest(id);
-  const metadataBase = await resolveMetadataBase();
-  if (!letter) return { metadataBase, title: "お手紙が見つかりません | Hanayori" };
+  // metadataBase(OG 画像の絶対 URL 用)はルートレイアウトから継承する。
+  if (!letter) return { title: "お手紙が見つかりません | Hanayori" };
 
   const title = `${letter.to} | Hanayori`;
   const description = "花嫁からのお手紙が届いています。タップして開いてみてください。";
   return {
-    metadataBase,
     title,
     description,
     openGraph: { title, description, type: "article" },

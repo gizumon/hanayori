@@ -84,7 +84,7 @@ import { FONT_SIZE } from "@/lib/typography";
 
 - `EscortCardFace.tsx` / `QrCardFace.tsx`（席次・QR カードの描画）
 - `wedding-letter/LetterView.tsx` / `EnvelopeScene.tsx`（手紙の描画）
-- `app/letter/[id]/opengraph-image.tsx`（OG 画像）
+- `app/**/opengraph-image.tsx`（OG 画像。1200×630 の版面に合わせた実寸で組む）
 - `landing/Landing.tsx` 内の**装飾カードのモックアップ**（「さくら 様」等のプレビュー）
 
 ---

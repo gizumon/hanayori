@@ -1,8 +1,7 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { THEMES } from "@/components/letter-studio/constants";
 import { getLetterForGuest } from "@/lib/server/letters";
+import { loadGoogleFont, loadLocalFont } from "@/lib/server/og";
 import { withAlpha } from "@/lib/color";
 import type { FontKey } from "@/lib/server/schema";
 
@@ -27,32 +26,6 @@ const LOCAL_FONT_FILE: Partial<Record<FontKey, string>> = {
   anzumoji: "anzumoji.ttf",
   fuiji: "fuiji.ttf",
 };
-
-/**
- * 指定した文字だけをサブセットした Google Font の TTF を取得する。
- * Satori は woff2 を読めないため、旧 UA を送って truetype を受け取る。
- */
-async function loadGoogleFont(
-  family: string,
-  weight: number,
-  text: string
-): Promise<ArrayBuffer> {
-  const url = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
-    family
-  )}:wght@${weight}&text=${encodeURIComponent(text)}`;
-  const css = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.59.10 (KHTML, like Gecko) Version/5.1.9 Safari/534.59.10",
-    },
-  }).then((r) => r.text());
-  // 旧 UA には woff(Satori 対応)が返る。woff2 は非対応なので除外。
-  const match = css.match(/src:\s*url\((.+?)\)\s*format\('(?:truetype|opentype|woff)'\)/);
-  if (!match) throw new Error(`font url not found for ${family}`);
-  const res = await fetch(match[1]);
-  if (!res.ok) throw new Error(`font download failed for ${family}`);
-  return res.arrayBuffer();
-}
 
 /** cardNameFor(geometry.ts) と同じ規則で宛名を組み立てる。 */
 function addressee(
@@ -87,9 +60,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const fonts: { name: string; data: ArrayBuffer; weight: 400 | 500 | 600; style: "normal" }[] = [];
   try {
     const data = localFile
-      ? await readFile(join(process.cwd(), "public/fonts", localFile)).then(
-          (buf) => buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
-        )
+      ? await loadLocalFont(localFile)
       : await loadGoogleFont(family, weight, glyphs);
     fonts.push({
       name: family,
