@@ -577,20 +577,27 @@ export function BulkEditScreen({
         </div>
       )}
 
-      {/* 保存バー */}
-      <div style={{ position: "sticky", bottom: 0, marginTop: 16, pointerEvents: "none" }}>
+      {/* 保存バー。ドロワーのフッターと同じく、画面下端に貼り付く。 */}
+      <div
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 40,
+          background: COLOR.surface,
+          borderTop: `1px solid ${COLOR.divider}`,
+          padding: "10px clamp(16px,4vw,40px) calc(10px + env(safe-area-inset-bottom))",
+        }}
+      >
         <div
           style={{
-            pointerEvents: "auto",
+            maxWidth: 1040,
+            margin: "0 auto",
             display: "flex",
             alignItems: "center",
             gap: 12,
             flexWrap: "wrap",
-            background: COLOR.surface,
-            border: `1px solid ${COLOR.border}`,
-            borderRadius: 14,
-            padding: "12px 16px",
-            boxShadow: "0 14px 40px rgba(150,110,130,0.2)",
           }}
         >
           <span

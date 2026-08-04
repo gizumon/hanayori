@@ -737,12 +737,25 @@ export function EventSettingsDrawer({
             background: COLOR.surface,
           }}
         >
+          {/* 主ボタンは右端。他のモーダル・ドロワーと同じ並びに揃えている。 */}
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: FONT_SIZE.caption,
+              color: COLOR.danger,
+              letterSpacing: "0.05em",
+            }}
+          >
+            {dirty && "未保存の変更があります"}
+          </span>
           <button
             type="button"
             onClick={handleSave}
             disabled={!dirty || saving}
             className={styles.btnSolid}
             style={{
+              flex: "none",
               padding: "9px 26px",
               borderRadius: 999,
               border: "none",
@@ -755,11 +768,6 @@ export function EventSettingsDrawer({
           >
             {saving ? "保存中…" : "設定を保存"}
           </button>
-          {dirty && (
-            <span style={{ fontSize: FONT_SIZE.caption, color: COLOR.danger, letterSpacing: "0.05em" }}>
-              未保存の変更があります
-            </span>
-          )}
         </div>
         )}
       </aside>
