@@ -7,7 +7,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { Toggle } from "./controls";
 import styles from "./letter-studio.module.css";
 import { useStudio } from "./StudioContext";
-import { inviteUrl, memberDisplayName, useEventMembers } from "./useEventMembers";
+import { inviteUrl, memberDisplayName, type EventMembersApi } from "./useEventMembers";
 import { copyText } from "@/lib/clipboard";
 import { FONT_SIZE } from "@/lib/typography";
 import type { EventInvite, EventMember, Project } from "./types";
@@ -15,6 +15,12 @@ import { COLOR } from "@/lib/palette";
 
 interface MembersTabProps {
   project: Project;
+  /**
+   * メンバー・招待リンクの取得と操作。タブを離れるとこの画面はアンマウントされる
+   * ので、状態は StudioShell 側の useEventMembers が持つ(ここで呼ぶと開くたびに
+   * 取り直しになる)。
+   */
+  members: EventMembersApi;
   /** 自分が退出したときに呼ばれる。ドロワーを閉じてイベント一覧へ戻す。 */
   onLeaveEvent: () => void;
 }
@@ -67,7 +73,7 @@ function Badge({ label }: { label: string }) {
  * サーバーへ反映される。下書きを持たないので「設定を保存」の対象外で、
  * ドロワー側は未保存判定にもこのタブを含めない。
  */
-export function MembersTab({ project, onLeaveEvent }: MembersTabProps) {
+export function MembersTab({ project, members: api, onLeaveEvent }: MembersTabProps) {
   const { toast, refreshEvents, updateProject } = useStudio();
   const {
     members,
@@ -78,7 +84,7 @@ export function MembersTab({ project, onLeaveEvent }: MembersTabProps) {
     createInvite,
     revokeInvite,
     removeMember,
-  } = useEventMembers(project.id, true);
+  } = api;
   const [pending, setPending] = useState<Pending | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   // 他タブと同じくローカルに持たず即時保存するが、往復のあいだトグルが戻って

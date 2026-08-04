@@ -28,6 +28,7 @@ import type {
   Project,
   SettingsTab,
 } from "./types";
+import type { EventMembersApi } from "./useEventMembers";
 import { useUnsavedGuard } from "./useUnsavedGuard";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
@@ -57,6 +58,8 @@ interface EventSettingsDrawerProps {
   onTabChange: (tab: SettingsTab) => void;
   onClose: () => void;
   onSave: (patch: EventSettingsPatch) => Promise<boolean>;
+  /** メンバータブの中身。ドロワーより上(StudioShell)で保持して先読みしてある。 */
+  members: EventMembersApi;
   /** メンバータブで自分が退出したとき。ドロワーを閉じてイベント一覧へ戻す。 */
   onLeaveEvent: () => void;
 }
@@ -101,6 +104,7 @@ export function EventSettingsDrawer({
   onTabChange,
   onClose,
   onSave,
+  members,
   onLeaveEvent,
 }: EventSettingsDrawerProps) {
   const { toast } = useStudio();
@@ -715,7 +719,7 @@ export function EventSettingsDrawer({
           )}
 
           {tab === "members" && (
-            <MembersTab project={project} onLeaveEvent={onLeaveEvent} />
+            <MembersTab project={project} members={members} onLeaveEvent={onLeaveEvent} />
           )}
         </div>
 

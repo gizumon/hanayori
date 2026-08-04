@@ -47,12 +47,11 @@ function serializeInvite(token: string, data: InviteDoc, now: Timestamp): Invite
 /**
  * イベントの招待リンク一覧(受諾済みは除く)。
  * 受諾済みの招待はメンバー一覧に本人が現れるので、同じ情報を二重に見せない。
+ *
+ * **メンバーかどうかの確認は呼び出し側の責任**(membersOfEvent と同じ理由で、
+ * イベント doc の読み取りを呼び出し側の 1 回にまとめてある)。
  */
-export async function listInvitesForEvent(
-  uid: string,
-  eventId: string
-): Promise<InviteJson[]> {
-  await requireEventMembership(uid, eventId);
+export async function invitesOfEvent(eventId: string): Promise<InviteJson[]> {
   const snap = await invitesCollection()
     .where("eventId", "==", eventId)
     .orderBy("createdAt", "desc")

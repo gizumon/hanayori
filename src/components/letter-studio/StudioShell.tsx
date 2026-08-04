@@ -14,6 +14,7 @@ import { AppHeader } from "./screens/AppHeader";
 import { LoginScreen } from "./screens/LoginScreen";
 import { StudioProvider } from "./StudioContext";
 import { Toast } from "./Toast";
+import { useEventMembers } from "./useEventMembers";
 import { useLetterStudio } from "./useLetterStudio";
 
 /**
@@ -24,6 +25,10 @@ import { useLetterStudio } from "./useLetterStudio";
 export function StudioShell({ children }: { children: ReactNode }) {
   const api = useLetterStudio();
   const { state, hydrated, curProject, cardConf, escortConf } = api;
+  // ドロワーはタブを切り替えても閉じてもアンマウントされるので、メンバー情報は
+  // ここで保持する。開いた時点(既定は「基本」タブ)で先読みしておき、
+  // 「メンバー」を押したときには出来上がっている状態にする。
+  const members = useEventMembers(curProject?.id ?? null, state.settingsTab !== null);
 
   if (!hydrated) {
     return <div className={styles.root} />;
@@ -53,6 +58,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
                 onTabChange={api.setSettingsTab}
                 onClose={api.closeSettings}
                 onSave={api.saveSettings}
+                members={members}
                 onLeaveEvent={() => {
                   api.closeSettings();
                   api.goHome();

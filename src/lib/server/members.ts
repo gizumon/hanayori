@@ -2,6 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { eventsCollection } from "./collections";
 import { requireEventMembership, toMemberJson } from "./events";
 import { HttpError } from "./http-error";
+import type { EventDoc } from "./schema";
 import { getUserProfiles } from "./users";
 
 export interface MemberJson {
@@ -14,14 +15,13 @@ export interface MemberJson {
 }
 
 /**
- * イベントのメンバー一覧。
+ * 読み込み済みのイベント doc からメンバー一覧を作る。
  * 並び順は memberUids の順(= 作成者が先頭、以降は参加順)をそのまま使う。
+ *
+ * **メンバーかどうかの確認は呼び出し側の責任**。同じリクエストで招待一覧も返す
+ * ルートがあり、そこでイベント doc を 2 回読まないよう検証と分離してある。
  */
-export async function listMembersForEvent(
-  uid: string,
-  eventId: string
-): Promise<MemberJson[]> {
-  const { data } = await requireEventMembership(uid, eventId);
+export async function membersOfEvent(data: EventDoc): Promise<MemberJson[]> {
   const profiles = await getUserProfiles(data.memberUids);
   return toMemberJson(data.memberUids, data.createdBy, profiles);
 }

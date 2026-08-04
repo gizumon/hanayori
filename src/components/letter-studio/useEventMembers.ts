@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./apiClient";
 import type { EventInvite, EventMember } from "./types";
 
@@ -22,11 +22,24 @@ export function inviteUrl(token: string): string {
 }
 
 /**
+ * 取得済みデータを作り直しに行くまでの猶予。
+ * メンバーと招待リンクはめったに変わらないので、ドロワーを開き直すたびに
+ * 往復するほどの鮮度は要らない。この間隔を過ぎていたら裏で入れ替える。
+ */
+const STALE_MS = 60_000;
+
+/**
  * イベントのメンバー・招待リンクの取得と操作。
  *
- * イベント一覧(`GET /api/events`)には載せず、共通設定の「メンバー」タブを
- * 開いたときにこのフックが 1 回だけ取得する。ホーム画面で N+1 になるのを避け、
- * 952 行ある useLetterStudio をこれ以上膨らませないための分離でもある。
+ * イベント一覧(`GET /api/events`)には載せず、共通設定ドロワーを開いたときに
+ * 取得する。ホーム画面で N+1 になるのを避け、952 行ある useLetterStudio を
+ * これ以上膨らませないための分離でもある。
+ *
+ * **呼び出しは StudioShell から**(ドロワーや MembersTab の中ではない)。
+ * ドロワーもタブも閉じるとアンマウントされるので、中で持つと開くたびに state ごと
+ * 消えて毎回取り直しになる。上に置いてイベント単位でキャッシュし、`enabled` は
+ * 「メンバータブを見ている」ではなく「ドロワーが開いている」で渡す — 既定の
+ * 「基本」タブにいるあいだに先読みが終わり、タブを押した時点では出来ている。
  *
  * 設定ドロワーの他タブと違って「保存」でまとめて送る形にはしない — 発行・取消・
  * 削除はどれも即時に効く操作で、下書き状態を持つと「発行したのに保存していない」
@@ -39,6 +52,8 @@ export function useEventMembers(eventId: string | null, enabled: boolean) {
   const [loading, setLoading] = useState(false);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** 最後に取得できた時刻。state にすると自分で effect を張り直すので ref。 */
+  const loadedAt = useRef(0);
 
   const apply = useCallback((data: MembersResponse) => {
     setMembers(data.members);
@@ -46,34 +61,27 @@ export function useEventMembers(eventId: string | null, enabled: boolean) {
     setCurrentUid(data.currentUid);
   }, []);
 
-  const reload = useCallback(async () => {
-    if (!eventId) return;
-    setLoading(true);
-    try {
-      apply(await api<MembersResponse>(`/api/events/${eventId}/members`));
-      setLoadedFor(eventId);
-    } finally {
-      setLoading(false);
-    }
-  }, [apply, eventId]);
-
-  // タブを開いている間、そのイベントぶんを一度だけ取得する。loading は
-  // 依存に入れない(入れると自分の setLoading で effect が張り直され、最初の
-  // 取得結果が active=false で捨てられる)。useLetterStudio の手紙取得と同型。
+  // ドロワーが開いたら取得する。手持ちが新しければ何もせず、古いだけなら
+  // スケルトンに戻さず裏で入れ替える(開き直すたびに読み込み表示へ戻らない)。
+  // loading は依存に入れない(入れると自分の setLoading で effect が張り直され、
+  // 最初の取得結果が active=false で捨てられる)。useLetterStudio の手紙取得と同型。
   useEffect(() => {
-    if (!enabled || !eventId || loadedFor === eventId) return;
+    if (!enabled || !eventId) return;
+    const cached = loadedFor === eventId;
+    if (cached && Date.now() - loadedAt.current < STALE_MS) return;
     let active = true;
     (async () => {
-      setLoading(true);
+      if (!cached) setLoading(true);
       try {
         const data = await api<MembersResponse>(`/api/events/${eventId}/members`);
         if (!active) return;
         apply(data);
+        loadedAt.current = Date.now();
         setLoadedFor(eventId);
       } catch {
-        // 失敗時は loadedFor を進めないので、タブを開き直せば再試行される。
+        // 失敗時は loadedAt を進めないので、開き直せば再試行される。
       } finally {
-        if (active) setLoading(false);
+        if (active && !cached) setLoading(false);
       }
     })();
     return () => {
@@ -136,9 +144,10 @@ export function useEventMembers(eventId: string | null, enabled: boolean) {
     currentUid,
     loading: loading && loadedFor !== eventId,
     busy,
-    reload,
     createInvite,
     revokeInvite,
     removeMember,
   };
 }
+
+export type EventMembersApi = ReturnType<typeof useEventMembers>;
