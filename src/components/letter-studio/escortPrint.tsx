@@ -26,7 +26,11 @@ const TICKET_LAYOUT: SheetLayout = {
   cardsPerPage: 4,
 };
 
-/** オフスクリーン描画の基準幅。html2canvas の scale:3 と合わせて印刷に十分な解像度にする。 */
+/**
+ * オフスクリーン描画の幅。html2canvas の scale:3 と合わせて印刷に十分な解像度にする。
+ * カード内の寸法はカード幅基準(cqw)なので、この幅は解像度だけを決め、
+ * 文字や飾りの大きさ(=プレビューとの一致)には影響しない。
+ */
 const CAPTURE_WIDTH_PX = 640;
 /** 1枚あたりの画像読み込みタイムアウト。壊れた写真URLで無限に固まるのを防ぐ。 */
 const IMAGE_TIMEOUT_MS = 8000;

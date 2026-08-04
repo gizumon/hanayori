@@ -2,6 +2,7 @@
 
 import { forwardRef } from "react";
 import { withAlpha } from "@/lib/color";
+import { cardUnit, escortGeom } from "./geometry";
 import type { EscortStyle } from "./types";
 
 interface EscortCardFaceProps {
@@ -27,24 +28,32 @@ interface EscortCardFaceProps {
 }
 
 /** 中央に小さな飾り(ゴールドのリーフ)を挟んだ罫線 */
-function OrnamentRule({ gold, width = "70%" }: { gold: string; width?: string }) {
+function OrnamentRule({
+  gold,
+  width = "70%",
+  u,
+}: {
+  gold: string;
+  width?: string;
+  u: (px: number) => string;
+}) {
   return (
     <div
       aria-hidden="true"
-      style={{ display: "flex", alignItems: "center", gap: 8, width, margin: "0 auto" }}
+      style={{ display: "flex", alignItems: "center", gap: u(8), width, margin: "0 auto" }}
     >
-      <span style={{ flex: 1, height: 1, background: withAlpha(gold, 55) }} />
+      <span style={{ flex: 1, height: u(1), background: withAlpha(gold, 55) }} />
       <span
         style={{
-          width: 5,
-          height: 7,
+          width: u(5),
+          height: u(7),
           background: gold,
           borderRadius: "60% 40% 55% 45% / 50% 55% 45% 50%",
           opacity: 0.85,
           flex: "none",
         }}
       />
-      <span style={{ flex: 1, height: 1, background: withAlpha(gold, 55) }} />
+      <span style={{ flex: 1, height: u(1), background: withAlpha(gold, 55) }} />
     </div>
   );
 }
@@ -73,6 +82,9 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
     ref
   ) {
     const table = tableNo || "—";
+    // カード内の寸法はすべてカード幅基準(cqw)。プレビューの幅がいくつでも、
+    // 印刷用の 640px オフスクリーンでも、同じ縮尺の相似形で描かれる。
+    const u = cardUnit(escortGeom(style).refW);
 
     if (style === "card") {
       return (
@@ -86,6 +98,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
             fontFamily: font,
             position: "relative",
             overflow: "hidden",
+            containerType: "inline-size",
           }}
         >
           {/* 二重の細フレーム */}
@@ -93,8 +106,8 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
             aria-hidden="true"
             style={{
               position: "absolute",
-              inset: 8,
-              border: `1px solid ${withAlpha(accent, 40)}`,
+              inset: u(8),
+              border: `${u(1)} solid ${withAlpha(accent, 40)}`,
               pointerEvents: "none",
             }}
           />
@@ -102,18 +115,18 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
             aria-hidden="true"
             style={{
               position: "absolute",
-              inset: 11,
-              border: `1px solid ${withAlpha(accent, 18)}`,
+              inset: u(11),
+              border: `${u(1)} solid ${withAlpha(accent, 18)}`,
               pointerEvents: "none",
             }}
           />
           <div
             style={{
               position: "absolute",
-              top: 11,
-              left: 11,
-              right: 11,
-              bottom: 11,
+              top: u(11),
+              left: u(11),
+              right: u(11),
+              bottom: u(11),
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -125,7 +138,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
           >
             <div
               style={{
-                fontSize: "clamp(9px,3vw,12px)",
+                fontSize: u(12),
                 letterSpacing: "0.34em",
                 textIndent: "0.34em",
                 color: inkSoft,
@@ -136,7 +149,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
             </div>
             <div
               style={{
-                fontSize: "clamp(48px,19vw,84px)",
+                fontSize: u(84),
                 fontWeight: 500,
                 lineHeight: 1.05,
                 color: ink,
@@ -144,7 +157,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
             >
               {table}
             </div>
-            <OrnamentRule gold={gold} width="56%" />
+            <OrnamentRule gold={gold} width="56%" u={u} />
             {photo && (
               <div
                 style={{
@@ -154,16 +167,16 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
                   backgroundImage: `url('${photo}')`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
-                  border: `2px solid ${paper}`,
-                  outline: `1px solid ${withAlpha(gold, 60)}`,
-                  boxShadow: "0 4px 14px rgba(150,110,130,0.22)",
+                  border: `${u(2)} solid ${paper}`,
+                  outline: `${u(1)} solid ${withAlpha(gold, 60)}`,
+                  boxShadow: `0 ${u(4)} ${u(14)} rgba(150,110,130,0.22)`,
                   margin: "2% 0",
                 }}
               />
             )}
             <div
               style={{
-                fontSize: "clamp(18px,6.6vw,28px)",
+                fontSize: u(28),
                 fontWeight: 600,
                 letterSpacing: "0.1em",
                 color: ink,
@@ -175,7 +188,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
             {message && (
               <div
                 style={{
-                  fontSize: "clamp(9px,2.9vw,11.5px)",
+                  fontSize: u(11.5),
                   letterSpacing: "0.06em",
                   color: inkSoft,
                   lineHeight: 1.8,
@@ -204,6 +217,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
           position: "relative",
           overflow: "hidden",
           display: "flex",
+          containerType: "inline-size",
         }}
       >
         {/* 全体の細フレーム(点線ミシン目が上に重なる) */}
@@ -211,8 +225,8 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
           aria-hidden="true"
           style={{
             position: "absolute",
-            inset: 7,
-            border: `1px solid ${withAlpha(accent, 35)}`,
+            inset: u(7),
+            border: `${u(1)} solid ${withAlpha(accent, 35)}`,
             pointerEvents: "none",
             zIndex: 1,
           }}
@@ -253,7 +267,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
               >
                 <div
                   style={{
-                    fontSize: "clamp(8px,1.9vw,10.5px)",
+                    fontSize: u(10.5),
                     letterSpacing: "0.3em",
                     color: inkSoft,
                     textTransform: "uppercase",
@@ -264,7 +278,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
                 {footText && (
                   <div
                     style={{
-                      fontSize: "clamp(7.5px,1.7vw,9.5px)",
+                      fontSize: u(9.5),
                       letterSpacing: "0.16em",
                       color: withAlpha(inkSoft, 85),
                     }}
@@ -275,7 +289,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
                 {/* 全角10文字 / 半角20文字が1行に収まるサイズ */}
                 <div
                   style={{
-                    fontSize: "clamp(13px,3.2vw,20px)",
+                    fontSize: u(20),
                     fontWeight: 700,
                     letterSpacing: "0.04em",
                     color: ink,
@@ -288,19 +302,19 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
                 </div>
                 <div
                   aria-hidden="true"
-                  style={{ width: "38%", height: 1, background: withAlpha(gold, 60) }}
+                  style={{ width: "38%", height: u(1), background: withAlpha(gold, 60) }}
                 />
                 <div
                   style={{
                     display: "flex",
                     alignItems: "baseline",
-                    gap: "clamp(12px,3vw,24px)",
+                    gap: u(24),
                     marginTop: "1.5%",
                   }}
                 >
                   <span
                     style={{
-                      fontSize: "clamp(9px,2.1vw,12.5px)",
+                      fontSize: u(12.5),
                       letterSpacing: "0.22em",
                       color: inkSoft,
                       textTransform: "uppercase",
@@ -310,7 +324,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
                   </span>
                   <span
                     style={{
-                      fontSize: "clamp(25px,7.6vw,42px)",
+                      fontSize: u(42),
                       fontWeight: 700,
                       lineHeight: 1,
                       color: ink,
@@ -322,7 +336,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
                 {message && (
                   <div
                     style={{
-                      fontSize: "clamp(8px,1.8vw,10.5px)",
+                      fontSize: u(10.5),
                       letterSpacing: "0.05em",
                       color: inkSoft,
                       lineHeight: 1.7,
@@ -342,7 +356,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
           style={{
             width: "24.73%",
             flex: "none",
-            borderLeft: `1.5px dashed ${withAlpha(accent, 80)}`,
+            borderLeft: `${u(1.5)} dashed ${withAlpha(accent, 80)}`,
             background: withAlpha(accent, 8),
             display: "flex",
             flexDirection: "column",
@@ -356,7 +370,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
         >
           <div
             style={{
-              fontSize: "clamp(7px,1.6vw,9px)",
+              fontSize: u(9),
               letterSpacing: "0.26em",
               textIndent: "0.26em",
               color: inkSoft,
@@ -367,7 +381,7 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
           </div>
           <div
             style={{
-              fontSize: "clamp(22px,6vw,36px)",
+              fontSize: u(36),
               fontWeight: 700,
               lineHeight: 1,
               color: ink,
@@ -375,11 +389,11 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
           >
             {table}
           </div>
-          <OrnamentRule gold={gold} width="64%" />
+          <OrnamentRule gold={gold} width="64%" u={u} />
           {/* 全角5文字 / 半角10文字が1行に収まるサイズ */}
           <div
             style={{
-              fontSize: "clamp(7.5px,1.6vw,10.5px)",
+              fontSize: u(10.5),
               fontWeight: 600,
               letterSpacing: "0.04em",
               color: ink,
@@ -397,14 +411,14 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
             right: "26.7%",
             top: "9%",
             display: "flex",
-            gap: 4,
+            gap: u(4),
             zIndex: 1,
           }}
         >
           <span
             style={{
-              width: 6,
-              height: 8,
+              width: u(6),
+              height: u(8),
               background: gold,
               borderRadius: "60% 40% 55% 45% / 50% 55% 45% 50%",
               opacity: 0.75,
@@ -412,8 +426,8 @@ export const EscortCardFace = forwardRef<HTMLDivElement, EscortCardFaceProps>(
           />
           <span
             style={{
-              width: 5,
-              height: 7,
+              width: u(5),
+              height: u(7),
               background: gold,
               borderRadius: "60% 40% 55% 45% / 50% 55% 45% 50%",
               transform: "rotate(40deg)",

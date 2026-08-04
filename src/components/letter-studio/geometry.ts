@@ -1,7 +1,23 @@
 import type { CardConfig, Draft, EscortConfig, EscortStyle, Letter } from "./types";
 
+/**
+ * カード内の寸法は「カード幅に対する比率」(cqw)で指定する。
+ *
+ * プレビューは置き場所ごとに幅がまちまち(確認タブのサムネイル〜モーダルの
+ * 数百px)で、一括印刷は 640px のオフスクリーンで描いて画像化する。px や vw で
+ * 書くと同じ 32px でもカード幅に対する比率が変わり、印刷だけ文字が小さくなる。
+ * cqw ならどの幅で描いても同じ縮尺の相似形になり、プレビュー=保存画像=印刷が揃う。
+ *
+ * refWidthPx は各カードのデザイン基準幅。この幅で描いたときに、元の px 指定と
+ * ちょうど同じ見た目になる。
+ */
+export function cardUnit(refWidthPx: number): (px: number) => string {
+  return (px) => `${Number(((px / refWidthPx) * 100).toFixed(4))}cqw`;
+}
+
 export interface CardGeometry {
-  w: string;
+  /** デザイン基準幅(px)。カード内の寸法を cqw に換算する分母。 */
+  refW: number;
   aspect: string;
   flexDir: "row" | "column";
   nameAlign: string;
@@ -32,15 +48,11 @@ export function geom(cc: CardConfig, rule: string): CardGeometry {
     : "landscape";
   const land = o === "landscape" || o === "tent-l";
   const tent = o === "tent-l" || o === "tent-p";
+  const refW =
+    o === "landscape" ? 546 : o === "portrait" ? 330 : o === "tent-l" ? 420 : 520;
+  const u = cardUnit(refW);
   return {
-    w:
-      o === "landscape"
-        ? "min(546px,100%)"
-        : o === "portrait"
-          ? "min(330px,100%)"
-          : o === "tent-l"
-            ? "min(420px,100%)"
-            : "min(520px,100%)",
+    refW,
     aspect:
       o === "landscape"
         ? "91 / 55"
@@ -53,8 +65,8 @@ export function geom(cc: CardConfig, rule: string): CardGeometry {
     nameAlign: land ? "flex-start" : "center",
     textAlign: land ? "left" : "center",
     namePad: land ? "3% 2% 12% 6%" : "9% 6% 0",
-    barW: land ? "7px" : "100%",
-    barH: land ? "100%" : "7px",
+    barW: land ? u(7) : "100%",
+    barH: land ? "100%" : u(7),
     contentInset:
       o === "landscape"
         ? "0"
@@ -71,8 +83,8 @@ export function geom(cc: CardConfig, rule: string): CardGeometry {
     qrPanelInset: o === "tent-l" ? "0 0 50% 0" : "0 0 0 50%",
     qrPanelRotate: o === "tent-l" ? "180deg" : "0deg",
     foldInset: o === "tent-l" ? "50% 0 auto 0" : "0 auto 0 50%",
-    foldBT: o === "tent-l" ? `1.5px dashed ${rule}` : "none",
-    foldBL: o === "tent-p" ? `1.5px dashed ${rule}` : "none",
+    foldBT: o === "tent-l" ? `${u(1.5)} dashed ${rule}` : "none",
+    foldBL: o === "tent-p" ? `${u(1.5)} dashed ${rule}` : "none",
     sizeLabel:
       o === "landscape"
         ? "91×55mm"
@@ -105,7 +117,8 @@ export function cardNameFor(
 }
 
 export interface EscortGeometry {
-  w: string;
+  /** デザイン基準幅(px)。カード内の寸法を cqw に換算する分母。 */
+  refW: number;
   aspect: string;
   sizeLabel: string;
   printDims: string;
@@ -115,14 +128,14 @@ export interface EscortGeometry {
 export function escortGeom(style: EscortStyle): EscortGeometry {
   if (style === "card") {
     return {
-      w: "min(300px,100%)",
+      refW: 300,
       aspect: "55 / 91",
       sizeLabel: "55×91mm",
       printDims: "width:55mm;height:91mm",
     };
   }
   return {
-    w: "min(560px,100%)",
+    refW: 560,
     aspect: "182 / 65",
     sizeLabel: "182×65mm",
     printDims: "width:182mm;height:65mm",

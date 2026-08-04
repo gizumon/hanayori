@@ -2,7 +2,7 @@
 
 import { forwardRef } from "react";
 import { QrCode } from "./QrCode";
-import type { CardGeometry } from "./geometry";
+import { cardUnit, type CardGeometry } from "./geometry";
 import type { CardFrame } from "./types";
 
 interface QrCardFaceProps {
@@ -51,6 +51,9 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
   ) {
     const barDisplay = frame === "line" ? "block" : "none";
     const frameDisplay = frame === "frame" ? "block" : "none";
+    // カード内の寸法はすべてカード幅基準(cqw)。プレビューの幅がいくつでも、
+    // 印刷用の 640px オフスクリーンでも、同じ縮尺の相似形で描かれる。
+    const u = cardUnit(g.refW);
 
     return (
       <div
@@ -63,6 +66,7 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
           fontFamily: font,
           position: "relative",
           overflow: "hidden",
+          containerType: "inline-size",
         }}
       >
         <div
@@ -81,8 +85,8 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
           aria-hidden="true"
           style={{
             position: "absolute",
-            inset: 9,
-            border: `1px solid ${accent}`,
+            inset: u(9),
+            border: `${u(1)} solid ${accent}`,
             pointerEvents: "none",
             opacity: 0.65,
             display: frameDisplay,
@@ -109,14 +113,14 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 6,
+                gap: u(6),
                 textAlign: "center",
                 padding: "5%",
               }}
             >
               <div
                 style={{
-                  fontSize: "clamp(9px,1.9vw,11px)",
+                  fontSize: u(11),
                   letterSpacing: "0.3em",
                   color: inkSoft,
                 }}
@@ -125,7 +129,7 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
               </div>
               <div
                 style={{
-                  fontSize: "clamp(22px,5.6vw,32px)",
+                  fontSize: u(32),
                   fontWeight: 600,
                   letterSpacing: "0.14em",
                   color: ink,
@@ -136,10 +140,10 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
               </div>
               <div
                 style={{
-                  fontSize: "clamp(8px,1.6vw,10px)",
+                  fontSize: u(10),
                   letterSpacing: "0.12em",
                   color: inkSoft,
-                  marginTop: 4,
+                  marginTop: u(4),
                 }}
               >
                 {footText}
@@ -147,10 +151,10 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
               {date && (
                 <div
                   style={{
-                    fontSize: "clamp(7px,1.4vw,8.5px)",
+                    fontSize: u(8.5),
                     letterSpacing: "0.1em",
                     color: inkSoft,
-                    marginTop: 2,
+                    marginTop: u(2),
                   }}
                 >
                   {date}
@@ -166,25 +170,25 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 8,
+                gap: u(8),
                 padding: "5%",
               }}
             >
               <div
                 style={{
-                  width: "min(46%,120px)",
+                  width: `min(46%,${u(120)})`,
                   aspectRatio: 1,
                   background: "#FFFFFF",
-                  borderRadius: 12,
-                  padding: 8,
-                  boxShadow: "0 4px 14px rgba(150,110,130,0.16)",
+                  borderRadius: u(12),
+                  padding: u(8),
+                  boxShadow: `0 ${u(4)} ${u(14)} rgba(150,110,130,0.16)`,
                 }}
               >
                 <QrCode url={qrUrl} color={ink} />
               </div>
               <div
                 style={{
-                  fontSize: "clamp(8px,1.7vw,10px)",
+                  fontSize: u(10),
                   letterSpacing: "0.1em",
                   color: inkSoft,
                   textAlign: "center",
@@ -202,16 +206,16 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
               aria-hidden="true"
               style={{
                 position: "absolute",
-                right: 16,
-                top: 14,
+                right: u(16),
+                top: u(14),
                 display: "flex",
-                gap: 5,
+                gap: u(5),
               }}
             >
               <span
                 style={{
-                  width: 7,
-                  height: 9,
+                  width: u(7),
+                  height: u(9),
                   background: gold,
                   borderRadius: "60% 40% 55% 45% / 50% 55% 45% 50%",
                   opacity: 0.8,
@@ -219,8 +223,8 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
               />
               <span
                 style={{
-                  width: 6,
-                  height: 8,
+                  width: u(6),
+                  height: u(8),
                   background: gold,
                   borderRadius: "60% 40% 55% 45% / 50% 55% 45% 50%",
                   transform: "rotate(40deg)",
@@ -243,7 +247,7 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "center",
-                  gap: 6,
+                  gap: u(6),
                   padding: g.namePad,
                   alignItems: g.nameAlign,
                   textAlign: g.textAlign,
@@ -251,7 +255,7 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
               >
                 <div
                   style={{
-                    fontSize: "clamp(9px,1.9vw,11px)",
+                    fontSize: u(11),
                     letterSpacing: "0.3em",
                     color: inkSoft,
                   }}
@@ -260,7 +264,7 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
                 </div>
                 <div
                   style={{
-                    fontSize: "clamp(22px,5.6vw,32px)",
+                    fontSize: u(32),
                     fontWeight: 600,
                     letterSpacing: "0.14em",
                     color: ink,
@@ -277,25 +281,25 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 7,
+                  gap: u(7),
                   padding: "3%",
                 }}
               >
                 <div
                   style={{
-                    width: "min(58%,116px)",
+                    width: `min(58%,${u(116)})`,
                     aspectRatio: 1,
                     background: "#FFFFFF",
-                    borderRadius: 12,
-                    padding: 8,
-                    boxShadow: "0 4px 14px rgba(150,110,130,0.16)",
+                    borderRadius: u(12),
+                    padding: u(8),
+                    boxShadow: `0 ${u(4)} ${u(14)} rgba(150,110,130,0.16)`,
                   }}
                 >
                   <QrCode url={qrUrl} color={ink} />
                 </div>
                 <div
                   style={{
-                    fontSize: "clamp(8px,1.7vw,10px)",
+                    fontSize: u(10),
                     letterSpacing: "0.1em",
                     color: inkSoft,
                     textAlign: "center",
@@ -317,15 +321,15 @@ export const QrCardFace = forwardRef<HTMLDivElement, QrCardFaceProps>(
                 textAlign: g.textAlign,
               }}
             >
-              <div style={{ fontSize: "clamp(8.5px,1.8vw,10.5px)", letterSpacing: "0.12em" }}>
+              <div style={{ fontSize: u(10.5), letterSpacing: "0.12em" }}>
                 {footText}
               </div>
               {date && (
                 <div
                   style={{
-                    fontSize: "clamp(7px,1.5vw,8.5px)",
+                    fontSize: u(8.5),
                     letterSpacing: "0.1em",
-                    marginTop: 2,
+                    marginTop: u(2),
                   }}
                 >
                   {date}
