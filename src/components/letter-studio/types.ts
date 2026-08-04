@@ -166,6 +166,14 @@ export type BulkLetterPatch = { id: string } & Partial<
   >
 >;
 
+/**
+ * 一括追加で送る 1 通ぶんの入力。宛名だけ必須で、残りは画面で選んだ項目だけが入る。
+ * 本文・写真は一括追加では扱わず、あとから個別編集・一括編集で埋める。
+ */
+export type BulkCreateLetter = { to: string } & Partial<
+  Pick<Letter, "cardName" | "honor" | "tableNo" | "escortName" | "escortMessage" | "escortHonor">
+>;
+
 export interface StudioState {
   screen: Screen;
   userName: string;

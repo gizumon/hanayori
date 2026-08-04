@@ -24,6 +24,7 @@ import { printAllCards as printAllCardsSheet } from "./qrCardPrint";
 import { uploadIfDataUrl } from "./uploadImage";
 import { IMAGE_MAX_WIDTH, encodeCanvas } from "./imageEncode";
 import type {
+  BulkCreateLetter,
   BulkLetterPatch,
   CardConfig,
   Draft,
@@ -552,9 +553,12 @@ export function useLetterStudio() {
     [curP, setEditId, toast]
   );
 
-  /** 宛名だけの手紙をまとめて作る。成功したら作成件数を返す。 */
+  /**
+   * 宛名(と、一括追加の画面で選んだ項目)から手紙をまとめて作る。
+   * 成功したら作成件数を返す。
+   */
   const createLettersBulk = useCallback(
-    async (names: string[]): Promise<number> => {
+    async (rows: BulkCreateLetter[]): Promise<number> => {
       if (!curP) return 0;
       if (creatingBulkRef.current) return 0;
       creatingBulkRef.current = true;
@@ -562,7 +566,7 @@ export function useLetterStudio() {
       try {
         const data = await api<{ letters: Letter[] }>(`/api/events/${curP}/letters/bulk`, {
           method: "POST",
-          body: JSON.stringify({ names }),
+          body: JSON.stringify({ rows }),
         });
         setLettersRaw((ls) => ls.concat(data.letters));
         void setAddModal(null);

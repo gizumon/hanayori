@@ -65,6 +65,8 @@ export function StudioShell({ children }: { children: ReactNode }) {
                 onCancel={api.closeBulkAdd}
                 onCreate={api.createLettersBulk}
                 creating={api.creatingBulk}
+                cardEnabled={!!cardConf?.enabled}
+                escortEnabled={!!escortConf?.enabled}
               />
             )}
 

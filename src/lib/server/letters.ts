@@ -224,18 +224,28 @@ export async function createLetter(
   return letter;
 }
 
+/** 一括追加の 1 通ぶん。宛名は必須、残りは CSV で送られてきた列だけ入る。 */
+export interface BulkCreateInput extends EscortInput {
+  to: string;
+  cardName?: string | null;
+  honor?: Honor | null;
+}
+
 /**
- * 宛名だけの手紙をまとめて作る。本文・写真・席札まわりは空のまま作り、
- * あとから一括編集や個別編集で埋めていく前提。ULID は昇順なので、
- * createdAt が同一秒でも一覧の並び(createdAt → __name__)は入力順を保つ。
+ * 手紙をまとめて作る。宛名は必須で、席札・エスコートの項目は送られてきた列だけを
+ * 埋める。本文・写真は空のまま作り、あとから一括編集や個別編集で埋めていく前提。
+ * ULID は昇順なので、createdAt が同一秒でも一覧の並び(createdAt → __name__)は
+ * 入力順を保つ。
  */
 export async function createLettersBulk(
   uid: string,
   eventId: string,
-  names: string[]
+  rows: BulkCreateInput[]
 ): Promise<LetterJson[]> {
   await requireEventMembership(uid, eventId);
-  const cleaned = names.map((n) => n.trim()).filter(Boolean);
+  const cleaned = rows
+    .map((row) => ({ ...row, to: row.to.trim() }))
+    .filter((row) => row.to);
   if (cleaned.length === 0) throw new HttpError(400, "宛名を入力してください");
   if (cleaned.length > MAX_BULK_CREATE) {
     throw new HttpError(400, `一度に追加できるのは${MAX_BULK_CREATE}名までです`);
@@ -244,18 +254,18 @@ export async function createLettersBulk(
   const col = lettersCollection();
   const batch = col.firestore.batch();
   const now = FieldValue.serverTimestamp();
-  const refs = cleaned.map((to) => {
+  const refs = cleaned.map((row) => {
     const ref = col.doc(ulid());
     batch.set(ref, {
       eventId,
       createdBy: uid,
-      to,
+      to: row.to,
       body: "",
       theme: "rose",
       photos: [],
-      cardName: null,
-      honor: null,
-      escort: escortFromInput({}),
+      cardName: row.cardName ?? null,
+      honor: row.honor ?? null,
+      escort: escortFromInput(row),
       createdAt: now,
       updatedAt: now,
     } as unknown as LetterDoc);

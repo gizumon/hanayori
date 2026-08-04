@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   bulkUpdateLetters,
   createLettersBulk,
+  type BulkCreateInput,
   type BulkLetterPatch,
 } from "@/lib/server/letters";
 import { handleRouteError } from "@/lib/server/route-helpers";
@@ -31,9 +32,31 @@ function sanitize(raw: unknown): BulkLetterPatch | null {
   return p;
 }
 
+/** 敬称は 3 通りしか無いので、それ以外が来たら「既定に従う」(null)に倒す。 */
+function honorOrNull(raw: unknown): Honor | null {
+  return raw === "" || raw === "様" || raw === "さん" ? raw : null;
+}
+
+/** 一括追加の 1 行を既知フィールドだけに絞る。宛名の無い行は捨てる。 */
+function sanitizeCreate(raw: unknown): BulkCreateInput | null {
+  if (!raw || typeof raw !== "object") return null;
+  const u = raw as Record<string, unknown>;
+  const to = String(u.to ?? "").trim();
+  if (!to) return null;
+  const row: BulkCreateInput = { to };
+  // PATCH と同じく、キーの有無 = その項目を送ったかどうか。
+  if ("cardName" in u) row.cardName = (u.cardName as string | null) ?? null;
+  if ("honor" in u) row.honor = honorOrNull(u.honor);
+  if ("tableNo" in u) row.tableNo = (u.tableNo as string | null) ?? null;
+  if ("escortName" in u) row.escortName = (u.escortName as string | null) ?? null;
+  if ("escortMessage" in u) row.escortMessage = (u.escortMessage as string | null) ?? null;
+  if ("escortHonor" in u) row.escortHonor = honorOrNull(u.escortHonor);
+  return row;
+}
+
 /**
- * 宛名だけの手紙をまとめて作る。`{ names: ["山田花子へ", ...] }` を受け取り、
- * 1 つの WriteBatch で作成する。ログイン・メンバーシップ必須。
+ * 手紙をまとめて作る。`{ rows: [{ to: "山田花子へ", tableNo: "A", ... }] }` を
+ * 受け取り、1 つの WriteBatch で作成する。ログイン・メンバーシップ必須。
  */
 export async function POST(
   request: NextRequest,
@@ -43,8 +66,10 @@ export async function POST(
     const uid = await requireUid();
     const { eventId } = await params;
     const body = await request.json();
-    const names = Array.isArray(body?.names) ? body.names.map((n: unknown) => String(n ?? "")) : [];
-    const letters = await createLettersBulk(uid, eventId, names);
+    const rows = Array.isArray(body?.rows)
+      ? body.rows.map(sanitizeCreate).filter((r: BulkCreateInput | null): r is BulkCreateInput => r !== null)
+      : [];
+    const letters = await createLettersBulk(uid, eventId, rows);
     return NextResponse.json({ letters }, { status: 201 });
   } catch (err) {
     return handleRouteError(err);
