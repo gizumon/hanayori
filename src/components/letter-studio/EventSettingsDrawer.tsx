@@ -309,6 +309,15 @@ export function EventSettingsDrawer({
                   />
                 </div>
               </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <span style={sectionLabel}>お手紙のフォント</span>
+                <FontSelect
+                  value={local.letterFont}
+                  onChange={(letterFont) => setLocal((s) => ({ ...s, letterFont }))}
+                  sample="今日は来てくれてありがとう"
+                />
+              </div>
+              {/* プレビューはどのタブでも一番下(タブを切り替えても位置が動かない) */}
               <div
                 style={{
                   borderRadius: 14,
@@ -411,14 +420,6 @@ export function EventSettingsDrawer({
                   プレビュー(本文はお手紙ごとに入ります)
                 </span>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span style={sectionLabel}>お手紙のフォント</span>
-                <FontSelect
-                  value={local.letterFont}
-                  onChange={(letterFont) => setLocal((s) => ({ ...s, letterFont }))}
-                  sample="今日は来てくれてありがとう"
-                />
-              </div>
             </>
           )}
 
@@ -431,40 +432,6 @@ export function EventSettingsDrawer({
               />
               {local.card.enabled && (
                 <>
-                  <div
-                    style={{
-                      borderRadius: 14,
-                      background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
-                      padding: "18px 14px",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <QrCardFace
-                      width={`min(${previewGeom.flexDir === "row" ? 380 : 250}px,100%)`}
-                      aspect={previewGeom.aspect}
-                      paper={theme.paper}
-                      accent={theme.accent}
-                      gold={theme.gold}
-                      ink={theme.ink}
-                      inkSoft={theme.inkSoft}
-                      font={FONTS[local.card.font].family}
-                      frame={local.card.frame}
-                      geometry={previewGeom}
-                      cardName={previewName}
-                      heading={local.card.heading}
-                      note={local.card.note}
-                      footText={local.card.nameOverride.trim() || local.name}
-                      date={local.date || ""}
-                      qrUrl=""
-                      boxShadow="0 10px 30px rgba(150,110,130,0.22)"
-                    />
-                    <span style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkMuted, letterSpacing: "0.05em" }}>
-                      プレビュー(名前はお手紙ごとに入ります) ・ 実寸 {previewGeom.sizeLabel}
-                    </span>
-                  </div>
                   <label style={{ display: "flex", flexDirection: "column", gap: 6, ...sectionLabel }}>
                     イベント名(空欄でイベント名を使用)
                     <input
@@ -545,6 +512,40 @@ export function EventSettingsDrawer({
                       style={fieldStyle({ fontSize: FONT_SIZE.input, lineHeight: 1.7, resize: "vertical" })}
                     />
                   </label>
+                  <div
+                    style={{
+                      borderRadius: 14,
+                      background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
+                      padding: "18px 14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <QrCardFace
+                      width={`min(${previewGeom.flexDir === "row" ? 380 : 250}px,100%)`}
+                      aspect={previewGeom.aspect}
+                      paper={theme.paper}
+                      accent={theme.accent}
+                      gold={theme.gold}
+                      ink={theme.ink}
+                      inkSoft={theme.inkSoft}
+                      font={FONTS[local.card.font].family}
+                      frame={local.card.frame}
+                      geometry={previewGeom}
+                      cardName={previewName}
+                      heading={local.card.heading}
+                      note={local.card.note}
+                      footText={local.card.nameOverride.trim() || local.name}
+                      date={local.date || ""}
+                      qrUrl=""
+                      boxShadow="0 10px 30px rgba(150,110,130,0.22)"
+                    />
+                    <span style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkMuted, letterSpacing: "0.05em" }}>
+                      プレビュー(名前はお手紙ごとに入ります) ・ 実寸 {previewGeom.sizeLabel}
+                    </span>
+                  </div>
                 </>
               )}
             </>
@@ -559,40 +560,6 @@ export function EventSettingsDrawer({
               />
               {local.escort.enabled && (
                 <>
-                  <div
-                    style={{
-                      borderRadius: 14,
-                      background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
-                      padding: "18px 14px",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <EscortCardFace
-                      style={local.escort.style}
-                      width={`min(${local.escort.style === "card" ? 220 : 360}px,100%)`}
-                      aspect={escortPreviewGeom.aspect}
-                      paper={theme.paper}
-                      accent={theme.accent}
-                      gold={theme.gold}
-                      ink={theme.ink}
-                      inkSoft={theme.inkSoft}
-                      font={FONTS[local.escort.font].family}
-                      name={escortPreviewName}
-                      tableNo="A"
-                      tableLabel={local.escort.tableLabel}
-                      heading={local.escort.heading}
-                      message=""
-                      photo={local.escort.defaultPhoto || ""}
-                      footText={local.escort.nameOverride.trim() || local.name}
-                      boxShadow="0 10px 30px rgba(150,110,130,0.22)"
-                    />
-                    <span style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkMuted, letterSpacing: "0.05em" }}>
-                      プレビュー(卓番・名前はお手紙ごとに入ります) ・ 実寸 {escortPreviewGeom.sizeLabel}
-                    </span>
-                  </div>
                   <label style={{ display: "flex", flexDirection: "column", gap: 6, ...sectionLabel }}>
                     イベント名(空欄でイベント名を使用)
                     <input
@@ -713,6 +680,40 @@ export function EventSettingsDrawer({
                       style={fieldStyle()}
                     />
                   </label>
+                  <div
+                    style={{
+                      borderRadius: 14,
+                      background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
+                      padding: "18px 14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <EscortCardFace
+                      style={local.escort.style}
+                      width={`min(${local.escort.style === "card" ? 220 : 360}px,100%)`}
+                      aspect={escortPreviewGeom.aspect}
+                      paper={theme.paper}
+                      accent={theme.accent}
+                      gold={theme.gold}
+                      ink={theme.ink}
+                      inkSoft={theme.inkSoft}
+                      font={FONTS[local.escort.font].family}
+                      name={escortPreviewName}
+                      tableNo="A"
+                      tableLabel={local.escort.tableLabel}
+                      heading={local.escort.heading}
+                      message=""
+                      photo={local.escort.defaultPhoto || ""}
+                      footText={local.escort.nameOverride.trim() || local.name}
+                      boxShadow="0 10px 30px rgba(150,110,130,0.22)"
+                    />
+                    <span style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkMuted, letterSpacing: "0.05em" }}>
+                      プレビュー(卓番・名前はお手紙ごとに入ります) ・ 実寸 {escortPreviewGeom.sizeLabel}
+                    </span>
+                  </div>
                 </>
               )}
             </>

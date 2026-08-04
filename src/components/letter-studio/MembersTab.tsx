@@ -171,6 +171,18 @@ export function MembersTab({ project, members: api, onLeaveEvent }: MembersTabPr
     }
   };
 
+  /** 確定ボタンは操作名そのままにする(「実行する」だと何が起きるか読めない)。 */
+  const confirmLabel = (target: Pending): string => {
+    switch (target.kind) {
+      case "revoke":
+        return "取り消す";
+      case "remove":
+        return "外す";
+      case "leave":
+        return "退出する";
+    }
+  };
+
   const confirmMessage = (target: Pending): string => {
     switch (target.kind) {
       case "revoke":
@@ -474,7 +486,7 @@ export function MembersTab({ project, members: api, onLeaveEvent }: MembersTabPr
         <ConfirmDialog
           message={confirmMessage(pending)}
           stayLabel="キャンセル"
-          leaveLabel={pending.kind === "leave" ? "退出する" : "実行する"}
+          leaveLabel={confirmLabel(pending)}
           onStay={() => setPending(null)}
           onLeave={handleConfirm}
         />
