@@ -106,6 +106,28 @@
   z-index: 3;
 }
 
+/* bulk-edit table: one letter per row */
+.bulkRow:hover > td {
+  background: var(--c-tint);
+}
+/* 見出しを上端に貼り付けたいので、枠は overflow で切らずに角だけ丸める */
+.bulkTable thead th:first-child {
+  border-top-left-radius: 13px;
+}
+.bulkTable thead th:last-child {
+  border-top-right-radius: 13px;
+}
+/* 見出しの下辺と重ねて二重線にしない */
+.bulkTable tbody tr:first-child td {
+  border-top: none;
+}
+.bulkTable tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 13px;
+}
+.bulkTable tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 13px;
+}
+
 /* text-only back link */
 .linkBack {
   cursor: pointer;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type RefObject } from "react";
+import { useMemo, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { CircleAlert, CircleQuestionMark, Download, Lock, Pencil, Printer, X } from "lucide-react";
 import { FONTS, HIDDEN_BODY_NOTE, THEMES } from "../constants";
@@ -12,6 +12,13 @@ import { QrCardFace } from "../QrCardFace";
 import type { EditorTab, EventTab, Letter, Project, SettingsTab } from "../types";
 import { CREATOR_ALL, CreatorFilter, useCreatorFilter } from "./CreatorFilter";
 import { EventHeader } from "./EventHeader";
+import { ListToolbar, type SortOption } from "./ListToolbar";
+import {
+  LETTER_SEARCH_PLACEHOLDER,
+  SearchField,
+  matchesQuery,
+  useSearchQuery,
+} from "./SearchField";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 import { COLOR } from "@/lib/palette";
@@ -54,6 +61,26 @@ const KIND_LABEL: Record<EditorTab, string> = {
   escort: "エスコートカード",
 };
 
+/**
+ * 件数の前に置く呼び名。対象タブで「エスコート」と分かっているので、
+ * 「エスコートカード 12 通」ではなく「カード 12 通」と短く数える。
+ */
+const KIND_COUNT_LABEL: Record<EditorTab, string> = {
+  letter: "お手紙",
+  card: "席札",
+  escort: "カード",
+};
+
+/** 並び替えたときに「名前順」が指す呼び名。対象ごとに違う。 */
+const KIND_NAME_LABEL: Record<EditorTab, string> = {
+  letter: "宛名",
+  card: "席札の氏名",
+  escort: "エスコート名",
+};
+
+/** お手紙一覧・一括編集と同じ並び順。 */
+type SortKey = "createdDesc" | "createdAsc" | "nameAsc";
+
 /** その対象で「まだ埋まっていない」ものを一言で返す。空文字なら問題なし。 */
 function warningOf(letter: Letter, kind: EditorTab): string {
   if (!letter.to.trim()) return "宛名が未入力";
@@ -94,6 +121,8 @@ export function ReviewScreen({
     ...(escortEnabled ? (["escort"] as const) : []),
   ];
   const [kind, setKind] = useState<EditorTab>("letter");
+  const [sort, setSort] = useState<SortKey>("createdDesc");
+  const search = useSearchQuery();
   const [shown, setShown] = useState(PAGE_SIZE);
   const [showPrintGuide, setShowPrintGuide] = useState(false);
 
@@ -102,14 +131,54 @@ export function ReviewScreen({
   // 本文の位置だけがぼかしになる(作成者フィルタのアイコンにも出る)。
   const base = letters;
   const creatorFilter = useCreatorFilter(base, currentUid, project.memberCount);
-  const target = creatorFilter.apply(base);
 
-  // 対象・作成者を切り替えたら先頭から数え直す(render 中の派生)。
-  const [prevKind, setPrevKind] = useState(kind);
-  const [prevCreator, setPrevCreator] = useState(creatorFilter.value);
-  if (prevKind !== kind || prevCreator !== creatorFilter.value) {
-    setPrevKind(kind);
-    setPrevCreator(creatorFilter.value);
+  // 「名前順」は確認している対象の名前で並べる。
+  const nameOf = (l: Letter) =>
+    curKind === "card"
+      ? cardNameFor(l, project.cardConfig)
+      : curKind === "escort"
+        ? escortNameFor(l, project.escortConfig)
+        : l.to;
+
+  const target = useMemo(() => {
+    const list = creatorFilter.apply(base).filter((l) =>
+      matchesQuery(search.query, {
+        to: l.to,
+        cardName: cardNameFor(l, project.cardConfig),
+        escortName: escortNameFor(l, project.escortConfig),
+        tableNo: l.tableNo ?? "",
+      })
+    );
+    switch (sort) {
+      case "createdAsc":
+        list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        break;
+      case "nameAsc":
+        list.sort((a, b) => nameOf(a).localeCompare(nameOf(b), "ja"));
+        break;
+      default:
+        list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        break;
+    }
+    return list;
+    // creatorFilter.apply は creatorFilter.value に、nameOf は curKind と設定にしか依存しない。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [base, creatorFilter.value, search.query, sort, curKind, project.cardConfig, project.escortConfig]);
+
+  const sortOptions = useMemo<SortOption<SortKey>[]>(
+    () => [
+      { value: "createdDesc", label: "追加が新しい順" },
+      { value: "createdAsc", label: "追加が古い順" },
+      { value: "nameAsc", label: `${KIND_NAME_LABEL[curKind]}順` },
+    ],
+    [curKind]
+  );
+
+  // 対象・作成者・検索・並び替えを変えたら先頭から数え直す(render 中の派生)。
+  const listKey = `${kind}|${creatorFilter.value}|${search.query}|${sort}`;
+  const [prevKey, setPrevKey] = useState(listKey);
+  if (prevKey !== listKey) {
+    setPrevKey(listKey);
     setShown(PAGE_SIZE);
   }
 
@@ -147,158 +216,95 @@ export function ReviewScreen({
         onOpenSettings={onOpenSettings}
       />
 
-      {/* 確認する対象 / 対応する対象(席札・エスコートカード)には一括印刷ボタンを添える */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-          flexWrap: "wrap",
-          marginBottom: 10,
-        }}
-      >
-        {kinds.length > 1 && (
-          <div
-            style={{
-              display: "inline-flex",
-              gap: 4,
-              background: "rgba(211,165,180,0.16)",
-              borderRadius: 999,
-              padding: 4,
-              flexWrap: "wrap",
-            }}
-          >
-            {kinds.map((k) => {
-              const active = k === curKind;
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setKind(k)}
-                  aria-pressed={active}
-                  style={{
-                    padding: "9px 20px",
-                    borderRadius: 999,
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: FONT_SIZE.bodySm,
-                    letterSpacing: "0.08em",
-                    background: active ? COLOR.surface : "transparent",
-                    color: active ? COLOR.ink : COLOR.inkMuted,
-                    fontWeight: active ? 600 : 400,
-                    boxShadow: active ? "0 2px 8px rgba(150,110,130,0.18)" : "none",
-                  }}
-                >
-                  {k === "escort" ? "エスコート" : KIND_LABEL[k]}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {creatorFilter.show && (
-          <CreatorFilter
-            options={creatorFilter.options}
-            value={creatorFilter.value}
-            allValue={CREATOR_ALL}
-            onChange={creatorFilter.setValue}
-          />
-        )}
-
-        {(showEscortPrint || showCardPrint) && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
-            <button
-              type="button"
-              onClick={() => bulkPrintHandler(target)}
-              disabled={bulkPrinting}
-              className={styles.btnOutline}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 7,
-                padding: "9px 20px",
-                borderRadius: 999,
-                border: `1px solid ${COLOR.border}`,
-                background: COLOR.surfaceRaised,
-                color: COLOR.ink,
-                fontSize: FONT_SIZE.bodySm,
-                letterSpacing: "0.06em",
-                cursor: bulkPrinting ? "default" : "pointer",
-                opacity: bulkPrinting ? 0.6 : 1,
-              }}
-            >
-              <Printer size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
-              {bulkPrinting ? "準備しています…" : "印刷する"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowPrintGuide(true)}
-              aria-label="A4用紙への印刷のされ方と切り方を見る"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 30,
-                height: 30,
-                flex: "none",
-                borderRadius: "50%",
-                border: `1px solid ${COLOR.border}`,
-                background: COLOR.surfaceRaised,
-                color: COLOR.inkMuted,
-                cursor: "pointer",
-              }}
-            >
-              <CircleQuestionMark size={15} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-          </div>
-        )}
-      </div>
+      {/* 確認する対象 */}
+      {kinds.length > 1 && (
+        <div
+          style={{
+            display: "inline-flex",
+            gap: 4,
+            background: "rgba(211,165,180,0.16)",
+            borderRadius: 999,
+            padding: 4,
+            flexWrap: "wrap",
+            marginBottom: 10,
+          }}
+        >
+          {kinds.map((k) => {
+            const active = k === curKind;
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setKind(k)}
+                aria-pressed={active}
+                style={{
+                  padding: "9px 20px",
+                  borderRadius: 999,
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: FONT_SIZE.bodySm,
+                  letterSpacing: "0.08em",
+                  background: active ? COLOR.surface : "transparent",
+                  color: active ? COLOR.ink : COLOR.inkMuted,
+                  fontWeight: active ? 600 : 400,
+                  boxShadow: active ? "0 2px 8px rgba(150,110,130,0.18)" : "none",
+                }}
+              >
+                {k === "escort" ? "エスコート" : KIND_LABEL[k]}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {showPrintGuide && (
         <PrintGuideModal variant={guideVariant} onClose={() => setShowPrintGuide(false)} />
       )}
 
-      {loading || target.length === 0 ? (
-        <p
+      {/* 件数・作成者・並び替え。お手紙一覧・一括編集と同じツールバーを使う。 */}
+      {!loading && base.length > 0 && (
+        <ListToolbar
+          totalCount={target.length}
+          countPrefix={KIND_COUNT_LABEL[curKind]}
+          countUnit="通"
+          sortValue={sort}
+          sortOptions={sortOptions}
+          onSortChange={setSort}
+          filter={
+            creatorFilter.show ? (
+              <CreatorFilter
+                options={creatorFilter.options}
+                value={creatorFilter.value}
+                allValue={CREATOR_ALL}
+                onChange={creatorFilter.setValue}
+              />
+            ) : undefined
+          }
+        />
+      )}
+
+      {!loading && base.length > 0 && (
+        <SearchField
+          search={search}
+          placeholder={LETTER_SEARCH_PLACEHOLDER}
+          ariaLabel="確認するお手紙を検索"
+        />
+      )}
+
+      {/*
+        検索欄のすぐ下の一行。左に未入力の件数、右に一括印刷。
+        印刷ボタンは折り返しても右端に残るよう marginLeft:auto で押し出す。
+      */}
+      {!loading && (warned > 0 || showEscortPrint || showCardPrint) && (
+        <div
           style={{
-            margin: "0 0 18px",
-            fontSize: FONT_SIZE.caption,
-            color: COLOR.inkSoft,
-            letterSpacing: "0.05em",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexWrap: "wrap",
+            marginTop: 10,
           }}
         >
-          {loading
-            ? "読み込んでいます…"
-            : base.length > 0
-              ? "この作成者のお手紙はありません"
-              : "まだお手紙がありません"}
-        </p>
-      ) : (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 18px", flexWrap: "wrap" }}>
-          <span
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: 4,
-              fontSize: FONT_SIZE.caption,
-              color: COLOR.inkSoft,
-              letterSpacing: "0.04em",
-            }}
-          >
-            {KIND_LABEL[curKind]}
-            <strong
-              style={{
-                fontSize: FONT_SIZE.subheading,
-                fontWeight: 700,
-                color: COLOR.ink,
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {target.length}
-            </strong>
-            通
-          </span>
           {warned > 0 && (
             <span
               style={{
@@ -318,7 +324,71 @@ export function ReviewScreen({
               <strong style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{warned}</strong>
             </span>
           )}
+          {(showEscortPrint || showCardPrint) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+              <button
+                type="button"
+                onClick={() => bulkPrintHandler(target)}
+                disabled={bulkPrinting}
+                className={styles.btnOutline}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 7,
+                  padding: "9px 20px",
+                  borderRadius: 999,
+                  border: `1px solid ${COLOR.border}`,
+                  background: COLOR.surfaceRaised,
+                  color: COLOR.ink,
+                  fontSize: FONT_SIZE.bodySm,
+                  letterSpacing: "0.06em",
+                  cursor: bulkPrinting ? "default" : "pointer",
+                  opacity: bulkPrinting ? 0.6 : 1,
+                }}
+              >
+                <Printer size={14} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
+                {bulkPrinting ? "準備しています…" : "印刷する"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPrintGuide(true)}
+                aria-label="A4用紙への印刷のされ方と切り方を見る"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 30,
+                  height: 30,
+                  flex: "none",
+                  borderRadius: "50%",
+                  border: `1px solid ${COLOR.border}`,
+                  background: COLOR.surfaceRaised,
+                  color: COLOR.inkMuted,
+                  cursor: "pointer",
+                }}
+              >
+                <CircleQuestionMark size={15} strokeWidth={1.8} aria-hidden="true" />
+              </button>
+            </div>
+          )}
         </div>
+      )}
+
+      {(loading || target.length === 0) && (
+        <p
+          style={{
+            margin: "10px 0 18px",
+            fontSize: FONT_SIZE.caption,
+            color: COLOR.inkSoft,
+            letterSpacing: "0.05em",
+          }}
+        >
+          {loading
+            ? "読み込んでいます…"
+            : base.length > 0
+              ? "条件に一致するお手紙が見つかりませんでした"
+              : "まだお手紙がありません"}
+        </p>
       )}
 
       <div
@@ -326,6 +396,7 @@ export function ReviewScreen({
           display: "grid",
           gap: 18,
           gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))",
+          marginTop: 14,
         }}
       >
         {visible.map((letter, i) => (

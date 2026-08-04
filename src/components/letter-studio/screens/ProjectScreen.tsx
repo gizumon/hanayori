@@ -1,15 +1,20 @@
 "use client";
 
-import { ChevronDown, Plus, Search, SquarePen, UserPlus, X } from "lucide-react";
+import { ChevronDown, Plus, SquarePen, UserPlus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FONTS } from "../constants";
-import { fieldStyle } from "../controls";
 import styles from "../letter-studio.module.css";
 import type { EventTab, Letter, Project, SettingsTab } from "../types";
 import { CREATOR_ALL, CreatorFilter, useCreatorFilter } from "./CreatorFilter";
 import { EventHeader } from "./EventHeader";
 import { LetterRow } from "./LetterRow";
 import { ListToolbar, type SortOption } from "./ListToolbar";
+import {
+  LETTER_SEARCH_PLACEHOLDER,
+  SearchField,
+  matchesQuery,
+  useSearchQuery,
+} from "./SearchField";
 import { FONT_SIZE } from "@/lib/typography";
 import { COLOR } from "@/lib/palette";
 
@@ -129,8 +134,8 @@ export function ProjectScreen({
   const cFont = FONTS[project.cardConfig.font].family;
 
   const [sort, setSort] = useState<SortKey>("createdDesc");
-  const [queryInput, setQueryInput] = useState("");
-  const [query, setQuery] = useState("");
+  const search = useSearchQuery();
+  const query = search.query;
   const [shown, setShown] = useState(PAGE_SIZE);
 
   // 1 人だけのイベントでは「誰が書いたか」は自明なので、作成者まわりは一切出さない。
@@ -138,11 +143,6 @@ export function ProjectScreen({
   const creatorFilter = useCreatorFilter(letters, currentUid, project.memberCount);
   const creator = creatorFilter.value;
 
-  // 入力から300ms経ってから絞り込みに反映する(打鍵のたびに再計算しない)。
-  useEffect(() => {
-    const timer = setTimeout(() => setQuery(queryInput), 300);
-    return () => clearTimeout(timer);
-  }, [queryInput]);
   // 並び替え/検索/作成者を変えたら先頭から数え直す(render 中の派生)。
   const [prevSort, setPrevSort] = useState(sort);
   const [prevQuery, setPrevQuery] = useState(query);
@@ -176,16 +176,16 @@ export function ProjectScreen({
   }, [addMenuOpen]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
     const byCreator = creatorFilter.apply(letters);
-    if (!q) return byCreator;
-    return byCreator.filter((l) => {
-      const to = l.to.toLowerCase();
-      const card = cardNameFor(l).toLowerCase();
-      const escort = escortNameFor(l).toLowerCase();
-      const table = (l.tableNo ?? "").toLowerCase();
-      return to.includes(q) || card.includes(q) || escort.includes(q) || table.includes(q);
-    });
+    if (!query.trim()) return byCreator;
+    return byCreator.filter((l) =>
+      matchesQuery(query, {
+        to: l.to,
+        cardName: cardNameFor(l),
+        escortName: escortNameFor(l),
+        tableNo: l.tableNo ?? "",
+      })
+    );
     // creatorFilter.apply は creator(選択中の作成者)にしか依存しない。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [letters, query, creator, cardNameFor, escortNameFor]);
@@ -321,58 +321,11 @@ export function ProjectScreen({
           />
         )}
         {!loadingLetters && letters.length > 0 && (
-          <div style={{ position: "relative", maxWidth: 360, marginBottom: 4 }}>
-            <Search
-              size={15}
-              strokeWidth={1.8}
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: COLOR.accentInk,
-                pointerEvents: "none",
-              }}
-            />
-            <input
-              type="text"
-              value={queryInput}
-              onChange={(e) => setQueryInput(e.target.value)}
-              placeholder="宛名・席札・エスコートカード名・テーブル名で検索"
-              aria-label="お手紙を検索"
-              className={styles.field}
-              style={fieldStyle({ width: "100%", padding: "9px 34px 9px 34px" })}
-            />
-            {queryInput && (
-              <button
-                type="button"
-                onClick={() => {
-                  setQueryInput("");
-                  setQuery("");
-                }}
-                aria-label="検索をクリア"
-                style={{
-                  position: "absolute",
-                  right: 8,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 22,
-                  height: 22,
-                  borderRadius: "50%",
-                  border: "none",
-                  background: "transparent",
-                  color: COLOR.accentInk,
-                  cursor: "pointer",
-                }}
-              >
-                <X size={14} strokeWidth={1.8} aria-hidden="true" />
-              </button>
-            )}
-          </div>
+          <SearchField
+            search={search}
+            placeholder={LETTER_SEARCH_PLACEHOLDER}
+            ariaLabel="お手紙を検索"
+          />
         )}
         {!loadingLetters && letters.length === 0 && (
           <p

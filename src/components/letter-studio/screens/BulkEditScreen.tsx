@@ -1,13 +1,21 @@
 "use client";
 
-import { Lock } from "lucide-react";
+import { Lock, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Avatar } from "../Avatar";
 import { THEMES } from "../constants";
 import { encodeImageFile } from "../imageEncode";
 import styles from "../letter-studio.module.css";
 import type { BulkLetterPatch, EventTab, Honor, Letter, Project, SettingsTab } from "../types";
 import { CREATOR_ALL, CreatorFilter, useCreatorFilter } from "./CreatorFilter";
 import { EventHeader } from "./EventHeader";
+import { ListToolbar, type SortOption } from "./ListToolbar";
+import {
+  LETTER_SEARCH_PLACEHOLDER,
+  SearchField,
+  matchesQuery,
+  useSearchQuery,
+} from "./SearchField";
 import { FONT_SIZE } from "@/lib/typography";
 import { COLOR } from "@/lib/palette";
 
@@ -41,6 +49,10 @@ interface FieldDef {
 interface CategoryDef {
   key: string;
   label: string;
+  /** 名前の列の見出し。対象ごとに呼び名が違う(宛名 / 席札の氏名 / エスコート名)。 */
+  nameLabel: string;
+  /** 名前の列に出す値。実際にその対象へ印字される名前を返す。 */
+  nameOf: (l: Letter) => string;
   fields: FieldDef[];
 }
 
@@ -64,12 +76,41 @@ interface BulkEditScreenProps {
 /** 伏せられたお手紙の行に出す一言。一覧・確認のぼかしと同じ趣旨。 */
 const HIDDEN_ROW_NOTE = "作成した人だけが直せます";
 
-const HONOR_OPTIONS = (def: Honor): { value: Honor | null; label: string }[] => [
-  { value: null, label: `既定(${def || "なし"})` },
+const HONOR_OPTIONS = (
+  def: Honor,
+  narrow: boolean
+): { value: Honor | null; label: string }[] => [
+  // 狭い画面では 4 つのピルを一行に収めたいので「既定」だけにする。
+  { value: null, label: narrow ? "既定" : `既定(${def || "なし"})` },
   { value: "様", label: "様" },
   { value: "さん", label: "さん" },
   { value: "", label: "なし" },
 ];
+
+/** お手紙一覧と同じ並び順。「名前順」の見出しだけ、選んでいる対象の呼び名に合わせる。 */
+type SortKey = "createdDesc" | "createdAsc" | "nameAsc";
+
+function sortRows(
+  list: Letter[],
+  sort: SortKey,
+  savedOf: (l: Letter) => Letter,
+  nameOf: (l: Letter) => string
+): Letter[] {
+  const sorted = [...list];
+  switch (sort) {
+    case "createdAsc":
+      sorted.sort((a, b) => savedOf(a).createdAt.localeCompare(savedOf(b).createdAt));
+      break;
+    case "nameAsc":
+      sorted.sort((a, b) => nameOf(savedOf(a)).localeCompare(nameOf(savedOf(b)), "ja"));
+      break;
+    case "createdDesc":
+    default:
+      sorted.sort((a, b) => savedOf(b).createdAt.localeCompare(savedOf(a).createdAt));
+      break;
+  }
+  return sorted;
+}
 
 export function BulkEditScreen({
   project,
@@ -89,6 +130,8 @@ export function BulkEditScreen({
       {
         key: "letter",
         label: "お手紙",
+        nameLabel: "宛名",
+        nameOf: (l) => l.to.trim() || "(宛名未設定)",
         fields: [
           {
             key: "to",
@@ -112,6 +155,8 @@ export function BulkEditScreen({
       cats.push({
         key: "card",
         label: "席札",
+        nameLabel: "席札の氏名",
+        nameOf: cardNameFor,
         fields: [
           {
             key: "cardName",
@@ -135,6 +180,8 @@ export function BulkEditScreen({
       cats.push({
         key: "escort",
         label: "エスコート",
+        nameLabel: "エスコート名",
+        nameOf: escortNameFor,
         fields: [
           {
             key: "tableNo",
@@ -178,7 +225,7 @@ export function BulkEditScreen({
     return cats;
   }, [project, cardNameFor, escortNameFor]);
 
-  // スマホ幅では行を縦積みにする(識別名の下にコントロールを全幅表示)。
+  // スマホ幅では列を詰める(名前は短く、コントロールは省略形に)。
   const [narrow, setNarrow] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 640px)");
@@ -190,6 +237,8 @@ export function BulkEditScreen({
 
   const [catKey, setCatKey] = useState("letter");
   const [fieldKey, setFieldKey] = useState<BulkField>("to");
+  const [sort, setSort] = useState<SortKey>("createdDesc");
+  const search = useSearchQuery();
 
   const category = categories.find((c) => c.key === catKey) ?? categories[0];
   const field = category.fields.find((f) => f.key === fieldKey) ?? category.fields[0];
@@ -214,7 +263,39 @@ export function BulkEditScreen({
   const lockedRow = (l: Letter) => category.key === "letter" && Boolean(l.hidden);
 
   const creatorFilter = useCreatorFilter(letters, currentUid, project.memberCount);
-  const shownRows = creatorFilter.apply(rows);
+
+  // 絞り込み・並び替えのキーは「保存済みの値」から採る。編集中の作業コピーで
+  // 数えると、宛名を打っている最中に行が消えたり順番が入れ替わったりする。
+  const savedOf = (l: Letter) => baseline.get(l.id) ?? l;
+  const shownRows = useMemo(() => {
+    const list = creatorFilter.apply(rows).filter((r) => {
+      const saved = savedOf(r);
+      return matchesQuery(search.query, {
+        to: saved.to,
+        cardName: cardNameFor(saved),
+        escortName: escortNameFor(saved),
+        tableNo: saved.tableNo ?? "",
+      });
+    });
+    return sortRows(list, sort, savedOf, category.nameOf);
+    // creatorFilter.apply / savedOf は creatorFilter.value / baseline にしか依存しない。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, baseline, creatorFilter.value, search.query, sort, category, cardNameFor, escortNameFor]);
+
+  // 「名前順」の呼び名は対象で変わる(宛名順 / 席札の氏名順 / エスコート名順)。
+  const sortOptions = useMemo<SortOption<SortKey>[]>(
+    () => [
+      { value: "createdDesc", label: "追加が新しい順" },
+      { value: "createdAsc", label: "追加が古い順" },
+      { value: "nameAsc", label: `${category.nameLabel}順` },
+    ],
+    [category.nameLabel]
+  );
+
+  // 1 人だけのイベントでは「誰が書いたか」が自明なので、作成者の列は畳む。
+  const showCreator = creatorFilter.show;
+  // 卓番は名前の下に添える。ただし卓番そのものを編集している列とは重ねない。
+  const showTableNo = project.escortConfig.enabled && field.key !== "tableNo";
 
   const cellKey = (id: string, f: BulkField) => `${id}:${f}`;
   const changedForField = (f: BulkField) =>
@@ -225,14 +306,6 @@ export function BulkEditScreen({
   // 敬称の「なし」("")と「既定」(null)は別物なので "" は畳まない。
   // Letter の任意フィールドは undefined になり得るので null に正規化して比較する。
   const norm = (v: unknown) => (v === undefined ? null : v);
-
-  // どの手紙かが分かるよう、行には常に識別名を出す。
-  // お手紙の宛名 → 席札の名前 → エスコートカードの名前 の順で最初にある値。
-  const identityFor = (l: Letter) =>
-    l.to.trim() ||
-    (l.cardName ?? "").trim() ||
-    (l.escortName ?? "").trim() ||
-    "(名前未設定)";
 
   function setField(id: string, f: BulkField, value: unknown, ratio?: number, ratioKey?: FieldDef["ratioKey"]) {
     setRows((rs) =>
@@ -400,19 +473,35 @@ export function BulkEditScreen({
         </div>
       </div>
 
-      {/* 作成者フィルタ。並ぶ行そのものを絞るので、項目の説明より上に置く。 */}
-      {creatorFilter.show && (
-        <div style={{ display: "flex", marginBottom: 12 }}>
-          <CreatorFilter
-            options={creatorFilter.options}
-            value={creatorFilter.value}
-            allValue={CREATOR_ALL}
-            onChange={creatorFilter.setValue}
-          />
-        </div>
+      {/* 件数・作成者・並び替え。お手紙一覧と同じツールバーを使う。 */}
+      {!loading && rows.length > 0 && (
+        <ListToolbar
+          totalCount={shownRows.length}
+          countUnit="件"
+          sortValue={sort}
+          sortOptions={sortOptions}
+          onSortChange={setSort}
+          filter={
+            creatorFilter.show ? (
+              <CreatorFilter
+                options={creatorFilter.options}
+                value={creatorFilter.value}
+                allValue={CREATOR_ALL}
+                onChange={creatorFilter.setValue}
+              />
+            ) : undefined
+          }
+        />
+      )}
+      {!loading && rows.length > 0 && (
+        <SearchField
+          search={search}
+          placeholder={LETTER_SEARCH_PLACEHOLDER}
+          ariaLabel="編集するお手紙を検索"
+        />
       )}
 
-      <p style={{ margin: "0 0 14px", fontSize: FONT_SIZE.caption, color: COLOR.inkFaint, letterSpacing: "0.03em" }}>
+      <p style={{ margin: "10px 0 14px", fontSize: FONT_SIZE.caption, color: COLOR.inkFaint, letterSpacing: "0.03em" }}>
         {field.desc}
       </p>
 
@@ -420,27 +509,71 @@ export function BulkEditScreen({
         <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>読み込んでいます…</p>
       ) : shownRows.length === 0 ? (
         <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>
-          {rows.length > 0 ? "この作成者のお手紙はありません。" : "まだお手紙がありません。"}
+          {rows.length === 0
+            ? "まだお手紙がありません。"
+            : "条件に一致するお手紙が見つかりませんでした。"}
         </p>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {shownRows.map((row) => (
-            <Row
-              key={row.id}
-              row={row}
-              field={field}
-              identity={identityFor(row)}
-              showTable={project.escortConfig.enabled}
-              locked={lockedRow(row)}
-              narrow={narrow}
-              changed={changed.has(cellKey(row.id, field.key))}
-              onText={(v) => setField(row.id, field.key, v)}
-              onTheme={(v) => setField(row.id, field.key, v)}
-              onHonor={(v) => setField(row.id, field.key, v)}
-              onPickPhoto={(file) => onPickPhoto(row.id, field.key, field.ratioKey, file)}
-              onRemovePhoto={() => setField(row.id, field.key, null, undefined, field.ratioKey)}
-            />
-          ))}
+        <div
+          style={{
+            background: COLOR.surface,
+            border: `1px solid ${COLOR.divider}`,
+            borderRadius: 14,
+          }}
+        >
+          <table
+            className={styles.bulkTable}
+            style={{
+              width: "100%",
+              // 見出しの角丸を効かせるため collapse にはしない(境界は td 側で引く)。
+              borderCollapse: "separate",
+              borderSpacing: 0,
+              // 列幅を固定して、長い名前は切り詰める(横スクロールを出さない)。
+              tableLayout: "fixed",
+            }}
+          >
+            {/* 名前 / 作成者 / 編集中の項目。残り幅は編集列に渡す。 */}
+            <colgroup>
+              <col style={{ width: narrow ? "38%" : "30%" }} />
+              {showCreator && <col style={{ width: narrow ? 52 : 74 }} />}
+              <col />
+            </colgroup>
+            <thead>
+              <tr>
+                <Th narrow={narrow}>{category.nameLabel}</Th>
+                {showCreator && (
+                  <Th narrow={narrow} align="center">
+                    作成者
+                  </Th>
+                )}
+                <Th narrow={narrow}>{field.label}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {shownRows.map((row) => (
+                <Row
+                  key={row.id}
+                  row={row}
+                  field={field}
+                  name={category.nameOf(row)}
+                  creator={
+                    showCreator
+                      ? { label: creatorFilter.labelOf(row), photoUrl: row.createdByPhoto ?? null }
+                      : null
+                  }
+                  showTableNo={showTableNo}
+                  locked={lockedRow(row)}
+                  narrow={narrow}
+                  changed={changed.has(cellKey(row.id, field.key))}
+                  onText={(v) => setField(row.id, field.key, v)}
+                  onTheme={(v) => setField(row.id, field.key, v)}
+                  onHonor={(v) => setField(row.id, field.key, v)}
+                  onPickPhoto={(file) => onPickPhoto(row.id, field.key, field.ratioKey, file)}
+                  onRemovePhoto={() => setField(row.id, field.key, null, undefined, field.ratioKey)}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -551,12 +684,49 @@ function Badge({ value, floating, onAccent }: { value: number; floating?: boolea
   );
 }
 
+/** 表の見出しセル。スクロールしても列の意味が分かるよう上端に貼り付く。 */
+function Th({
+  children,
+  align,
+  narrow,
+}: {
+  children: React.ReactNode;
+  align?: "center";
+  narrow: boolean;
+}) {
+  return (
+    <th
+      scope="col"
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 1,
+        padding: narrow ? "9px 6px" : "9px 12px",
+        textAlign: align ?? "left",
+        background: COLOR.tint,
+        borderBottom: `1px solid ${COLOR.border}`,
+        fontSize: FONT_SIZE.overline,
+        fontWeight: 600,
+        letterSpacing: "0.1em",
+        color: COLOR.inkMuted,
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+      }}
+    >
+      {children}
+    </th>
+  );
+}
+
 interface RowProps {
   row: Letter;
   field: FieldDef;
-  /** 行の識別名(宛名 → 席札名 → エスコート名)。どの手紙か分かるよう常に表示。 */
-  identity: string;
-  showTable: boolean;
+  /** 名前の列に出す値。選んでいる対象に実際に印字される名前。 */
+  name: string;
+  /** 作成者のアイコン。null = 列そのものを出さない(1 人だけのイベント)。 */
+  creator: { label: string; photoUrl: string | null } | null;
+  showTableNo: boolean;
   /** 他のメンバーが「見せない」に設定したお手紙。並べるが直せない。 */
   locked: boolean;
   narrow: boolean;
@@ -571,8 +741,9 @@ interface RowProps {
 function Row({
   row,
   field,
-  identity,
-  showTable,
+  name,
+  creator,
+  showTableNo,
   locked,
   narrow,
   changed,
@@ -583,91 +754,87 @@ function Row({
   onRemovePhoto,
 }: RowProps) {
   const accent = THEMES[row.theme].accent;
-  const initial = /^[(（]/.test(identity) ? "?" : identity.charAt(0) || "?";
+  const cell = {
+    padding: narrow ? "9px 6px" : "10px 12px",
+    // borderCollapse を使わないので、行の区切りは上辺だけで引く。
+    borderTop: `1px solid ${COLOR.divider}`,
+    verticalAlign: "middle" as const,
+  };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        // スマホは縦積み(識別名 → コントロール全幅)、PC は横並び。
-        flexDirection: narrow ? "column" : "row",
-        alignItems: narrow ? "stretch" : "center",
-        gap: narrow ? 10 : 14,
-        background: COLOR.surface,
-        border: `1px solid ${COLOR.divider}`,
-        borderLeft: changed ? `3px solid ${COLOR.change}` : `1px solid ${COLOR.divider}`,
-        borderRadius: 12,
-        padding: "11px 14px",
-      }}
-    >
-      {/* 識別名(常時表示)。編集中の項目が宛名でも消えない。 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
-        <span
-          aria-hidden="true"
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: 9,
-            background: accent,
-            color: COLOR.onAccent,
-            fontSize: FONT_SIZE.label,
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: "none",
-          }}
-        >
-          {initial}
-        </span>
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: FONT_SIZE.body,
-              fontWeight: 600,
-              color: COLOR.ink,
-              letterSpacing: "0.03em",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {identity}
-          </div>
-          {showTable && (
-            <div style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkFaint, letterSpacing: "0.02em" }}>
-              卓 {row.tableNo || "—"}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div
+    <tr className={styles.bulkRow}>
+      <td
         style={{
-          flex: narrow ? "none" : "0 1 auto",
-          minWidth: 0,
-          display: "flex",
-          justifyContent: narrow ? "flex-start" : "flex-end",
+          ...cell,
+          // 変更中の行は左端に印を出す(どのセルを直したかが一覧で分かる)。
+          boxShadow: changed ? `inset 3px 0 0 ${COLOR.change}` : undefined,
         }}
       >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          {/* お手紙の配色。どの対象を編集していても、行がどのお手紙かの手がかりになる。 */}
+          <span
+            aria-hidden="true"
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              flex: "none",
+              background: accent,
+              boxShadow: `0 0 0 2px ${COLOR.surfaceRaised}, 0 0 0 3px ${accent}55`,
+            }}
+          />
+          <div style={{ minWidth: 0 }}>
+            <div
+              title={name}
+              style={{
+                fontSize: narrow ? FONT_SIZE.bodySm : FONT_SIZE.body,
+                fontWeight: 600,
+                color: COLOR.ink,
+                letterSpacing: "0.03em",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {name}
+            </div>
+            {showTableNo && (
+              <div style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkFaint, letterSpacing: "0.02em" }}>
+                卓 {row.tableNo || "—"}
+              </div>
+            )}
+          </div>
+        </div>
+      </td>
+
+      {creator && (
+        <td style={{ ...cell, textAlign: "center" }}>
+          <span
+            role="img"
+            aria-label={`${creator.label}が作成`}
+            title={`${creator.label}が作成`}
+            style={{ display: "inline-flex" }}
+          >
+            <Avatar photoUrl={creator.photoUrl} name={creator.label} size={narrow ? 22 : 26} />
+          </span>
+        </td>
+      )}
+
+      <td style={cell}>
         {locked ? (
           <span
+            title={HIDDEN_ROW_NOTE}
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              padding: "8px 13px",
-              borderRadius: 999,
-              border: `1px solid ${COLOR.border}`,
-              background: COLOR.surfaceRaised,
               color: COLOR.inkMuted,
               fontSize: FONT_SIZE.caption,
               letterSpacing: "0.04em",
-              whiteSpace: "nowrap",
             }}
           >
             <Lock size={13} strokeWidth={1.8} aria-hidden="true" style={{ flex: "none" }} />
-            {HIDDEN_ROW_NOTE}
+            {narrow ? "直せません" : HIDDEN_ROW_NOTE}
           </span>
         ) : (
           <Control
@@ -681,8 +848,8 @@ function Row({
             onRemovePhoto={onRemovePhoto}
           />
         )}
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 }
 
@@ -698,20 +865,6 @@ interface ControlProps {
 }
 
 function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, onRemovePhoto }: ControlProps) {
-  // スマホでは全幅、PC では右側に固定幅。
-  const align = narrow ? "flex-start" : "flex-end";
-  const inputStyle = {
-    width: narrow ? "100%" : 320,
-    fontSize: FONT_SIZE.input,
-    color: COLOR.ink,
-    background: COLOR.surface,
-    border: `1px solid ${COLOR.border}`,
-    borderRadius: 9,
-    padding: "9px 11px",
-    letterSpacing: "0.02em",
-    outline: "none" as const,
-  };
-
   if (field.type === "text") {
     const value = (row[field.key] as string | null) ?? "";
     return (
@@ -720,7 +873,18 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
         placeholder={field.auto ? field.auto(row) : field.placeholder}
         onChange={(e) => onText(e.target.value)}
         className={styles.field}
-        style={inputStyle}
+        style={{
+          // 列幅いっぱい。列の幅は colgroup が決める。
+          width: "100%",
+          fontSize: FONT_SIZE.input,
+          color: COLOR.ink,
+          background: COLOR.surfaceRaised,
+          border: `1px solid ${COLOR.border}`,
+          borderRadius: 9,
+          padding: narrow ? "8px 9px" : "9px 11px",
+          letterSpacing: "0.02em",
+          outline: "none",
+        }}
       />
     );
   }
@@ -736,10 +900,11 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
               type="button"
               onClick={() => onTheme(k)}
               aria-label={THEMES[k].label}
+              aria-pressed={selected}
               title={THEMES[k].label}
               style={{
-                width: 30,
-                height: 30,
+                width: 28,
+                height: 28,
                 borderRadius: "50%",
                 cursor: "pointer",
                 padding: 0,
@@ -757,20 +922,22 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
   if (field.type === "honor") {
     const current = (row[field.key] as Honor | null | undefined) ?? null;
     return (
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: align }}>
-        {HONOR_OPTIONS(field.honorDefault ?? "").map(({ value, label }) => {
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {HONOR_OPTIONS(field.honorDefault ?? "", narrow).map(({ value, label }) => {
           const selected = current === value;
           return (
             <button
               key={label}
               type="button"
               onClick={() => onHonor(value)}
+              aria-pressed={selected}
               className={styles.btnOutline}
               style={{
-                padding: "7px 13px",
+                padding: narrow ? "6px 10px" : "7px 13px",
                 borderRadius: 999,
                 fontSize: FONT_SIZE.caption,
                 letterSpacing: "0.04em",
+                whiteSpace: "nowrap",
                 background: selected ? COLOR.accent : COLOR.surfaceRaised,
                 color: selected ? COLOR.onAccent : COLOR.ink,
                 border: selected ? `1px solid ${COLOR.accent}` : `1px solid ${COLOR.border}`,
@@ -787,13 +954,13 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
   // photo
   const photo = row[field.key] as string | null;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: align }}>
+    <div style={{ display: "flex", alignItems: "center", gap: narrow ? 8 : 12, flexWrap: "wrap" }}>
       {photo ? (
         <span
           aria-hidden="true"
           style={{
-            width: 46,
-            height: 46,
+            width: 40,
+            height: 40,
             borderRadius: 10,
             flex: "none",
             backgroundImage: `url('${photo}')`,
@@ -806,11 +973,11 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
       ) : (
         <span
           style={{
-            width: 46,
-            height: 46,
+            width: 40,
+            height: 40,
             borderRadius: 10,
             flex: "none",
-            background: COLOR.surface,
+            background: COLOR.surfaceRaised,
             border: `1px solid ${COLOR.border}`,
             display: "flex",
             alignItems: "center",
@@ -827,17 +994,18 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
         style={{
           display: "inline-flex",
           alignItems: "center",
-          padding: "8px 15px",
+          padding: narrow ? "7px 12px" : "8px 15px",
           borderRadius: 999,
           border: `1px solid ${COLOR.border}`,
           background: COLOR.surfaceRaised,
           color: COLOR.ink,
           fontSize: FONT_SIZE.label,
           letterSpacing: "0.04em",
+          whiteSpace: "nowrap",
           cursor: "pointer",
         }}
       >
-        {photo ? "写真を変更" : "写真を選ぶ"}
+        {narrow ? (photo ? "変更" : "選ぶ") : photo ? "写真を変更" : "写真を選ぶ"}
         <input
           type="file"
           accept="image/*"
@@ -853,9 +1021,14 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
         <button
           type="button"
           onClick={onRemovePhoto}
+          aria-label="写真を削除"
+          title="写真を削除"
           className={styles.btnGhost}
           style={{
-            padding: "8px 10px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            padding: narrow ? "7px 8px" : "8px 10px",
             borderRadius: 999,
             border: "none",
             background: "transparent",
@@ -864,7 +1037,8 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
             letterSpacing: "0.04em",
           }}
         >
-          削除
+          <Trash2 size={14} strokeWidth={1.8} aria-hidden="true" />
+          {!narrow && "削除"}
         </button>
       )}
     </div>

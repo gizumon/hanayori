@@ -14,6 +14,8 @@ export interface SortOption<T extends string> {
 interface ListToolbarProps<T extends string> {
   totalCount: number;
   countUnit: string;
+  /** 件数の前に置く見出し。省略すると「全」。 */
+  countPrefix?: string;
   sortValue: T;
   sortOptions: SortOption<T>[];
   onSortChange: (value: T) => void;
@@ -27,6 +29,7 @@ interface ListToolbarProps<T extends string> {
 export function ListToolbar<T extends string>({
   totalCount,
   countUnit,
+  countPrefix = "全",
   sortValue,
   sortOptions,
   onSortChange,
@@ -69,7 +72,7 @@ export function ListToolbar<T extends string>({
           letterSpacing: "0.06em",
         }}
       >
-        全
+        {countPrefix}
         <strong
           style={{
             fontSize: FONT_SIZE.subheading,
