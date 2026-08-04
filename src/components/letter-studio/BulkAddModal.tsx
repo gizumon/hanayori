@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, X } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   availableColumns,
   columnOf,
@@ -9,12 +9,17 @@ import {
   samplePlaceholder,
   TO_COLUMN,
   type BulkAddField,
+  type BulkAddParsed,
 } from "./bulkAdd";
 import { fieldStyle } from "./controls";
 import styles from "./letter-studio.module.css";
 import type { BulkCreateLetter } from "./types";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 import { COLOR } from "@/lib/palette";
+
+/** 指摘欄の高さの上限。letter-studio.module.css の .noticeStripOpen と合わせる。 */
+const NOTICE_MAX_HEIGHT = 120;
 
 interface BulkAddModalProps {
   onCancel: () => void;
@@ -113,7 +118,8 @@ function ColumnPicker({
             border: "none",
             outline: "none",
             background: "transparent",
-            fontSize: FONT_SIZE.body,
+            // 16px 未満だと iOS がフォーカス時に勝手にズームするので input サイズで固定。
+            fontSize: FONT_SIZE.input,
             color: COLOR.ink,
           }}
         />
@@ -246,13 +252,32 @@ export function BulkAddModal({
 }: BulkAddModalProps) {
   const [text, setText] = useState("");
   const [fields, setFields] = useState<BulkAddField[]>([]);
-  const { rows, errors, warnings } = useMemo(
-    () => parseBulkAddText(text, fields),
-    [text, fields]
-  );
+  // 開いているあいだは背面の一覧を動かさない(他のドロワー・モーダルと同じ)。
+  useScrollLock();
+
+  // 追加できるかどうかは打った内容そのもので決める。
+  const live = useMemo(() => parseBulkAddText(text, fields), [text, fields]);
+  const { rows } = live;
+
+  // 入力欄の下に出す知らせ(指摘・注意・追加できる件数)。打鍵のたびに出し入れ
+  // すると目障りなので、手が止まってから見せる。中身は畳み終わるまで残す
+  // (消してから縮めると一瞬で飛んで見えるため)。
+  const [notice, setNotice] = useState<BulkAddParsed | null>(null);
+  const [showNotice, setShowNotice] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const parsed = parseBulkAddText(text, fields);
+      const has =
+        parsed.errors.length > 0 || parsed.warnings.length > 0 || parsed.rows.length > 0;
+      setShowNotice(has);
+      if (has) setNotice(parsed);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [text, fields]);
+
   const pickable = availableColumns(cardEnabled, escortEnabled).length > 0;
   const columnLabels = [TO_COLUMN.label, ...fields.map((f) => columnOf(f).label)];
-  const blocked = rows.length === 0 || errors.length > 0 || creating;
+  const blocked = rows.length === 0 || live.errors.length > 0 || creating;
 
   return (
     <div
@@ -274,159 +299,232 @@ export function BulkAddModal({
         style={{
           width: "min(520px,94vw)",
           maxHeight: "calc(100vh - 60px)",
-          overflow: "auto",
+          // 中身だけをスクロールさせ、見出しとフッターは動かさない。
+          overflow: "hidden",
           background: COLOR.surface,
           borderRadius: 18,
-          padding: "28px 26px",
           boxShadow: "0 24px 70px rgba(0,0,0,0.25)",
           display: "flex",
           flexDirection: "column",
-          gap: 16,
         }}
       >
-        <h3 style={{ margin: 0, fontSize: FONT_SIZE.heading, fontWeight: 600, letterSpacing: "0.12em" }}>
+        <h3
+          style={{
+            flex: "none",
+            margin: 0,
+            padding: "26px 26px 14px",
+            fontSize: FONT_SIZE.heading,
+            fontWeight: 600,
+            letterSpacing: "0.12em",
+          }}
+        >
           名前をまとめて追加
         </h3>
-        <p
-          style={{
-            margin: 0,
-            fontSize: FONT_SIZE.bodySm,
-            color: COLOR.inkSoft,
-            lineHeight: 1.75,
-            letterSpacing: "0.03em",
-          }}
-        >
-          1行に1名ずつ入力すると、まとめてお手紙が作られます。本文はあとから書けます。
-        </p>
 
-        {pickable && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-              fontSize: FONT_SIZE.label,
-              letterSpacing: "0.1em",
-              color: COLOR.inkSoft,
-            }}
-          >
-            入力する項目
-            <ColumnPicker
-              fields={fields}
-              onChange={setFields}
-              cardEnabled={cardEnabled}
-              escortEnabled={escortEnabled}
-            />
-          </div>
-        )}
-
-        <label
+        <div
           style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            padding: "0 26px 20px",
             display: "flex",
             flexDirection: "column",
-            gap: 6,
-            fontSize: FONT_SIZE.label,
-            letterSpacing: "0.1em",
-            color: COLOR.inkSoft,
+            gap: 16,
           }}
         >
-          {fields.length === 0 ? "宛名のリスト" : `リスト(${columnLabels.join(", ")})`}
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={9}
-            spellCheck={false}
-            placeholder={samplePlaceholder(fields)}
-            className={styles.field}
-            style={fieldStyle({
-              padding: "12px 14px",
-              fontSize: FONT_SIZE.input,
-              lineHeight: 1.9,
-              letterSpacing: "0.04em",
-              resize: "vertical",
-              whiteSpace: fields.length === 0 ? "pre-wrap" : "pre",
-              overflowX: fields.length === 0 ? "hidden" : "auto",
-            })}
-            autoFocus
-          />
-        </label>
-
-        {fields.length > 0 && (
           <p
             style={{
               margin: 0,
-              fontSize: FONT_SIZE.caption,
-              color: COLOR.inkMuted,
-              lineHeight: 1.7,
+              fontSize: FONT_SIZE.bodySm,
+              color: COLOR.inkSoft,
+              lineHeight: 1.75,
               letterSpacing: "0.03em",
             }}
           >
-            空欄は未設定のまま。値にカンマを含めるときは &quot;山田, 花子&quot; と囲みます。
+            1行に1名ずつ入力すると、まとめてお手紙が作られます。本文はあとから書けます。
           </p>
-        )}
 
-        {errors.length > 0 && (
-          <ul
-            style={{
-              margin: 0,
-              // Tailwind の preflight が ul の記号と字下げを消すので、ここで戻す。
-              listStyle: "disc",
-              padding: "10px 14px 10px 30px",
-              borderRadius: 12,
-              background: COLOR.tint,
-              border: `1px solid ${COLOR.border}`,
-              color: COLOR.danger,
-              fontSize: FONT_SIZE.caption,
-              lineHeight: 1.9,
-              letterSpacing: "0.03em",
-            }}
-          >
-            {errors.slice(0, 5).map((issue, i) => (
-              <li key={i}>
-                {issue.line > 0 && `${issue.line}行目: `}
-                {issue.message}
-              </li>
-            ))}
-            {errors.length > 5 && <li>ほか{errors.length - 5}件</li>}
-          </ul>
-        )}
-
-        {errors.length === 0 &&
-          warnings.map((warning) => (
-            <p
-              key={warning}
+          {pickable && (
+            <div
               style={{
-                margin: 0,
-                fontSize: FONT_SIZE.caption,
-                color: COLOR.warnInk,
-                letterSpacing: "0.03em",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                fontSize: FONT_SIZE.label,
+                letterSpacing: "0.1em",
+                color: COLOR.inkSoft,
               }}
             >
-              {warning}
-            </p>
-          ))}
+              入力する項目
+              <ColumnPicker
+                fields={fields}
+                onChange={setFields}
+                cardEnabled={cardEnabled}
+                escortEnabled={escortEnabled}
+              />
+            </div>
+          )}
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span
-            style={{
-              flex: 1,
-              minWidth: 120,
-              fontSize: FONT_SIZE.caption,
-              color: rows.length > 0 ? COLOR.inkSoft : COLOR.inkFaint,
-              letterSpacing: "0.04em",
-            }}
-          >
-            {errors.length > 0
-              ? "入力を直すと追加できます"
-              : rows.length > 0
-                ? `${rows.length}名を追加します`
-                : "まだ入力されていません"}
-          </span>
+          {/* 指摘欄まで <label> に含めると、指摘を触っただけで入力欄に飛ぶので分ける。 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label
+              htmlFor="bulk-add-list"
+              style={{
+                fontSize: FONT_SIZE.label,
+                letterSpacing: "0.1em",
+                color: COLOR.inkSoft,
+              }}
+            >
+              {fields.length === 0 ? "宛名のリスト" : `リスト(${columnLabels.join(", ")})`}
+            </label>
+            {/* 入力欄と指摘欄で 1 つの枠。指摘は枠の中で開くので、枠そのものの
+                高さは変わらず、下に続く補足やフッターの位置も動かない。 */}
+            <div
+              className={styles.fieldGroup}
+              style={fieldStyle({
+                padding: 0,
+                height: 260,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              })}
+            >
+              <textarea
+                id="bulk-add-list"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                spellCheck={false}
+                placeholder={samplePlaceholder(fields)}
+                style={{
+                  flex: 1,
+                  minHeight: 0,
+                  padding: "12px 14px",
+                  border: "none",
+                  outline: "none",
+                  background: "transparent",
+                  fontSize: FONT_SIZE.input,
+                  color: COLOR.ink,
+                  lineHeight: 1.9,
+                  letterSpacing: "0.04em",
+                  resize: "none",
+                  whiteSpace: fields.length === 0 ? "pre-wrap" : "pre",
+                  overflowX: fields.length === 0 ? "hidden" : "auto",
+                }}
+                autoFocus
+              />
+              {/* 指摘欄。件数が増えてもここが伸び続けないよう、中でスクロールさせる。 */}
+              <div
+                aria-live="polite"
+                className={`${styles.noticeStrip} ${showNotice ? styles.noticeStripOpen : ""}`}
+              >
+                <div
+                  style={{
+                    maxHeight: NOTICE_MAX_HEIGHT,
+                    overflowY: "auto",
+                    borderTop: `1px solid ${COLOR.border}`,
+                    background: COLOR.tint,
+                  }}
+                >
+                  {!notice ? null : notice.errors.length > 0 ? (
+                    <ul
+                      style={{
+                        margin: 0,
+                        // Tailwind の preflight が ul の記号と字下げを消すので、ここで戻す。
+                        listStyle: "disc",
+                        padding: "9px 14px 9px 30px",
+                        color: COLOR.danger,
+                        fontSize: FONT_SIZE.caption,
+                        lineHeight: 1.9,
+                        letterSpacing: "0.03em",
+                      }}
+                    >
+                      {notice.errors.map((issue, i) => (
+                        <li key={i}>
+                          {issue.line > 0 && `${issue.line}行目: `}
+                          {issue.message}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 2,
+                        padding: "9px 14px",
+                      }}
+                    >
+                      {notice.warnings.map((warning) => (
+                        <p
+                          key={warning}
+                          style={{
+                            margin: 0,
+                            fontSize: FONT_SIZE.caption,
+                            color: COLOR.warnInk,
+                            lineHeight: 1.7,
+                            letterSpacing: "0.03em",
+                          }}
+                        >
+                          {warning}
+                        </p>
+                      ))}
+                      {notice.rows.length > 0 && (
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: FONT_SIZE.caption,
+                            color: COLOR.inkSoft,
+                            lineHeight: 1.7,
+                            letterSpacing: "0.03em",
+                          }}
+                        >
+                          {notice.rows.length}件追加されます
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 項目を選んだときだけ出る補足。ここも高さが跳ねないようになだらかに開く。 */}
+          <div className={`${styles.collapse} ${fields.length > 0 ? styles.collapseOpen : ""}`}>
+            <div>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: FONT_SIZE.caption,
+                  color: COLOR.inkMuted,
+                  lineHeight: 1.7,
+                  letterSpacing: "0.03em",
+                }}
+              >
+                空欄は未設定のまま。値にカンマを含めるときは &quot;山田, 花子&quot; と囲みます。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 他のドロワーと同じく、主ボタンを右端に。件数や指摘は入力欄の下に出す。 */}
+        <div
+          style={{
+            flex: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: 10,
+            padding: "12px 26px calc(12px + env(safe-area-inset-bottom))",
+            borderTop: `1px solid ${COLOR.divider}`,
+            background: COLOR.surface,
+          }}
+        >
           <button
             type="button"
             onClick={onCancel}
             style={{
-              padding: "10px 18px",
+              flex: "none",
+              padding: "11px 18px",
               borderRadius: 999,
               border: `1px solid ${COLOR.border}`,
               background: "transparent",
@@ -435,7 +533,7 @@ export function BulkAddModal({
               cursor: "pointer",
             }}
           >
-            やめる
+            閉じる
           </button>
           <button
             type="button"
@@ -443,13 +541,15 @@ export function BulkAddModal({
             disabled={blocked}
             className={styles.btnSolid}
             style={{
-              padding: "10px 22px",
+              flex: "none",
+              padding: "11px 22px",
               borderRadius: 999,
               border: "none",
               background: COLOR.accent,
               color: COLOR.onAccent,
               fontSize: FONT_SIZE.bodySm,
               letterSpacing: "0.06em",
+              boxShadow: "0 6px 16px rgba(211,165,180,0.4)",
               opacity: blocked ? 0.5 : 1,
               cursor: blocked ? "default" : "pointer",
             }}

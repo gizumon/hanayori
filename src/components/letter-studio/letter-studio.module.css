@@ -281,6 +281,65 @@
   }
 }
 
+/* 入力欄と指摘欄をまとめた枠(まとめて追加のリスト欄)。
+   枠自体は入力を持たないので、中のどこかにフォーカスが入ったら色を付ける。 */
+.fieldGroup:focus-within {
+  border-color: var(--c-accent) !important;
+}
+
+/* 枠の下に開く指摘欄。上限そのものへ max-height を動かすので、中身の高さを
+   測らずになだらかに開き、指摘が増えても中でスクロールするだけで枠は伸びない。
+   ※ 120px は BulkAddModal の NOTICE_MAX_HEIGHT と合わせること。 */
+.noticeStrip {
+  flex: none;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.18s ease;
+}
+.noticeStripOpen {
+  max-height: 120px;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .noticeStrip {
+    transition: none;
+  }
+}
+
+/* 高さ 0 から広げて出す入れ物(まとめて追加のエラー・注意)。
+   grid-template-rows を 0fr→1fr に動かして、中身の高さを測らずになだらかに開く。
+   閉じているときは親(gap: 16px の縦積み)の隙間ぶんを margin で打ち消して、
+   要素が無いときと同じ見た目にする。 */
+.collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  margin-top: -16px;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    margin-top 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.18s ease;
+}
+.collapseOpen {
+  grid-template-rows: 1fr;
+  margin-top: 0;
+  opacity: 1;
+}
+.collapse > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapse {
+    transition: none;
+  }
+}
+
 /* 横スクロールは残しつつスクロールバーだけ隠す(タブ帯など) */
 .noScrollbar {
   scrollbar-width: none; /* Firefox */
