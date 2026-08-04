@@ -4,6 +4,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { PWAInstallBanner } from "@/components/pwa/PWAInstallBanner";
 import "./globals.css";
 import { COLOR } from "@/lib/palette";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, socialMetadata } from "@/lib/seo";
 import { resolveMetadataBase } from "@/lib/server/metadata";
 
 const geistSans = Geist({
@@ -24,14 +25,33 @@ const geistMono = Geist_Mono({
 export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase: await resolveMetadataBase(),
-    title: "Hanayori | 花嫁のお便り",
-    description:
-      "結婚式のゲストひとりひとりに宛てた、デジタルのお手紙をつくれるサービス。",
+    // 下位ページは title に見出しだけを書けば「〇〇 | Hanayori」になる。
+    title: { default: SITE_TITLE, template: `%s | ${SITE_NAME}` },
+    description: SITE_DESCRIPTION,
+    applicationName: SITE_NAME,
+    keywords: ["結婚式", "ウェディング", "席札", "QRコード", "手紙", "メッセージカード", "花嫁", "Hanayori"],
+    creator: SITE_NAME,
+    publisher: SITE_NAME,
+    // 電話番号・住所らしき文字列が手紙本文で勝手にリンク化されるのを防ぐ。
+    formatDetection: { telephone: false, email: false, address: false },
+    // 個別に noindex を指定したセグメント（/events・/join・/letter）がこれを上書きする。
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
+    },
+    ...socialMetadata({ title: SITE_TITLE, description: SITE_DESCRIPTION }),
     manifest: "/manifest.webmanifest",
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",
-      title: "Hanayori",
+      title: SITE_NAME,
     },
     icons: {
       icon: "/favicon.ico",

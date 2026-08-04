@@ -1,12 +1,12 @@
 import type { MetadataRoute } from "next";
 import { COLOR } from "@/lib/palette";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE } from "@/lib/seo";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Hanayori | 花嫁のお便り",
-    short_name: "Hanayori",
-    description:
-      "結婚式のゲストひとりひとりに宛てた、デジタルのお手紙をつくれるサービス。",
+    name: SITE_TITLE,
+    short_name: SITE_NAME,
+    description: SITE_DESCRIPTION,
     start_url: "/events",
     scope: "/",
     display: "standalone",

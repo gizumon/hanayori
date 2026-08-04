@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { NOINDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "イベントへの招待 | Hanayori",
+  title: "イベントへの招待",
   // 招待 URL が検索結果に出ることはないが、念のため明示的に弾いておく。
-  robots: { index: false, follow: false },
+  robots: NOINDEX,
 };
 
 export default function JoinLayout({ children }: { children: ReactNode }) {

@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import { ContactLink, LegalPage, List, P, Section, Term } from "@/components/legal/LegalPage";
+import { formatJaDate, LEGAL_UPDATED_AT } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "利用規約 | Hanayori",
+  title: "利用規約",
   description: "Hanayori（はなより／花嫁のお便り）の利用規約",
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsPage() {
   return (
     <LegalPage
       title="利用規約"
-      updatedAt="2026年8月2日"
+      updatedAt={formatJaDate(LEGAL_UPDATED_AT)}
       sibling={{ href: "/privacy", label: "プライバシーポリシー" }}
     >
       <Section>

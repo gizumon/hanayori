@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
 import { StudioShell } from "@/components/letter-studio/StudioShell";
+import { NOINDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "LetterStudio | Hanayori",
+  title: "LetterStudio",
   description: "結婚式のお手紙とQR席札をつくる、Hanayoriのお手紙スタジオ。",
+  // ログインしないと中身が無いアプリ画面。検索結果に出す価値がないので弾く。
+  robots: NOINDEX,
 };
 
 export default function EventsLayout({ children }: { children: ReactNode }) {

@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { NOINDEX } from "@/lib/seo";
 import "@/components/wedding-letter/animations.css";
+
+export const metadata: Metadata = {
+  // 特定のゲスト宛の私信。URL を知っている人だけが読むものなので検索結果には出さない。
+  // robots.txt では塞いでいないので、LINE などに貼ったときの OG プレビューは従来どおり出る。
+  robots: NOINDEX,
+};
 
 export default function LetterLayout({ children }: { children: ReactNode }) {
   return (
