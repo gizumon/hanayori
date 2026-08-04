@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   parseAsBoolean,
   parseAsString,
@@ -22,7 +22,6 @@ import { printAllEscortCards as printAllEscortCardsSheet } from "./escortPrint";
 import { cardNameFor, escortGeom, escortNameFor, geom } from "./geometry";
 import { printAllCards as printAllCardsSheet } from "./qrCardPrint";
 import { uploadIfDataUrl } from "./uploadImage";
-import { IMAGE_MAX_WIDTH, encodeCanvas } from "./imageEncode";
 import type {
   BulkCreateLetter,
   BulkLetterPatch,
@@ -57,14 +56,10 @@ async function establishSession(user: User) {
 
 export function useLetterStudio() {
   const router = useRouter();
-  const pathname = usePathname();
-  const params = useParams<{ eventId?: string; letterId?: string }>();
+  const params = useParams<{ eventId?: string }>();
 
   // --- URL がナビゲーションの source of truth ---
   const curP = params.eventId ?? null;
-  const curL = params.letterId && params.letterId !== "new" ? params.letterId : null;
-  const isNew = pathname?.endsWith("/letters/new") ?? false;
-  const isEditor = isNew || curL !== null;
 
   // --- Query パラメータ(nuqs)---
   const [edTab, setTab] = useQueryState(
@@ -99,19 +94,13 @@ export function useLetterStudio() {
   // setState 無しで(派生で)表現する。
   const [lettersFor, setLettersFor] = useState<string | null>(null);
   const [lettersRaw, setLettersRaw] = useState<Letter[]>([]);
-  const [draft, setDraftState] = useState<Draft>({});
-  // draft を seed した対象("new:<eventId>" か letterId)。render 中に比較して
-  // 開くたび一度だけ seed する(HomeScreen の prevSort と同じパターン)。
-  const [seedKey, setSeedKey] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [newDate, setNewDate] = useState("");
   const [toastMsg, setToastMsg] = useState("");
-  const [escortCropSrc, setEscortCropSrc] = useState<string | null>(null);
 
   const [hydrated, setHydrated] = useState(false);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingLetters, setLoadingLetters] = useState(false);
-  const [savingLetter, setSavingLetter] = useState(false);
   const [savingBulk, setSavingBulk] = useState(false);
   const [creatingProject, setCreatingProject] = useState(false);
   const [creatingBulk, setCreatingBulk] = useState(false);
@@ -122,7 +111,6 @@ export function useLetterStudio() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const escortCardRef = useRef<HTMLDivElement | null>(null);
-  const savingLetterRef = useRef(false);
   const savingBulkRef = useRef(false);
   const creatingProjectRef = useRef(false);
   const creatingBulkRef = useRef(false);
@@ -220,61 +208,11 @@ export function useLetterStudio() {
   const cardConf: CardConfig | null = curProject?.cardConfig ?? null;
   const escortConf: EscortConfig | null = curProject?.escortConfig ?? null;
 
-  const setDraft = useCallback((d: Draft) => {
-    setDraftState((prev) => ({ ...prev, ...d }));
-  }, []);
-
-  // 編集画面に入ったら、対象の手紙(または新規の空)から draft を「開くたび
-  // 一度だけ」seed する。effect ではなく render 中に前回値(seedKey)と比較して
-  // 更新する(HomeScreen の prevSort と同じ、React 公認の派生パターン)。
-  // 条件付きなので無限ループにはならず、編集途中も上書きしない。
-  const seedTarget = !isEditor ? null : isNew ? `new:${curP}` : curL;
-  if (seedTarget !== seedKey) {
-    if (seedTarget === null) {
-      // 編集画面を離れた。次に同じ手紙を開いたとき再 seed できるよう解除。
-      setSeedKey(null);
-    } else if (isNew) {
-      setSeedKey(seedTarget);
-      setDraftState({ to: "", theme: "rose", body: "", photo: null });
-    } else {
-      // 一覧未取得なら letter が見つからず seedKey を進めない → 取得後に再試行。
-      const letter = lettersRaw.find((l) => l.id === curL);
-      if (letter) {
-        setSeedKey(seedTarget);
-        setDraftState({ ...letter });
-      }
-    }
-  }
-
-  // 不正な eventId / letterId(取得後に見つからない)は一覧へ戻す。中身が伏せられた
-  // お手紙も同じ扱いにする(編集画面は本文ごと丸ごと保存するため、開かせない)。
+  // 不正な eventId(取得後に見つからない)はイベント一覧へ戻す。
   useEffect(() => {
     if (!authed) return;
-    if (curP && !loadingEvents && !curProject) {
-      router.replace("/events");
-      return;
-    }
-    if (
-      curL &&
-      !isNew &&
-      !loadingLetters &&
-      letters.length > 0 &&
-      !visibleLetters.some((l) => l.id === curL)
-    ) {
-      router.replace(`/events/${curP}`);
-    }
-  }, [
-    authed,
-    curP,
-    curL,
-    isNew,
-    loadingEvents,
-    loadingLetters,
-    curProject,
-    letters,
-    visibleLetters,
-    router,
-  ]);
+    if (curP && !loadingEvents && !curProject) router.replace("/events");
+  }, [authed, curP, loadingEvents, curProject, router]);
 
   // --- ナビゲーション(パスは router、オーバーレイは nuqs setter)---
   const goHome = useCallback(() => {
@@ -288,10 +226,6 @@ export function useLetterStudio() {
     },
     [router]
   );
-
-  const backToProject = useCallback(() => {
-    router.push(curP ? `/events/${curP}` : "/events");
-  }, [curP, router]);
 
   /** 新規のお手紙を編集ドロワーで開く(1通ぶんの編集と同じドロワー、ヘッダーだけ「作成」表示)。 */
   const newLetter = useCallback(() => {
@@ -418,73 +352,6 @@ export function useLetterStudio() {
     return new URL(`/letter/${id}`, window.location.origin).href;
   }, []);
 
-  const saveLetter = useCallback(async () => {
-    if (!curP) return;
-    if (savingLetterRef.current) return;
-    if (!draft.to) {
-      toast("宛名を入力してください");
-      return;
-    }
-    savingLetterRef.current = true;
-    setSavingLetter(true);
-    try {
-      // 画像は data: URL のままドラフトで保持している。保存時にだけ Storage へ
-      // アップロードして URL 化する(Firestore には URL のみ保存)。すでに URL の
-      // 場合(既存手紙の再編集)は再アップロードしない。
-      const [photo, escortPhoto] = await Promise.all([
-        uploadIfDataUrl(draft.photo),
-        uploadIfDataUrl(draft.escortPhoto),
-      ]);
-      // アップ済み URL をドラフトへ反映して、再保存時の二重アップを防ぐ。
-      if (photo !== (draft.photo ?? null) || escortPhoto !== (draft.escortPhoto ?? null)) {
-        setDraftState((prev) => ({ ...prev, photo, escortPhoto }));
-      }
-      const payload = {
-        to: draft.to,
-        body: draft.body || "",
-        theme: draft.theme || "rose",
-        photo,
-        photoRatio: draft.photoRatio,
-        cardName: draft.cardName ?? null,
-        honor: draft.honor ?? null,
-        tableNo: draft.tableNo ?? null,
-        escortName: draft.escortName ?? null,
-        escortMessage: draft.escortMessage ?? null,
-        escortHonor: draft.escortHonor ?? null,
-        escortPhoto,
-        escortPhotoRatio: draft.escortPhotoRatio,
-      };
-      const data = draft.id
-        ? await api<{ letter: Letter }>(`/api/letters/${draft.id}`, {
-            method: "PATCH",
-            body: JSON.stringify(payload),
-          })
-        : await api<{ letter: Letter }>(`/api/events/${curP}/letters`, {
-            method: "POST",
-            body: JSON.stringify(payload),
-          });
-      const saved = data.letter;
-      setDraftState((prev) => ({ ...prev, id: saved.id }));
-      setLettersRaw((ls) =>
-        ls.some((l) => l.id === saved.id)
-          ? ls.map((l) => (l.id === saved.id ? saved : l))
-          : ls.concat([saved])
-      );
-      // 新規保存だった場合は URL を確定手紙に置き換える。seedKey を先に確定手紙
-      // に進めておき、URL 変化で draft が再 seed されない(＝ちらつかない)ように。
-      if (isNew) {
-        setSeedKey(saved.id);
-        router.replace(`/events/${curP}/letters/${saved.id}`);
-      }
-      toast("保存しました");
-    } catch (err) {
-      toast(err instanceof Error ? err.message : "保存に失敗しました");
-    } finally {
-      savingLetterRef.current = false;
-      setSavingLetter(false);
-    }
-  }, [curP, draft, isNew, router, toast]);
-
   const bulkSaveLetters = useCallback(
     async (patches: BulkLetterPatch[]): Promise<boolean> => {
       if (!curP || patches.length === 0) return false;
@@ -591,10 +458,6 @@ export function useLetterStudio() {
       try {
         await api(`/api/letters/${id}`, { method: "DELETE" });
         setLettersRaw((ls) => ls.filter((l) => l.id !== id));
-        if (draft.id === id) {
-          setDraftState({});
-          router.push(curP ? `/events/${curP}` : "/events");
-        }
         toast("削除しました");
       } catch {
         toast("削除に失敗しました");
@@ -603,32 +466,7 @@ export function useLetterStudio() {
         setDeletingLetter(false);
       }
     },
-    [curP, draft.id, router, toast]
-  );
-
-  const upPhoto = useCallback(
-    (file: File) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          const w = Math.min(IMAGE_MAX_WIDTH, img.width);
-          const h = Math.round((img.height * w) / img.width);
-          const canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          ctx?.drawImage(img, 0, 0, w, h);
-          setDraft({
-            photo: encodeCanvas(canvas),
-            photoRatio: +(w / h).toFixed(4),
-          });
-        };
-        img.src = reader.result as string;
-      };
-      reader.readAsDataURL(file);
-    },
-    [setDraft]
+    [toast]
   );
 
   const copyLink = useCallback(
@@ -758,20 +596,6 @@ export function useLetterStudio() {
     [cardConf, curProject, printingAllCards, letterUrl, toast]
   );
 
-  // アップロードしたらまずクロップモーダルを開く。切り取り確定でドラフトに入る。
-  const upEscortPhoto = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => setEscortCropSrc(reader.result as string);
-    reader.readAsDataURL(file);
-  }, []);
-
-  const applyEscortCrop = useCallback((dataUrl: string, ratio: number) => {
-    setDraftState((prev) => ({ ...prev, escortPhoto: dataUrl, escortPhotoRatio: ratio }));
-    setEscortCropSrc(null);
-  }, []);
-
-  const cancelEscortCrop = useCallback(() => setEscortCropSrc(null), []);
-
   const createProject = useCallback(async () => {
     if (!newName) {
       toast("イベント名を入力してください");
@@ -819,13 +643,7 @@ export function useLetterStudio() {
     [userName, toast]
   );
 
-  const screen: Screen = !authed
-    ? "login"
-    : isEditor
-      ? "editor"
-      : curP
-        ? "project"
-        : "home";
+  const screen: Screen = !authed ? "login" : curP ? "project" : "home";
 
   const qrModal = previewKind === "qr" && preview
     ? letters.find((l) => l.id === preview) ?? null
@@ -847,10 +665,8 @@ export function useLetterStudio() {
       userPhoto,
       projects,
       curP,
-      curL,
       letters,
       visibleLetters,
-      draft,
       modalShown: newModal,
       addModal,
       editLetter: drawerLetter,
@@ -860,7 +676,6 @@ export function useLetterStudio() {
       toastMsg,
       qrModal,
       escortModal,
-      escortCropSrc,
       settingsTab,
       edTab,
     }),
@@ -871,10 +686,8 @@ export function useLetterStudio() {
       userPhoto,
       projects,
       curP,
-      curL,
       letters,
       visibleLetters,
-      draft,
       newModal,
       addModal,
       drawerLetter,
@@ -884,7 +697,6 @@ export function useLetterStudio() {
       toastMsg,
       qrModal,
       escortModal,
-      escortCropSrc,
       settingsTab,
       edTab,
     ]
@@ -903,7 +715,6 @@ export function useLetterStudio() {
     refreshEvents,
     goHome,
     openProject,
-    backToProject,
     logout,
     updateNickname,
     setEdTab: (t: EditorTab) => {
@@ -916,16 +727,12 @@ export function useLetterStudio() {
     },
     updateProject,
     saveSettings,
-    setDraft,
     letterUrl,
-    saveLetter,
-    savingLetter,
     bulkSaveLetters,
     savingBulk,
     createLetterFromDrawer,
     deleteLetter,
     deletingLetter,
-    upPhoto,
     copyLink,
     saveCard,
     saveEscortCard,
@@ -934,9 +741,6 @@ export function useLetterStudio() {
     printingAllEscort,
     printAllCards,
     printingAllCards,
-    upEscortPhoto,
-    applyEscortCrop,
-    cancelEscortCrop,
     createProject,
     creatingProject,
     newLetter,

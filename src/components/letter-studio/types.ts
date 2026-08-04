@@ -7,7 +7,7 @@ export type FontKey =
   | "maru"
   | "anzumoji"
   | "fuiji";
-export type Screen = "login" | "home" | "project" | "editor";
+export type Screen = "login" | "home" | "project";
 export type CardOrient = "landscape" | "portrait" | "tent-l" | "tent-p";
 export type CardFrame = "line" | "frame" | "minimal";
 export type EscortStyle = "ticket" | "card";
@@ -183,7 +183,6 @@ export interface StudioState {
   userPhoto: string | null;
   projects: EventSummary[];
   curP: string | null;
-  curL: string | null;
   /** 開いているイベントの手紙一覧。イベントを開いたときに取得する。 */
   letters: Letter[];
   /**
@@ -191,7 +190,6 @@ export interface StudioState {
    * 並べる場所はこちらを使い、席札・エスコートカードは `letters` を使う。
    */
   visibleLetters: Letter[];
-  draft: Draft;
   modalShown: boolean;
   /** 宛名まとめて追加モーダル。 */
   addModal: boolean;
@@ -202,8 +200,6 @@ export interface StudioState {
   toastMsg: string;
   qrModal: Letter | null;
   escortModal: Letter | null;
-  /** エスコート写真のクロップ待ち画像(dataUrl)。null = モーダル閉。 */
-  escortCropSrc: string | null;
   /** 共通設定ドロワー。null = 閉。どの画面からでも開ける。 */
   settingsTab: SettingsTab | null;
   edTab: EditorTab;

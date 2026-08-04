@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { BulkAddModal } from "./BulkAddModal";
 import { FONTS, THEMES } from "./constants";
-import { CropModal } from "./CropModal";
 import { LetterEditDrawer } from "./LetterEditDrawer";
 import { EscortModal } from "./EscortModal";
 import { EventSettingsDrawer } from "./EventSettingsDrawer";
@@ -162,16 +161,6 @@ export function StudioShell({ children }: { children: ReactNode }) {
             cardRef={api.escortCardRef}
             onSaveImage={api.saveEscortCard}
             onClose={() => api.setEscortModal(null)}
-          />
-        )}
-
-        {state.escortCropSrc && escortConf && (
-          <CropModal
-            src={state.escortCropSrc}
-            // チケット風は写真帯(半券45mmを除いた137mmの31% × 全高65mm = 42.5×65mm)、カード風は正円用に 1:1
-            aspect={escortConf.style === "card" ? 1 : 0.653}
-            onCancel={api.cancelEscortCrop}
-            onApply={api.applyEscortCrop}
           />
         )}
 
