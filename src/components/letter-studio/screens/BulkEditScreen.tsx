@@ -375,209 +375,213 @@ export function BulkEditScreen({
   const changedCount = changed.size;
 
   return (
-    <main
-      className={styles.fadeup}
-      style={{ maxWidth: 1040, margin: "0 auto", padding: "28px clamp(16px,4vw,40px) 120px" }}
-    >
-      <EventHeader
-        project={project}
-        currentTab="bulk"
-        onBack={onBack}
-        onSelectTab={onSelectTab}
-        onOpenSettings={onOpenSettings}
-      />
-
-      {/* 2 段ピッカー: 対象 → 項目 */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-          padding: 16,
-          background: COLOR.surface,
-          border: `1px solid ${COLOR.divider}`,
-          borderRadius: 14,
-          marginBottom: 16,
-        }}
+    <>
+      <main
+        className={styles.fadeup}
+        style={{ maxWidth: 1040, margin: "0 auto", padding: "28px clamp(16px,4vw,40px) 120px" }}
       >
-        {/* お手紙をつくる画面(EditorScreen)と同じタブ。 */}
+        <EventHeader
+          project={project}
+          currentTab="bulk"
+          onBack={onBack}
+          onSelectTab={onSelectTab}
+          onOpenSettings={onOpenSettings}
+        />
+
+        {/* 2 段ピッカー: 対象 → 項目 */}
         <div
           style={{
             display: "flex",
-            gap: 4,
-            background: "rgba(211,165,180,0.16)",
-            borderRadius: 999,
-            padding: 4,
-            alignSelf: "flex-start",
-            flexWrap: "wrap",
-          }}
-        >
-          {categories.map((c) => {
-            const active = c.key === category.key;
-            const n = changedForCat(c);
-            return (
-              <button
-                key={c.key}
-                type="button"
-                onClick={() => selectCategory(c.key)}
-                style={{
-                  position: "relative",
-                  padding: "9px 22px",
-                  borderRadius: 999,
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: FONT_SIZE.bodySm,
-                  letterSpacing: "0.08em",
-                  background: active ? COLOR.surface : "transparent",
-                  color: active ? COLOR.ink : COLOR.inkMuted,
-                  fontWeight: active ? 600 : 400,
-                  boxShadow: active ? "0 2px 8px rgba(150,110,130,0.18)" : "none",
-                }}
-              >
-                {c.label}
-                {n > 0 && <Badge value={n} floating />}
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {category.fields.map((f) => {
-            const active = f.key === field.key;
-            const n = changedForField(f.key);
-            return (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setFieldKey(f.key)}
-                style={{
-                  border: active ? `1px solid ${COLOR.accent}` : `1px solid ${COLOR.border}`,
-                  background: active ? COLOR.accent : COLOR.surface,
-                  color: active ? COLOR.onAccent : COLOR.ink,
-                  fontWeight: active ? 600 : 400,
-                  cursor: "pointer",
-                  padding: "8px 15px",
-                  borderRadius: 999,
-                  fontSize: FONT_SIZE.bodySm,
-                  letterSpacing: "0.04em",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 7,
-                  boxShadow: active ? "0 3px 10px rgba(211,165,180,0.4)" : "none",
-                }}
-              >
-                {f.label}
-                {n > 0 && <Badge value={n} onAccent={active} />}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 件数・作成者・並び替え。お手紙一覧と同じツールバーを使う。 */}
-      {!loading && rows.length > 0 && (
-        <ListToolbar
-          totalCount={shownRows.length}
-          countUnit="件"
-          sortValue={sort}
-          sortOptions={sortOptions}
-          onSortChange={setSort}
-          filter={
-            creatorFilter.show ? (
-              <CreatorFilter
-                options={creatorFilter.options}
-                value={creatorFilter.value}
-                allValue={CREATOR_ALL}
-                onChange={creatorFilter.setValue}
-              />
-            ) : undefined
-          }
-        />
-      )}
-      {!loading && rows.length > 0 && (
-        <SearchField
-          search={search}
-          placeholder={LETTER_SEARCH_PLACEHOLDER}
-          ariaLabel="編集するお手紙を検索"
-        />
-      )}
-
-      <p style={{ margin: "10px 0 14px", fontSize: FONT_SIZE.caption, color: COLOR.inkFaint, letterSpacing: "0.03em" }}>
-        {field.desc}
-      </p>
-
-      {loading && shownRows.length === 0 ? (
-        <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>読み込んでいます…</p>
-      ) : shownRows.length === 0 ? (
-        <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>
-          {rows.length === 0
-            ? "まだお手紙がありません。"
-            : "条件に一致するお手紙が見つかりませんでした。"}
-        </p>
-      ) : (
-        <div
-          style={{
+            flexDirection: "column",
+            gap: 12,
+            padding: 16,
             background: COLOR.surface,
             border: `1px solid ${COLOR.divider}`,
             borderRadius: 14,
+            marginBottom: 16,
           }}
         >
-          <table
-            className={styles.bulkTable}
+          {/* 1 通ぶんの編集ドロワーと同じタブ。 */}
+          <div
             style={{
-              width: "100%",
-              // 見出しの角丸を効かせるため collapse にはしない(境界は td 側で引く)。
-              borderCollapse: "separate",
-              borderSpacing: 0,
-              // 列幅を固定して、長い名前は切り詰める(横スクロールを出さない)。
-              tableLayout: "fixed",
+              display: "flex",
+              gap: 4,
+              background: "rgba(211,165,180,0.16)",
+              borderRadius: 999,
+              padding: 4,
+              alignSelf: "flex-start",
+              flexWrap: "wrap",
             }}
           >
-            {/* 名前 / 作成者 / 編集中の項目。残り幅は編集列に渡す。 */}
-            <colgroup>
-              <col style={{ width: narrow ? "38%" : "30%" }} />
-              {showCreator && <col style={{ width: narrow ? 52 : 74 }} />}
-              <col />
-            </colgroup>
-            <thead>
-              <tr>
-                <Th narrow={narrow}>{category.nameLabel}</Th>
-                {showCreator && (
-                  <Th narrow={narrow} align="center">
-                    作成者
-                  </Th>
-                )}
-                <Th narrow={narrow}>{field.label}</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {shownRows.map((row) => (
-                <Row
-                  key={row.id}
-                  row={row}
-                  field={field}
-                  name={category.nameOf(row)}
-                  creator={
-                    showCreator
-                      ? { label: creatorFilter.labelOf(row), photoUrl: row.createdByPhoto ?? null }
-                      : null
-                  }
-                  showTableNo={showTableNo}
-                  locked={lockedRow(row)}
-                  narrow={narrow}
-                  changed={changed.has(cellKey(row.id, field.key))}
-                  onText={(v) => setField(row.id, field.key, v)}
-                  onTheme={(v) => setField(row.id, field.key, v)}
-                  onHonor={(v) => setField(row.id, field.key, v)}
-                  onPickPhoto={(file) => onPickPhoto(row.id, field.key, field.ratioKey, file)}
-                  onRemovePhoto={() => setField(row.id, field.key, null, undefined, field.ratioKey)}
-                />
-              ))}
-            </tbody>
-          </table>
+            {categories.map((c) => {
+              const active = c.key === category.key;
+              const n = changedForCat(c);
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => selectCategory(c.key)}
+                  style={{
+                    position: "relative",
+                    padding: "9px 22px",
+                    borderRadius: 999,
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: FONT_SIZE.bodySm,
+                    letterSpacing: "0.08em",
+                    background: active ? COLOR.surface : "transparent",
+                    color: active ? COLOR.ink : COLOR.inkMuted,
+                    fontWeight: active ? 600 : 400,
+                    boxShadow: active ? "0 2px 8px rgba(150,110,130,0.18)" : "none",
+                  }}
+                >
+                  {c.label}
+                  {n > 0 && <Badge value={n} floating />}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {category.fields.map((f) => {
+              const active = f.key === field.key;
+              const n = changedForField(f.key);
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setFieldKey(f.key)}
+                  style={{
+                    border: active ? `1px solid ${COLOR.accent}` : `1px solid ${COLOR.border}`,
+                    background: active ? COLOR.accent : COLOR.surface,
+                    color: active ? COLOR.onAccent : COLOR.ink,
+                    fontWeight: active ? 600 : 400,
+                    cursor: "pointer",
+                    padding: "8px 15px",
+                    borderRadius: 999,
+                    fontSize: FONT_SIZE.bodySm,
+                    letterSpacing: "0.04em",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 7,
+                    boxShadow: active ? "0 3px 10px rgba(211,165,180,0.4)" : "none",
+                  }}
+                >
+                  {f.label}
+                  {n > 0 && <Badge value={n} onAccent={active} />}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      )}
 
-      {/* 保存バー。ドロワーのフッターと同じく、画面下端に貼り付く。 */}
+        {/* 件数・作成者・並び替え。お手紙一覧と同じツールバーを使う。 */}
+        {!loading && rows.length > 0 && (
+          <ListToolbar
+            totalCount={shownRows.length}
+            countUnit="件"
+            sortValue={sort}
+            sortOptions={sortOptions}
+            onSortChange={setSort}
+            filter={
+              creatorFilter.show ? (
+                <CreatorFilter
+                  options={creatorFilter.options}
+                  value={creatorFilter.value}
+                  allValue={CREATOR_ALL}
+                  onChange={creatorFilter.setValue}
+                />
+              ) : undefined
+            }
+          />
+        )}
+        {!loading && rows.length > 0 && (
+          <SearchField
+            search={search}
+            placeholder={LETTER_SEARCH_PLACEHOLDER}
+            ariaLabel="編集するお手紙を検索"
+          />
+        )}
+
+        <p style={{ margin: "10px 0 14px", fontSize: FONT_SIZE.caption, color: COLOR.inkFaint, letterSpacing: "0.03em" }}>
+          {field.desc}
+        </p>
+
+        {loading && shownRows.length === 0 ? (
+          <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>読み込んでいます…</p>
+        ) : shownRows.length === 0 ? (
+          <p style={{ fontSize: FONT_SIZE.bodySm, color: COLOR.inkSoft }}>
+            {rows.length === 0
+              ? "まだお手紙がありません。"
+              : "条件に一致するお手紙が見つかりませんでした。"}
+          </p>
+        ) : (
+          <div
+            style={{
+              background: COLOR.surface,
+              border: `1px solid ${COLOR.divider}`,
+              borderRadius: 14,
+            }}
+          >
+            <table
+              className={styles.bulkTable}
+              style={{
+                width: "100%",
+                // 見出しの角丸を効かせるため collapse にはしない(境界は td 側で引く)。
+                borderCollapse: "separate",
+                borderSpacing: 0,
+                // 列幅を固定して、長い名前は切り詰める(横スクロールを出さない)。
+                tableLayout: "fixed",
+              }}
+            >
+              {/* 名前 / 作成者 / 編集中の項目。残り幅は編集列に渡す。 */}
+              <colgroup>
+                <col style={{ width: narrow ? "38%" : "30%" }} />
+                {showCreator && <col style={{ width: narrow ? 52 : 74 }} />}
+                <col />
+              </colgroup>
+              <thead>
+                <tr>
+                  <Th narrow={narrow}>{category.nameLabel}</Th>
+                  {showCreator && (
+                    <Th narrow={narrow} align="center">
+                      作成者
+                    </Th>
+                  )}
+                  <Th narrow={narrow}>{field.label}</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {shownRows.map((row) => (
+                  <Row
+                    key={row.id}
+                    row={row}
+                    field={field}
+                    name={category.nameOf(row)}
+                    creator={
+                      showCreator
+                        ? { label: creatorFilter.labelOf(row), photoUrl: row.createdByPhoto ?? null }
+                        : null
+                    }
+                    showTableNo={showTableNo}
+                    locked={lockedRow(row)}
+                    narrow={narrow}
+                    changed={changed.has(cellKey(row.id, field.key))}
+                    onText={(v) => setField(row.id, field.key, v)}
+                    onTheme={(v) => setField(row.id, field.key, v)}
+                    onHonor={(v) => setField(row.id, field.key, v)}
+                    onPickPhoto={(file) => onPickPhoto(row.id, field.key, field.ratioKey, file)}
+                    onRemovePhoto={() => setField(row.id, field.key, null, undefined, field.ratioKey)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </main>
+
+      {/* 保存バー。ドロワーのフッターと同じく、画面下端に貼り付く。
+          <main> は fadeup の transform アニメーションが position:fixed の
+          containing block を作ってしまうので、外に出して兄弟として置く。 */}
       <div
         style={{
           position: "fixed",
@@ -661,7 +665,7 @@ export function BulkEditScreen({
           </button>
         </div>
       </div>
-    </main>
+    </>
   );
 }
 
