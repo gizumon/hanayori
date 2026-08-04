@@ -275,6 +275,7 @@ export function BulkAddModal({
     return () => clearTimeout(timer);
   }, [text, fields]);
 
+  const hasErrors = (notice?.errors.length ?? 0) > 0;
   const pickable = availableColumns(cardEnabled, escortEnabled).length > 0;
   const columnLabels = [TO_COLUMN.label, ...fields.map((f) => columnOf(f).label)];
   const blocked = rows.length === 0 || live.errors.length > 0 || creating;
@@ -422,7 +423,8 @@ export function BulkAddModal({
                     maxHeight: NOTICE_MAX_HEIGHT,
                     overflowY: "auto",
                     borderTop: `1px solid ${COLOR.border}`,
-                    background: COLOR.tint,
+                    // 直すところがあるときだけ色を付ける。件数の知らせは地の色のまま。
+                    background: hasErrors ? COLOR.tint : COLOR.bg,
                   }}
                 >
                   {!notice ? null : notice.errors.length > 0 ? (
