@@ -53,8 +53,9 @@ export async function generateMetadata(): Promise<Metadata> {
       statusBarStyle: "default",
       title: SITE_NAME,
     },
+    // favicon.ico は src/app に置いてあり Next が自動で（ハッシュ付き URL で）出力するので、
+    // ここでは指定しない。二重に書くとキャッシュの効かない裸の /favicon.ico も並んでしまう。
     icons: {
-      icon: "/favicon.ico",
       apple: "/icons/apple-touch-icon.png",
     },
   };

@@ -169,20 +169,33 @@ export const EnvelopeScene = forwardRef<HTMLDivElement, EnvelopeSceneProps>(
               borderRadius: "40% 60% 55% 45% / 55% 45% 60% 40%",
             }}
           />
+          {/* ロゴと同じ二枚花びらの刻印。下端(15,20.4)で重なるように左右へ倒している。 */}
           <svg
-            viewBox="0 0 24 24"
-            fill="none"
+            viewBox="0 0 30 30"
+            fill="#FFF6F0"
             stroke="#FFF6F0"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-            style={{ width: 30, height: 30, position: "relative", zIndex: 1, opacity: 0.9 }}
+            strokeWidth="0.5"
+            style={{ width: 30, height: 30, position: "relative", zIndex: 1 }}
           >
-            <circle cx="12" cy="12" r="1.5" />
-            <ellipse cx="12" cy="6.8" rx="1.8" ry="3" />
-            <ellipse cx="12" cy="6.8" rx="1.8" ry="3" transform="rotate(72 12 12)" />
-            <ellipse cx="12" cy="6.8" rx="1.8" ry="3" transform="rotate(144 12 12)" />
-            <ellipse cx="12" cy="6.8" rx="1.8" ry="3" transform="rotate(216 12 12)" />
-            <ellipse cx="12" cy="6.8" rx="1.8" ry="3" transform="rotate(288 12 12)" />
+            {/* 花びらは上に寄った左右非対称の形なので、外接矩形が真ん中に来るよう寄せる。 */}
+            <g transform="translate(-0.55 2.8)">
+              <ellipse
+                cx="15"
+                cy="12.6"
+                rx="4.3"
+                ry="7.8"
+                fillOpacity="0.5"
+                transform="rotate(-17 15 20.4)"
+              />
+              <ellipse
+                cx="15"
+                cy="11.6"
+                rx="4.8"
+                ry="8.4"
+                fillOpacity="0.78"
+                transform="rotate(19 15 20.4)"
+              />
+            </g>
           </svg>
         </div>
       </div>
