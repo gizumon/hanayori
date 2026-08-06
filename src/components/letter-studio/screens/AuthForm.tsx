@@ -132,7 +132,7 @@ export function AuthForm({ onSignedIn }: AuthFormProps) {
           />
         </svg>
         {/* eslint-enable no-restricted-syntax */}
-        Google アカウントでログイン
+        Googleログイン
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -229,7 +229,7 @@ export function AuthForm({ onSignedIn }: AuthFormProps) {
               color: COLOR.ink,
             }}
           >
-            アカウントを作成
+            アカウント作成
           </button>
         </div>
 
