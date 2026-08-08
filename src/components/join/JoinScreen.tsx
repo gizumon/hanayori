@@ -26,7 +26,7 @@ const card = {
   width: "min(420px,92vw)",
   background: COLOR.surface,
   borderRadius: 20,
-  padding: "40px 32px 32px",
+  padding: "40px 26px 32px",
   boxShadow: "0 20px 60px rgba(150,110,130,0.2)",
   textAlign: "center",
 } as const;

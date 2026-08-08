@@ -20,11 +20,24 @@ interface AuthFormProps {
   onSignedIn?: () => void;
 }
 
-const pillStyle = {
-  padding: "13px 18px",
+/** Google ボタン。この画面の主役なので少し大きく太く。 */
+const googlePillStyle = {
+  padding: "14px 10px",
   borderRadius: 999,
   fontSize: FONT_SIZE.body,
-  letterSpacing: "0.06em",
+  fontWeight: 700,
+  letterSpacing: "0.02em",
+  whiteSpace: "nowrap",
+} as const;
+
+/** 「アカウント作成 / ログイン」の 2 分割ボタン。狭い画面でも折り返さない字送りにする。 */
+const splitPillStyle = {
+  padding: "13px 10px",
+  borderRadius: 999,
+  fontSize: FONT_SIZE.bodySm,
+  fontWeight: 600,
+  letterSpacing: "0.02em",
+  whiteSpace: "nowrap",
 } as const;
 
 const legalLinkStyle = {
@@ -102,18 +115,18 @@ export function AuthForm({ onSignedIn }: AuthFormProps) {
         disabled={busy}
         className={styles.btnOutline}
         style={{
-          ...pillStyle,
+          ...googlePillStyle,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: 10,
+          gap: 8,
           border: `1px solid ${COLOR.border}`,
           background: COLOR.surfaceRaised,
           color: COLOR.ink,
         }}
       >
         {/* eslint-disable no-restricted-syntax -- Google のブランドカラー */}
-        <svg viewBox="0 0 24 24" style={{ width: 18, height: 18 }} aria-hidden="true">
+        <svg viewBox="0 0 24 24" style={{ width: 17, height: 17, flex: "none" }} aria-hidden="true">
           <path
             fill="#4285F4"
             d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.1h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.1 3.7-8.6z"
@@ -132,7 +145,7 @@ export function AuthForm({ onSignedIn }: AuthFormProps) {
           />
         </svg>
         {/* eslint-enable no-restricted-syntax */}
-        Googleログイン
+        Googleアカウントでログイン
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -203,7 +216,7 @@ export function AuthForm({ onSignedIn }: AuthFormProps) {
             disabled={busy}
             className={styles.btnSolid}
             style={{
-              ...pillStyle,
+              ...splitPillStyle,
               order: 2,
               flex: 1,
               border: "none",
@@ -221,7 +234,7 @@ export function AuthForm({ onSignedIn }: AuthFormProps) {
             disabled={busy}
             className={styles.btnOutline}
             style={{
-              ...pillStyle,
+              ...splitPillStyle,
               order: 1,
               flex: 1,
               border: `1px solid ${COLOR.border}`,
@@ -232,6 +245,26 @@ export function AuthForm({ onSignedIn }: AuthFormProps) {
             アカウント作成
           </button>
         </div>
+
+        {/* 入力途中の内容を失わないよう、規約類は別タブで開く。 */}
+        <p
+          style={{
+            margin: "2px 0 0",
+            fontSize: FONT_SIZE.caption,
+            lineHeight: 1.7,
+            letterSpacing: "0.01em",
+            color: COLOR.inkSoft,
+          }}
+        >
+          <Link href="/terms" target="_blank" rel="noopener noreferrer" style={legalLinkStyle}>
+            利用規約
+          </Link>
+          ・
+          <Link href="/privacy" target="_blank" rel="noopener noreferrer" style={legalLinkStyle}>
+            プライバシーポリシー
+          </Link>
+          をご確認ください。
+        </p>
 
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button
@@ -266,28 +299,6 @@ export function AuthForm({ onSignedIn }: AuthFormProps) {
           {error || notice}
         </p>
       )}
-
-      {/* 入力途中の内容を失わないよう、規約類は別タブで開く。 */}
-      <p
-        style={{
-          margin: 0,
-          fontSize: FONT_SIZE.caption,
-          lineHeight: 1.9,
-          letterSpacing: "0.04em",
-          color: COLOR.inkSoft,
-          textAlign: "center",
-        }}
-      >
-        ログイン・アカウント作成をもって、
-        <Link href="/terms" target="_blank" rel="noopener noreferrer" style={legalLinkStyle}>
-          利用規約
-        </Link>
-        と
-        <Link href="/privacy" target="_blank" rel="noopener noreferrer" style={legalLinkStyle}>
-          プライバシーポリシー
-        </Link>
-        に同意したものとみなします。
-      </p>
     </div>
   );
 }

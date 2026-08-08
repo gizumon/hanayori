@@ -23,7 +23,7 @@ export function LoginScreen() {
           width: "min(400px,92vw)",
           background: COLOR.surface,
           borderRadius: 20,
-          padding: "44px 34px 34px",
+          padding: "44px 26px 32px",
           boxShadow: "0 20px 60px rgba(150,110,130,0.2)",
           textAlign: "center",
         }}
@@ -82,9 +82,7 @@ export function LoginScreen() {
             lineHeight: 1.8,
           }}
         >
-          結婚式のお手紙を、
-          <br />
-          大切なあの人へ。
+          結婚式のお手紙を、大切なあの人へ。
         </p>
 
         <AuthForm />
