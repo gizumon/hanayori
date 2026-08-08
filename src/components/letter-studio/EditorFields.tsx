@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { MAX_LETTER_PHOTOS, THEMES } from "./constants";
+import { LETTER_PHOTO_ASPECTS, MAX_LETTER_PHOTOS, THEMES } from "./constants";
 import { fieldStyle } from "./controls";
+import { CropModal } from "./CropModal";
 import { cardNameFor, escortNameFor, escortPhotoFor } from "./geometry";
-import { encodeImageFile } from "./imageEncode";
+import { readImageFile } from "./imageEncode";
 import styles from "./letter-studio.module.css";
 import { PhotoPicker } from "./PhotoPicker";
 import type {
@@ -215,6 +216,8 @@ export function LetterFields({ value, onChange, letterConf, font, date, bodyRows
  * 来ているときは「共通設定」の印が付く。枠を押せばこのお手紙の写真に差し替え、
  * × で外し、外したあとは「共通設定の写真を使う」で戻せる。
  *
+ * 選んだ写真は CropModal で切り取ってから入る(便箋には切り取った形のまま載る)。
+ *
  * 枠は `MAX_LETTER_PHOTOS` ぶん並べる(いまは 1 枠)。データは何枚でも持てるので、
  * 枠に収まらない分はそのまま残して触らない。
  */
@@ -227,6 +230,8 @@ function LetterPhotoField({
   onChange: FieldChange;
   letterConf: LetterConfig;
 }) {
+  // 切り取り待ちの写真。{ 枠の番号, 元画像の dataUrl }。null = 切り取り中でない。
+  const [cropping, setCropping] = useState<{ index: number; src: string } | null>(null);
   const [error, setError] = useState("");
   const photos = value.photos ?? [];
   const slots = photos.slice(0, MAX_LETTER_PHOTOS);
@@ -244,16 +249,21 @@ function LetterPhotoField({
     onChange({ photos: [...slots.slice(0, i), next, ...slots.slice(i + 1), ...rest], hidePhotos: false });
   };
 
+  /** 選んだファイルを切り取りモーダルへ渡す。 */
   async function pick(i: number, file: File) {
     setError("");
     try {
-      // クロップは挟まず、元の縦横比のまま縮小して data: URL にする
-      // (保存時に uploadIfDataUrl が Storage へ上げて URL に変わる)。
-      const { dataUrl, ratio } = await encodeImageFile(file);
-      setAt(i, { id: slots[i]?.id ?? "", url: dataUrl, ratio });
+      setCropping({ index: i, src: await readImageFile(file) });
     } catch (err) {
       setError(err instanceof Error ? err.message : "画像の読み込みに失敗しました");
     }
+  }
+
+  /** 切り取りを確定してドラフトに入れる(保存時に uploadIfDataUrl が Storage へ上げる)。 */
+  function applyCrop(dataUrl: string, ratio: number) {
+    if (!cropping) return;
+    setAt(cropping.index, { id: slots[cropping.index]?.id ?? "", url: dataUrl, ratio });
+    setCropping(null);
   }
 
   return (
@@ -282,6 +292,14 @@ function LetterPhotoField({
       </div>
       {/* 見え方はプレビューで分かるので、説明は出さない。エラーのときだけ理由を伝える。 */}
       {error && <span style={{ ...hintStyle, color: COLOR.danger }}>{error}</span>}
+      {cropping && (
+        <CropModal
+          src={cropping.src}
+          aspects={LETTER_PHOTO_ASPECTS}
+          onCancel={() => setCropping(null)}
+          onApply={applyCrop}
+        />
+      )}
     </div>
   );
 }

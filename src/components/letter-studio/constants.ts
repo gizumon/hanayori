@@ -19,6 +19,18 @@ export const HIDDEN_BODY_NOTE = "本文は作成した人だけが見られま�
  */
 export const MAX_LETTER_PHOTOS = 1;
 
+/**
+ * お手紙の写真を切り取るときに選べる形。お手紙は写真をその比率のまま便箋に
+ * 載せるので、席札・エスコートカードのように 1 つに固定せず選ばせる。
+ * 先頭が初期値で、`null` は元の写真と同じ比率(切り取らないのと同じ)。
+ */
+export const LETTER_PHOTO_ASPECTS: { label: string; value: number | null }[] = [
+  { label: "元のまま", value: null },
+  { label: "4:3", value: 4 / 3 },
+  { label: "1:1", value: 1 },
+  { label: "3:4", value: 3 / 4 },
+];
+
 export const THEMES: Record<
   ThemeKey,
   {

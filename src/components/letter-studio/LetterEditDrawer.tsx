@@ -16,8 +16,10 @@ import {
   letterPhotosFor,
 } from "./geometry";
 import styles from "./letter-studio.module.css";
+import { readImageFile } from "./imageEncode";
 import { LetterPreviewFace } from "./LetterPreviewFace";
 import { QrCardFace } from "./QrCardFace";
+import { useStudio } from "./StudioContext";
 import type { BulkLetterPatch, CardConfig, EditorTab, EscortConfig, Letter, Project } from "./types";
 import { useUnsavedGuard } from "./useUnsavedGuard";
 import { useScrollLock } from "@/hooks/useScrollLock";
@@ -93,6 +95,7 @@ export function LetterEditDrawer({
   saving,
   letterUrl,
 }: LetterEditDrawerProps) {
+  const { toast } = useStudio();
   const isCreate = letter === null;
   const initial = letter ?? EMPTY_LETTER;
   const [local, setLocal] = useState<Letter>(initial);
@@ -131,10 +134,12 @@ export function LetterEditDrawer({
   // エスコート写真: アップロードしたらまずクロップし、確定でその場のドラフト(local)に入れる。
   // 実際の Storage アップロードは「新規作成」画面と同じく保存時に行う(persist -> onSave)。
   const [escortCropSrc, setEscortCropSrc] = useState<string | null>(null);
-  const pickEscortPhoto = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => setEscortCropSrc(reader.result as string);
-    reader.readAsDataURL(file);
+  const pickEscortPhoto = async (file: File) => {
+    try {
+      setEscortCropSrc(await readImageFile(file));
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "画像の読み込みに失敗しました");
+    }
   };
   const applyEscortCrop = (dataUrl: string, ratio: number) => {
     // 写真を入れたので「出さない」は解除する。
@@ -406,7 +411,7 @@ export function LetterEditDrawer({
               value={local}
               onChange={set}
               escortConf={escortConf}
-              onUploadPhoto={pickEscortPhoto}
+              onUploadPhoto={(file) => void pickEscortPhoto(file)}
             />
           )}
         </div>
@@ -468,7 +473,8 @@ export function LetterEditDrawer({
         <CropModal
           src={escortCropSrc}
           // チケット風は写真帯(半券45mmを除いた137mmの31% × 全高65mm = 42.5×65mm)、カード風は正円用に 1:1
-          aspect={escortConf.style === "card" ? 1 : 0.653}
+          aspects={[{ value: escortConf.style === "card" ? 1 : 0.653 }]}
+          round={escortConf.style === "card"}
           onCancel={() => setEscortCropSrc(null)}
           onApply={applyEscortCrop}
         />

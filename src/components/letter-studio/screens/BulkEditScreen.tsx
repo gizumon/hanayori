@@ -3,8 +3,9 @@
 import { Lock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "../Avatar";
-import { THEMES } from "../constants";
-import { encodeImageFile } from "../imageEncode";
+import { LETTER_PHOTO_ASPECTS, THEMES } from "../constants";
+import { CropModal } from "../CropModal";
+import { readImageFile } from "../imageEncode";
 import styles from "../letter-studio.module.css";
 import { PhotoPicker } from "../PhotoPicker";
 import type { BulkLetterPatch, EventTab, Honor, Letter, Project, SettingsTab } from "../types";
@@ -69,6 +70,8 @@ interface BulkEditScreenProps {
   onSave: (patches: BulkLetterPatch[]) => Promise<boolean>;
   cardNameFor: (l: Letter) => string;
   escortNameFor: (l: Letter) => string;
+  /** 読めない写真を選んだときの知らせ。表のセルには理由を出す場所が無い。 */
+  toast: (msg: string) => void;
 }
 
 
@@ -123,6 +126,7 @@ export function BulkEditScreen({
   onSave,
   cardNameFor,
   escortNameFor,
+  toast,
 }: BulkEditScreenProps) {
   const categories = useMemo<CategoryDef[]>(() => {
     const cats: CategoryDef[] = [
@@ -243,6 +247,10 @@ export function BulkEditScreen({
   // --- 作業コピー。編集時は行を丸ごと差し替えるので prop の Letter は不変。---
   const [rows, setRows] = useState<Letter[]>(letters);
   const [changed, setChanged] = useState<Set<string>>(() => new Set());
+  // 切り取り待ちの写真。{ 行, 列, 元画像の dataUrl }。null = 切り取り中でない。
+  const [cropping, setCropping] = useState<{ id: string; field: BulkField; src: string } | null>(
+    null
+  );
   // 未保存の変更が無いときだけ、letters の更新(取得・保存反映)を rows に取り込む。
   // ref ではなく state で前回値を持ち、render 中に比較して派生する
   // (useLetterStudio の seedKey / HomeScreen の prevSort と同じパターン)。
@@ -338,21 +346,29 @@ export function BulkEditScreen({
     });
   }
 
+  /** 選んだファイルを切り取りモーダルへ渡す(どのセルの写真かを覚えておく)。 */
   async function onPickPhoto(id: string, f: BulkField, file: File) {
     try {
-      const { dataUrl, ratio } = await encodeImageFile(file);
-      // お手紙の写真は配列。表に出しているのは先頭の 1 枚なので、そこだけ差し替える。
-      if (f === "photos") {
-        const cur = rows.find((r) => r.id === id)?.photos ?? [];
-        setField(id, f, [{ id: cur[0]?.id ?? "", url: dataUrl, ratio }, ...cur.slice(1)], {
-          hidePhotos: false,
-        });
-      } else {
-        setField(id, f, dataUrl, { escortPhotoRatio: ratio, hideEscortPhoto: false });
-      }
-    } catch {
-      /* エンコード失敗時は何もしない(トーストは保存時にまとめて出る) */
+      setCropping({ id, field: f, src: await readImageFile(file) });
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "画像の読み込みに失敗しました");
     }
+  }
+
+  /** 切り取りを確定してセルに入れる。 */
+  function applyCrop(dataUrl: string, ratio: number) {
+    if (!cropping) return;
+    const { id, field: f } = cropping;
+    // お手紙の写真は配列。表に出しているのは先頭の 1 枚なので、そこだけ差し替える。
+    if (f === "photos") {
+      const cur = rows.find((r) => r.id === id)?.photos ?? [];
+      setField(id, f, [{ id: cur[0]?.id ?? "", url: dataUrl, ratio }, ...cur.slice(1)], {
+        hidePhotos: false,
+      });
+    } else {
+      setField(id, f, dataUrl, { escortPhotoRatio: ratio, hideEscortPhoto: false });
+    }
+    setCropping(null);
   }
 
   /** × で外す。共通設定の既定も使わない状態(「なし」)にする。 */
@@ -611,7 +627,7 @@ export function BulkEditScreen({
                     onTheme={(v) => setField(row.id, field.key, v)}
                     onHonor={(v) => setField(row.id, field.key, v)}
                     defaultPhoto={fieldDefaultPhoto}
-                    onPickPhoto={(file) => onPickPhoto(row.id, field.key, file)}
+                    onPickPhoto={(file) => void onPickPhoto(row.id, field.key, file)}
                     onRemovePhoto={() => onRemovePhoto(row.id, field.key)}
                     onUseDefaultPhoto={() => onUseDefaultPhoto(row.id, field.key)}
                   />
@@ -708,6 +724,22 @@ export function BulkEditScreen({
           </button>
         </div>
       </div>
+
+      {cropping && (
+        <CropModal
+          src={cropping.src}
+          aspects={
+            cropping.field === "photos"
+              ? LETTER_PHOTO_ASPECTS
+              // エスコートカードは写真の置き場所の形が決まっているので固定する
+              // (チケット風は写真帯の 42.5×65mm、カード風は正円用に 1:1)。
+              : [{ value: project.escortConfig.style === "card" ? 1 : 0.653 }]
+          }
+          round={cropping.field !== "photos" && project.escortConfig.style === "card"}
+          onCancel={() => setCropping(null)}
+          onApply={applyCrop}
+        />
+      )}
     </>
   );
 }

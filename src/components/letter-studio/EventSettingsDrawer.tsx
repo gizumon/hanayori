@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DatePicker } from "@/components/DatePicker";
-import { FONTS, MAX_LETTER_PHOTOS, THEMES } from "./constants";
+import { FONTS, LETTER_PHOTO_ASPECTS, MAX_LETTER_PHOTOS, THEMES } from "./constants";
 import { FontSelect, PillButton, Toggle, fieldStyle } from "./controls";
 import { isoToJaDate, jaDateToIso } from "@/lib/date";
 import { escortGeom, geom } from "./geometry";
 import { EscortCardFace } from "./EscortCardFace";
 import { CropModal } from "./CropModal";
-import { encodeImageFile } from "./imageEncode";
+import { readImageFile } from "./imageEncode";
 import { LetterPhotos } from "./LetterPhotos";
 import { PhotoPicker } from "./PhotoPicker";
 import { MembersTab } from "./MembersTab";
@@ -138,8 +138,8 @@ export function EventSettingsDrawer({
   const setEscort = (patch: Partial<EscortConfig>) =>
     setLocal((s) => ({ ...s, escort: { ...s.escort, ...patch } }));
 
-  // お手紙の既定写真: 切り取りは挟まず、縮小した data URL をドラフトに入れる
-  // (お手紙側の写真と同じ扱い)。Storage へのアップロードは「設定を保存」時。
+  // お手紙の既定写真: 選んだらまず切り取り、確定したものをドラフト(data URL)に
+  // 入れる(お手紙側の写真と同じ扱い)。Storage へのアップロードは「設定を保存」時。
   const setLetterPhotoAt = (i: number, next: LetterPhoto | null) => {
     setLocal((s) => {
       const photos = [...s.letterPhotos];
@@ -149,23 +149,37 @@ export function EventSettingsDrawer({
     });
   };
 
+  // 切り取り待ちの既定写真。{ 枠の番号, 元画像の dataUrl }。null = 切り取り中でない。
+  const [letterCrop, setLetterCrop] = useState<{ index: number; src: string } | null>(null);
+
   const pickLetterPhoto = async (i: number, file: File) => {
     try {
-      const { dataUrl, ratio } = await encodeImageFile(file);
-      setLetterPhotoAt(i, { id: local.letterPhotos[i]?.id ?? "", url: dataUrl, ratio });
+      setLetterCrop({ index: i, src: await readImageFile(file) });
     } catch (err) {
       toast(err instanceof Error ? err.message : "画像の読み込みに失敗しました");
     }
+  };
+
+  const applyLetterCrop = (dataUrl: string, ratio: number) => {
+    if (!letterCrop) return;
+    setLetterPhotoAt(letterCrop.index, {
+      id: local.letterPhotos[letterCrop.index]?.id ?? "",
+      url: dataUrl,
+      ratio,
+    });
+    setLetterCrop(null);
   };
 
   // エスコートの既定写真: アップロードしたらまずクロップし、確定でドラフト(data URL)に
   // 入れてプレビューする。実際の Storage アップロードは同じく「設定を保存」時に行う。
   const [escortCropSrc, setEscortCropSrc] = useState<string | null>(null);
 
-  const pickEscortDefaultPhoto = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => setEscortCropSrc(reader.result as string);
-    reader.readAsDataURL(file);
+  const pickEscortDefaultPhoto = async (file: File) => {
+    try {
+      setEscortCropSrc(await readImageFile(file));
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "画像の読み込みに失敗しました");
+    }
   };
 
   const applyEscortDefaultCrop = (dataUrl: string, ratio: number) => {
@@ -328,6 +342,9 @@ export function EventSettingsDrawer({
                 style={{
                   borderRadius: 14,
                   overflow: "hidden",
+                  // overflow:hidden だと min-height:auto が 0 になり、スクロール領域(column flex)
+                  // の中で潰れてしまうので縮ませない。
+                  flex: "none",
                   background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
                   padding: "18px 14px",
                   display: "flex",
@@ -680,7 +697,7 @@ export function EventSettingsDrawer({
                     <span style={sectionLabel}>既定の写真</span>
                     <PhotoPicker
                       photo={local.escort.defaultPhoto}
-                      onPick={pickEscortDefaultPhoto}
+                      onPick={(file) => void pickEscortDefaultPhoto(file)}
                       onRemove={() => setEscort({ defaultPhoto: null, defaultPhotoRatio: null })}
                       size={104}
                       label="写真を選ぶ"
@@ -804,9 +821,18 @@ export function EventSettingsDrawer({
         <CropModal
           src={escortCropSrc}
           // チケット風は写真帯(半券45mmを除いた137mmの31% × 全高65mm = 42.5×65mm)、カード風は正円用に 1:1
-          aspect={local.escort.style === "card" ? 1 : 0.653}
+          aspects={[{ value: local.escort.style === "card" ? 1 : 0.653 }]}
+          round={local.escort.style === "card"}
           onCancel={() => setEscortCropSrc(null)}
           onApply={applyEscortDefaultCrop}
+        />
+      )}
+      {letterCrop && (
+        <CropModal
+          src={letterCrop.src}
+          aspects={LETTER_PHOTO_ASPECTS}
+          onCancel={() => setLetterCrop(null)}
+          onApply={applyLetterCrop}
         />
       )}
     </>

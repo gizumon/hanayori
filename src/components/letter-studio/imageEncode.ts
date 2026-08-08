@@ -65,28 +65,21 @@ export function encodeCanvas(
 }
 
 /**
- * 画像ファイルを IMAGE_MAX_WIDTH に収まるよう縮小し、WebP/JPEG の data URL と
- * 縦横比を返す。一括編集の写真セルなど、クロップを挟まない簡易アップロードで使う。
+ * 選んだ画像ファイルを切り取りモーダルに渡せる data URL にする。縮小はここでは
+ * せず、切り取りの確定時に `encodeCanvas` が IMAGE_MAX_WIDTH まで縮めて圧縮する。
  */
-export function encodeImageFile(
-  file: File
-): Promise<{ dataUrl: string; ratio: number }> {
+export function readImageFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(decodeError(file));
     reader.onload = () => {
+      // 読み込めても描けない形式(HEIC など)があるので、ここで一度デコードして
+      // 確かめる。切り取りモーダルに渡ってから失敗すると、伝える先が無くなる。
+      const dataUrl = reader.result as string;
       const img = new Image();
       img.onerror = () => reject(decodeError(file));
-      img.onload = () => {
-        const w = Math.min(IMAGE_MAX_WIDTH, img.width);
-        const h = Math.round((img.height * w) / img.width);
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
-        resolve({ dataUrl: encodeCanvas(canvas), ratio: +(w / h).toFixed(4) });
-      };
-      img.src = reader.result as string;
+      img.onload = () => resolve(dataUrl);
+      img.src = dataUrl;
     };
     reader.readAsDataURL(file);
   });

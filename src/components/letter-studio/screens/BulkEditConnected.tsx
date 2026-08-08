@@ -23,6 +23,7 @@ export function BulkEditConnected() {
       onSave={api.bulkSaveLetters}
       cardNameFor={api.cardNameFor}
       escortNameFor={api.escortNameFor}
+      toast={api.toast}
     />
   );
 }

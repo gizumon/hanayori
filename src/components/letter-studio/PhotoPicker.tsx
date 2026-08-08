@@ -40,6 +40,9 @@ interface PhotoPickerProps {
  * 共通設定から来ていることを示す)。× で外すと空になり、`onUseDefault` から
  * いつでも共通設定に戻せる。
  *
+ * 枠は正方形だが写真は全体を収める(切り取りは CropModal で済ませてあるので、
+ * ここで端を切ると出るものと違って見えてしまう)。
+ *
  * ファイル入力は隠さず読み上げ用に残してある(`display:none` にするとキーボードで
  * 到達できなくなるため)。フォーカスは枠の縁で示す。
  */
@@ -87,8 +90,11 @@ export function PhotoPicker({
               : `1px dashed ${dropping ? COLOR.accent : COLOR.borderDash}`,
             background: photo ? COLOR.surfaceRaised : dropping ? COLOR.tint : COLOR.surface,
             backgroundImage: photo ? `url('${photo}')` : undefined,
-            backgroundSize: "cover",
+            // 写真は切り取って入れるので、枠でさらに切らずに全体を収める
+            // (枠に見えている形が、そのままお手紙・カードに出る形)。
+            backgroundSize: "contain",
             backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
           }}
         >
           <input

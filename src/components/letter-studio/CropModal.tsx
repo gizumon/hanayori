@@ -2,16 +2,31 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
+import { PillButton } from "./controls";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 import { IMAGE_MAX_WIDTH, encodeCanvas } from "./imageEncode";
 import { COLOR } from "@/lib/palette";
 
+/** 切り取り枠の縦横比の選択肢 1 つ。 */
+export interface CropAspectOption {
+  /** ピルに出す文言。選択肢が 1 つのときはピルを出さないので要らない。 */
+  label?: string;
+  /** 幅 / 高さ。null = 元の写真と同じ比率(枠が写真全体に広がる)。 */
+  value: number | null;
+}
+
 interface CropModalProps {
   /** 元画像の dataUrl */
   src: string;
-  /** 切り取り枠の縦横比(幅/高さ) */
-  aspect: number;
+  /**
+   * 切り取り枠の縦横比。1 つだけ渡すとその比率に固定、複数渡すと画面で選べる
+   * (先頭が初期値)。カードのように置き場所の形が決まっているところは固定、
+   * お手紙のように形が自由なところは選ばせる。
+   */
+  aspects: CropAspectOption[];
+  /** true = 枠を円で描く(エスコートカードの丸い写真用)。 */
+  round?: boolean;
   onCancel: () => void;
   onApply: (dataUrl: string, ratio: number) => void;
 }
@@ -27,15 +42,20 @@ type DragMode = "move" | "nw" | "ne" | "sw" | "se";
 const HANDLE_SIZE = 16;
 
 /**
- * アップロードした写真の上に固定比率の枠を重ね、枠のドラッグで位置、
- * 四隅ハンドルのドラッグで大きさを調整して切り取るモーダル。
+ * アップロードした写真の上に枠を重ね、枠のドラッグで位置、四隅ハンドルの
+ * ドラッグで大きさを調整して切り取るモーダル。枠の縦横比は `aspects` で決まり、
+ * 選択肢を複数渡したときだけ画面で選び直せる(選び直すと枠は中央の最大に戻る)。
  */
-export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
+export function CropModal({ src, aspects, round, onCancel, onApply }: CropModalProps) {
   useScrollLock();
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [disp, setDisp] = useState<{ w: number; h: number } | null>(null);
   const [frame, setFrame] = useState<Frame | null>(null);
   const [applying, setApplying] = useState(false);
+  const [pick, setPick] = useState(0);
+  // 「元のまま」(null)は写真を読み込むまで比率が分からないので natural から決める。
+  const picked = aspects[pick]?.value ?? null;
+  const aspect = picked ?? (natural ? natural.w / natural.h : 1);
   const dragRef = useRef<{
     mode: DragMode;
     startX: number;
@@ -55,12 +75,13 @@ export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
       const h = img.height * scale;
       setNatural({ w: img.width, h: img.height });
       setDisp({ w, h });
-      // 収まる最大の枠を中央に置く
-      const fw = Math.min(w, h * aspect);
-      setFrame({ x: (w - fw) / 2, y: (h - fw / aspect) / 2, w: fw });
+      // 収まる最大の枠を中央に置く(比率を選び直したときもここへ戻す)
+      const a = picked ?? img.width / img.height;
+      const fw = Math.min(w, h * a);
+      setFrame({ x: (w - fw) / 2, y: (h - fw / a) / 2, w: fw });
     };
     img.src = src;
-  }, [src, aspect]);
+  }, [src, picked]);
 
   const maxFrameW = disp ? Math.min(disp.w, disp.h * aspect) : 0;
   const minFrameW = maxFrameW * 0.15;
@@ -205,6 +226,23 @@ export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
         <div style={{ fontSize: FONT_SIZE.caption, color: COLOR.inkSoft, letterSpacing: "0.05em", marginTop: -6 }}>
           枠をドラッグして位置を、四隅をドラッグして大きさを調整してください
         </div>
+        {aspects.length > 1 && (
+          <div
+            role="group"
+            aria-label="切り取る形"
+            style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+          >
+            {aspects.map((a, i) => (
+              <PillButton
+                key={a.label ?? i}
+                label={a.label ?? ""}
+                size="sm"
+                active={i === pick}
+                onClick={() => setPick(i)}
+              />
+            ))}
+          </div>
+        )}
         {disp && frame ? (
           <div
             style={{
@@ -243,7 +281,7 @@ export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
                   top: frame.y,
                   width: frame.w,
                   height: frameH,
-                  borderRadius: aspect === 1 ? "50%" : 4,
+                  borderRadius: round ? "50%" : 4,
                   boxShadow: "0 0 0 9999px rgba(60,42,46,0.55)",
                 }}
               />
@@ -260,7 +298,7 @@ export function CropModal({ src, aspect, onCancel, onApply }: CropModalProps) {
                 width: frame.w,
                 height: frameH,
                 border: `2px solid ${COLOR.surfaceRaised}`,
-                borderRadius: aspect === 1 ? "50%" : 4,
+                borderRadius: round ? "50%" : 4,
                 cursor: "move",
                 touchAction: "none",
               }}
