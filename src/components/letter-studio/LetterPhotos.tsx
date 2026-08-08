@@ -48,7 +48,10 @@ export function LetterPhotos({ photos, paper, width, margin }: LetterPhotosProps
             style={{
               position: "absolute",
               inset: 0,
-              background: `radial-gradient(ellipse 76% 76% at 50% 50%, ${withAlpha(paper, 0)} 45%, ${paper} 100%)`,
+              // 中心の 34% までは紙を重ねず写真のまま、そこから 90% にかけて紙色へ沈める。
+              // 途中に半分ほどの段を挟んで減衰を緩くし、楕円の外(＝四隅)は紙で埋まるので
+              // 角が最初に消え、輪郭の残らない楕円形のにじみになる。
+              background: `radial-gradient(ellipse 74% 74% at 50% 50%, ${withAlpha(paper, 0)} 34%, ${withAlpha(paper, 40)} 62%, ${paper} 90%)`,
             }}
           />
         </div>
