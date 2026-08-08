@@ -28,10 +28,12 @@ export const EnvelopeScene = forwardRef<HTMLDivElement, EnvelopeSceneProps>(
     const flapT = opening ? "rotateX(178deg)" : "none";
     const flapZ = opening ? 0 : 3;
     const flapTr = opening
-      ? "transform 1s cubic-bezier(0.45,0,0.2,1) 0.55s, z-index 0s 1.05s"
+      // z-index はフラップが 90 度を越えて裏返る頃(≒1.25s)に落とす。
+      // 便箋がせり上がり始める 1.35s より後だと、開いた三角が便箋に被さる。
+      ? "transform 1.3s cubic-bezier(0.4,0,0.2,1) 0.65s, z-index 0s 1.25s"
       : "transform 0.7s cubic-bezier(0.45,0,0.2,1)";
     const peekT = opening ? "translateY(-56%)" : "none";
-    const sealAnim = opening ? "wl-seal-off 0.9s cubic-bezier(0.45,0,0.55,1) forwards" : "none";
+    const sealAnim = opening ? "wl-seal-off 1.3s cubic-bezier(0.35,0,0.55,1) forwards" : "none";
 
     return (
       <div
@@ -44,7 +46,7 @@ export const EnvelopeScene = forwardRef<HTMLDivElement, EnvelopeSceneProps>(
           animation: envAnim,
           transform: envT,
           opacity: envO,
-          transition: "transform 0.85s cubic-bezier(0.55,0,0.75,0.4), opacity 0.7s ease 0.1s",
+          transition: "transform 1.3s cubic-bezier(0.4,0,0.5,0.6), opacity 1.1s ease 0.15s",
           filter: "drop-shadow(0 18px 30px rgba(150,110,130,0.22))",
         }}
       >
@@ -86,7 +88,7 @@ export const EnvelopeScene = forwardRef<HTMLDivElement, EnvelopeSceneProps>(
               boxShadow: "0 -2px 10px rgba(150,110,130,0.12)",
               backgroundImage: `repeating-linear-gradient(to bottom, transparent 0 14px, ${rule} 14px 15px)`,
               transform: peekT,
-              transition: "transform 1.35s cubic-bezier(0.25,1,0.4,1) 1.15s",
+              transition: "transform 1.7s cubic-bezier(0.25,1,0.4,1) 1.35s",
               zIndex: 1,
             }}
           />

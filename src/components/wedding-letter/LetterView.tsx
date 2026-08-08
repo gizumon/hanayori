@@ -45,33 +45,57 @@ export function LetterView({ to, body, theme: themeKey, photos, date, font: font
     const rect = env.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height * 0.25;
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 16; i++) {
       const p = document.createElement("div");
       p.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;width:8px;height:10px;background:${
         i % 2 ? "#EBD3A6" : theme.gold
       };border-radius:60% 40% 55% 45% / 50% 55% 45% 50%;pointer-events:none;z-index:45`;
       document.body.appendChild(p);
-      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.9;
-      const dist = 60 + Math.random() * 90;
-      const dx = Math.cos(angle) * dist;
-      const dy = Math.sin(angle) * dist + 40;
-      const anim = p.animate(
-        [
-          { transform: "translate(0,0) rotate(0deg) scale(1)", opacity: 0.9 },
-          {
-            transform: `translate(${dx * 0.7}px, ${Math.sin(angle) * dist * 0.9}px) rotate(${
-              120 + Math.random() * 120
-            }deg)`,
-            opacity: 0.85,
-            offset: 0.45,
-          },
-          {
-            transform: `translate(${dx}px, ${dy}px) rotate(${260 + Math.random() * 160}deg) scale(0.7)`,
-            opacity: 0,
-          },
-        ],
-        { duration: 1400 + Math.random() * 500, easing: "cubic-bezier(0.2,0.6,0.4,1)", fill: "forwards" }
-      );
+      // 弾けた勢いを空気抵抗で失いながら、重力で終端速度まで落ちるところまでを積分する。
+      // 位置を実際に計算してキーフレームに書き出すので easing は linear のままでよい。
+      const duration = 2800 + Math.random() * 1400;
+      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 2.9; // ほぼ真横まで開いた扇形
+      const drag = 2.2 + Math.random() * 0.9; // 空気抵抗(速度に比例)
+      // 抵抗で止まるまでの距離は初速/抵抗。手紙の外まで届くよう画面幅を基準に決める。
+      const reach = Math.max(window.innerWidth, 360) * (0.35 + Math.random() * 0.85);
+      const speed = reach * drag; // 初速 px/s
+      const gravity = 180 + Math.random() * 55; // px/s^2
+      const swayAmp = 7 + Math.random() * 7; // ひらひら横に振れる幅
+      const swayFreq = 0.45 + Math.random() * 0.5; // 1秒あたりの往復
+      const swayPhase = Math.random() * Math.PI * 2;
+      const spin = 80 + Math.random() * 70; // 舞いながら回る速さ deg/s
+
+      const steps = 26;
+      const dt = duration / 1000 / steps;
+      let x = 0;
+      let y = 0;
+      let vx = Math.cos(angle) * speed;
+      let vy = Math.sin(angle) * speed;
+      const frames: Keyframe[] = [];
+      for (let s = 0; s <= steps; s++) {
+        const t = s * dt;
+        const u = s / steps;
+        // 横揺れと同じ位相で厚みを潰し、裏返りながら舞う見え方にする。
+        const wobble = swayPhase + t * swayFreq * Math.PI * 2;
+        frames.push({
+          offset: u,
+          transform: `translate(${(x + Math.sin(wobble) * swayAmp).toFixed(1)}px, ${y.toFixed(
+            1
+          )}px) rotate(${(t * spin).toFixed(1)}deg) scaleX(${Math.cos(wobble).toFixed(2)})`,
+          opacity: 0.5 * Math.min(1, u / 0.1) * Math.min(1, (1 - u) / 0.3),
+        });
+        vx -= drag * vx * dt;
+        vy += (gravity - drag * vy) * dt;
+        x += vx * dt;
+        y += vy * dt;
+      }
+
+      const anim = p.animate(frames, {
+        duration,
+        delay: Math.random() * 450,
+        easing: "linear",
+        fill: "forwards",
+      });
       anim.onfinish = () => p.remove();
     }
   }, [theme.gold]);
@@ -85,9 +109,9 @@ export function LetterView({ to, body, theme: themeKey, photos, date, font: font
       const schedule = (fn: () => void, ms: number) => {
         timers.current.push(setTimeout(fn, ms));
       };
-      schedule(burst, 1350);
-      schedule(() => setPhase("leaving"), 2100);
-      schedule(() => setPhase("gone"), 3000);
+      schedule(burst, 1800);
+      schedule(() => setPhase("leaving"), 2900);
+      schedule(() => setPhase("gone"), 4600);
       return "opening";
     });
   }, [burst]);
@@ -133,7 +157,7 @@ export function LetterView({ to, body, theme: themeKey, photos, date, font: font
 
   const lines = body.split("\n").map((s, i) => ({
     text: s === "" ? " " : s,
-    delay: `${0.5 + Math.min(i, 18) * 0.12}s`,
+    delay: `${0.7 + Math.min(i, 18) * 0.16}s`,
   }));
 
   return (
@@ -160,7 +184,7 @@ export function LetterView({ to, body, theme: themeKey, photos, date, font: font
             padding: "clamp(40px,8vh,84px) 18px clamp(70px,10vh,110px)",
             opacity: leaving ? 1 : 0,
             transform: `translateY(${leaving ? "0px" : "26px"})`,
-            transition: "opacity 1s ease, transform 1s cubic-bezier(0.22,1,0.36,1)",
+            transition: "opacity 1.6s ease, transform 1.6s cubic-bezier(0.22,1,0.36,1)",
           }}
         >
           <div
@@ -232,7 +256,7 @@ export function LetterView({ to, body, theme: themeKey, photos, date, font: font
                     minHeight: "2.4em",
                     opacity: leaving ? 1 : 0,
                     transform: `translateY(${leaving ? "0px" : "6px"})`,
-                    transition: `opacity 0.8s ease ${line.delay}, transform 0.8s ease ${line.delay}`,
+                    transition: `opacity 1.2s ease ${line.delay}, transform 1.2s ease ${line.delay}`,
                   }}
                 >
                   {line.text}
@@ -302,7 +326,9 @@ export function LetterView({ to, body, theme: themeKey, photos, date, font: font
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 40,
+            // 退場に入ったら本文(main の z-index:2)より下へ潜らせる。
+            // 上に残したままだと、消えていく封筒と全面の背景がフェードイン中の手紙に被さる。
+            zIndex: leaving ? 1 : 40,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -312,7 +338,7 @@ export function LetterView({ to, body, theme: themeKey, photos, date, font: font
             background: `radial-gradient(ellipse 120% 60% at 50% -10%, ${theme.bg2} 0%, transparent 60%), linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
             opacity: leaving ? 0 : 1,
             pointerEvents: leaving ? "none" : "auto",
-            transition: "opacity 0.9s ease 0.15s",
+            transition: "opacity 1.4s ease 0.2s",
           }}
         >
           <EnvelopeScene
@@ -347,21 +373,58 @@ export function LetterView({ to, body, theme: themeKey, photos, date, font: font
           href="/"
           target="_blank"
           rel="noopener noreferrer"
+          className={styles.credit}
           style={{
             position: "fixed",
             left: "50%",
             bottom: 12,
             transform: "translateX(-50%)",
             zIndex: 30,
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
             fontFamily: "'Shippori Mincho', serif",
             fontSize: 11,
             letterSpacing: "0.1em",
             color: theme.inkSoft,
-            opacity: 0.45,
             textDecoration: "none",
+            whiteSpace: "nowrap",
           }}
         >
-          Hanayori
+          {/* 封蝋と同じ、ロゴ由来の二枚花びら。小さく置くので花びらの外接矩形まで viewBox を寄せている。 */}
+          <svg
+            viewBox="7.4 6.7 15.3 16.7"
+            fill={theme.gold}
+            stroke={theme.gold}
+            strokeWidth="0.5"
+            aria-hidden="true"
+            style={{ width: 9, height: 10, flexShrink: 0 }}
+          >
+            <g transform="translate(-0.55 2.8)">
+              <ellipse
+                cx="15"
+                cy="12.6"
+                rx="4.3"
+                ry="7.8"
+                fillOpacity="0.45"
+                transform="rotate(-17 15 20.4)"
+              />
+              <ellipse
+                cx="15"
+                cy="11.6"
+                rx="4.8"
+                ry="8.4"
+                fillOpacity="0.75"
+                transform="rotate(19 15 20.4)"
+              />
+            </g>
+          </svg>
+          <span className={styles.creditName}>
+            Hanayori
+            <span style={{ fontSize: 10, letterSpacing: "0.14em", marginLeft: 7 }}>
+              — 花嫁のお便り —
+            </span>
+          </span>
         </a>
       )}
 

@@ -63,11 +63,11 @@
     opacity: 1;
   }
   40% {
-    transform: translate(-50%, -62%) scale(1.04) rotate(-6deg);
-    opacity: 1;
+    transform: translate(-50%, -58%) scale(1.02) rotate(-5deg);
+    opacity: 0.9;
   }
   100% {
-    transform: translate(-50%, -145%) scale(0.55) rotate(-20deg);
+    transform: translate(-50%, -128%) scale(0.7) rotate(-14deg);
     opacity: 0;
   }
 }
