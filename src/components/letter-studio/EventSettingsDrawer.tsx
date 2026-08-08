@@ -326,12 +326,9 @@ export function EventSettingsDrawer({
         </div>
 
         <div
+          className={styles.scrollColumn}
           style={{
-            flex: 1,
-            overflowY: "auto",
             padding: "16px 22px 20px",
-            display: "flex",
-            flexDirection: "column",
             gap: 14,
           }}
         >
@@ -342,9 +339,6 @@ export function EventSettingsDrawer({
                 style={{
                   borderRadius: 14,
                   overflow: "hidden",
-                  // overflow:hidden だと min-height:auto が 0 になり、スクロール領域(column flex)
-                  // の中で潰れてしまうので縮ませない。
-                  flex: "none",
                   background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
                   padding: "18px 14px",
                   display: "flex",

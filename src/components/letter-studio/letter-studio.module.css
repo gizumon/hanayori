@@ -340,6 +340,18 @@
   }
 }
 
+/* 縦に積むスクロール領域。中身は常に自然な高さのまま(overflow:hidden を持つ
+   カードは min-height:auto が 0 になり、放っておくと潰れてはみ出す) */
+.scrollColumn {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.scrollColumn > * {
+  flex: none;
+}
+
 /* 横スクロールは残しつつスクロールバーだけ隠す(タブ帯など) */
 .noScrollbar {
   scrollbar-width: none; /* Firefox */
