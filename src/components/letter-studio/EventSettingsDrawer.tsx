@@ -323,53 +323,7 @@ export function EventSettingsDrawer({
         >
           {tab === "general" && (
             <>
-              <label style={{ display: "flex", flexDirection: "column", gap: 6, ...sectionLabel }}>
-                イベント名
-                <input
-                  value={local.name}
-                  onChange={(e) => setLocal((s) => ({ ...s, name: e.target.value }))}
-                  className={styles.field}
-                  style={fieldStyle({ fontSize: FONT_SIZE.input })}
-                />
-              </label>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <span style={sectionLabel}>挙式日</span>
-                <div style={{ maxWidth: 260 }}>
-                  <DatePicker
-                    value={jaDateToIso(local.date)}
-                    onChange={(iso) => setLocal((s) => ({ ...s, date: iso ? isoToJaDate(iso) : null }))}
-                  />
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span style={sectionLabel}>お手紙のフォント</span>
-                <FontSelect
-                  value={local.letterFont}
-                  onChange={(letterFont) => setLocal((s) => ({ ...s, letterFont }))}
-                  sample="今日は来てくれてありがとう"
-                />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span style={sectionLabel}>お手紙の既定の写真</span>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {Array.from({ length: MAX_LETTER_PHOTOS }, (_, i) => (
-                    <PhotoPicker
-                      key={local.letterPhotos[i]?.id || i}
-                      photo={local.letterPhotos[i]?.url ?? null}
-                      onPick={(file) => void pickLetterPhoto(i, file)}
-                      onRemove={() => setLetterPhotoAt(i, null)}
-                      size={104}
-                      label="写真を選ぶ"
-                      ariaLabel="お手紙の既定の写真"
-                    />
-                  ))}
-                </div>
-                {/* 画面から読み取れない優先順位だけを伝える。 */}
-                <span style={{ fontSize: FONT_SIZE.overline, color: COLOR.inkFaint, letterSpacing: "0.05em" }}>
-                  お手紙ごとに設定した写真が優先されます
-                </span>
-              </div>
-              {/* プレビューはどのタブでも一番下(タブを切り替えても位置が動かない) */}
+              {/* プレビューはどのタブでも一番上(タブを切り替えても位置が動かない) */}
               <div
                 style={{
                   borderRadius: 14,
@@ -478,6 +432,52 @@ export function EventSettingsDrawer({
                   プレビュー(本文はお手紙ごとに入ります)
                 </span>
               </div>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, ...sectionLabel }}>
+                イベント名
+                <input
+                  value={local.name}
+                  onChange={(e) => setLocal((s) => ({ ...s, name: e.target.value }))}
+                  className={styles.field}
+                  style={fieldStyle({ fontSize: FONT_SIZE.input })}
+                />
+              </label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={sectionLabel}>挙式日</span>
+                <div style={{ maxWidth: 260 }}>
+                  <DatePicker
+                    value={jaDateToIso(local.date)}
+                    onChange={(iso) => setLocal((s) => ({ ...s, date: iso ? isoToJaDate(iso) : null }))}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <span style={sectionLabel}>お手紙のフォント</span>
+                <FontSelect
+                  value={local.letterFont}
+                  onChange={(letterFont) => setLocal((s) => ({ ...s, letterFont }))}
+                  sample="今日は来てくれてありがとう"
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <span style={sectionLabel}>お手紙の既定の写真</span>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {Array.from({ length: MAX_LETTER_PHOTOS }, (_, i) => (
+                    <PhotoPicker
+                      key={local.letterPhotos[i]?.id || i}
+                      photo={local.letterPhotos[i]?.url ?? null}
+                      onPick={(file) => void pickLetterPhoto(i, file)}
+                      onRemove={() => setLetterPhotoAt(i, null)}
+                      size={104}
+                      label="写真を選ぶ"
+                      ariaLabel="お手紙の既定の写真"
+                    />
+                  ))}
+                </div>
+                {/* 画面から読み取れない優先順位だけを伝える。 */}
+                <span style={{ fontSize: FONT_SIZE.overline, color: COLOR.inkFaint, letterSpacing: "0.05em" }}>
+                  お手紙ごとに設定した写真が優先されます
+                </span>
+              </div>
             </>
           )}
 
@@ -490,6 +490,40 @@ export function EventSettingsDrawer({
               />
               {local.card.enabled && (
                 <>
+                  <div
+                    style={{
+                      borderRadius: 14,
+                      background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
+                      padding: "18px 14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <QrCardFace
+                      width={`min(${previewGeom.flexDir === "row" ? 380 : 250}px,100%)`}
+                      aspect={previewGeom.aspect}
+                      paper={theme.paper}
+                      accent={theme.accent}
+                      gold={theme.gold}
+                      ink={theme.ink}
+                      inkSoft={theme.inkSoft}
+                      font={FONTS[local.card.font].family}
+                      frame={local.card.frame}
+                      geometry={previewGeom}
+                      cardName={previewName}
+                      heading={local.card.heading}
+                      note={local.card.note}
+                      footText={local.card.nameOverride.trim() || local.name}
+                      date={local.date || ""}
+                      qrUrl=""
+                      boxShadow="0 10px 30px rgba(150,110,130,0.22)"
+                    />
+                    <span style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkMuted, letterSpacing: "0.05em" }}>
+                      プレビュー(名前はお手紙ごとに入ります) ・ 実寸 {previewGeom.sizeLabel}
+                    </span>
+                  </div>
                   <label style={{ display: "flex", flexDirection: "column", gap: 6, ...sectionLabel }}>
                     イベント名(空欄でイベント名を使用)
                     <input
@@ -570,40 +604,6 @@ export function EventSettingsDrawer({
                       style={fieldStyle({ fontSize: FONT_SIZE.input, lineHeight: 1.7, resize: "vertical" })}
                     />
                   </label>
-                  <div
-                    style={{
-                      borderRadius: 14,
-                      background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
-                      padding: "18px 14px",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <QrCardFace
-                      width={`min(${previewGeom.flexDir === "row" ? 380 : 250}px,100%)`}
-                      aspect={previewGeom.aspect}
-                      paper={theme.paper}
-                      accent={theme.accent}
-                      gold={theme.gold}
-                      ink={theme.ink}
-                      inkSoft={theme.inkSoft}
-                      font={FONTS[local.card.font].family}
-                      frame={local.card.frame}
-                      geometry={previewGeom}
-                      cardName={previewName}
-                      heading={local.card.heading}
-                      note={local.card.note}
-                      footText={local.card.nameOverride.trim() || local.name}
-                      date={local.date || ""}
-                      qrUrl=""
-                      boxShadow="0 10px 30px rgba(150,110,130,0.22)"
-                    />
-                    <span style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkMuted, letterSpacing: "0.05em" }}>
-                      プレビュー(名前はお手紙ごとに入ります) ・ 実寸 {previewGeom.sizeLabel}
-                    </span>
-                  </div>
                 </>
               )}
             </>
@@ -618,6 +618,40 @@ export function EventSettingsDrawer({
               />
               {local.escort.enabled && (
                 <>
+                  <div
+                    style={{
+                      borderRadius: 14,
+                      background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
+                      padding: "18px 14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <EscortCardFace
+                      style={local.escort.style}
+                      width={`min(${local.escort.style === "card" ? 220 : 360}px,100%)`}
+                      aspect={escortPreviewGeom.aspect}
+                      paper={theme.paper}
+                      accent={theme.accent}
+                      gold={theme.gold}
+                      ink={theme.ink}
+                      inkSoft={theme.inkSoft}
+                      font={FONTS[local.escort.font].family}
+                      name={escortPreviewName}
+                      tableNo="A"
+                      tableLabel={local.escort.tableLabel}
+                      heading={local.escort.heading}
+                      message=""
+                      photo={local.escort.defaultPhoto || ""}
+                      footText={local.escort.nameOverride.trim() || local.name}
+                      boxShadow="0 10px 30px rgba(150,110,130,0.22)"
+                    />
+                    <span style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkMuted, letterSpacing: "0.05em" }}>
+                      プレビュー(卓番・名前はお手紙ごとに入ります) ・ 実寸 {escortPreviewGeom.sizeLabel}
+                    </span>
+                  </div>
                   <label style={{ display: "flex", flexDirection: "column", gap: 6, ...sectionLabel }}>
                     イベント名(空欄でイベント名を使用)
                     <input
@@ -699,40 +733,6 @@ export function EventSettingsDrawer({
                       style={fieldStyle()}
                     />
                   </label>
-                  <div
-                    style={{
-                      borderRadius: 14,
-                      background: `linear-gradient(175deg, ${theme.bg1} 0%, ${theme.g1} 55%, ${theme.g2} 100%)`,
-                      padding: "18px 14px",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <EscortCardFace
-                      style={local.escort.style}
-                      width={`min(${local.escort.style === "card" ? 220 : 360}px,100%)`}
-                      aspect={escortPreviewGeom.aspect}
-                      paper={theme.paper}
-                      accent={theme.accent}
-                      gold={theme.gold}
-                      ink={theme.ink}
-                      inkSoft={theme.inkSoft}
-                      font={FONTS[local.escort.font].family}
-                      name={escortPreviewName}
-                      tableNo="A"
-                      tableLabel={local.escort.tableLabel}
-                      heading={local.escort.heading}
-                      message=""
-                      photo={local.escort.defaultPhoto || ""}
-                      footText={local.escort.nameOverride.trim() || local.name}
-                      boxShadow="0 10px 30px rgba(150,110,130,0.22)"
-                    />
-                    <span style={{ fontSize: FONT_SIZE.micro, color: COLOR.inkMuted, letterSpacing: "0.05em" }}>
-                      プレビュー(卓番・名前はお手紙ごとに入ります) ・ 実寸 {escortPreviewGeom.sizeLabel}
-                    </span>
-                  </div>
                 </>
               )}
             </>
