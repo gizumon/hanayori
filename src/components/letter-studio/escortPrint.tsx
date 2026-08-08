@@ -3,7 +3,7 @@
 import { createRoot } from "react-dom/client";
 import { THEMES } from "./constants";
 import { EscortCardFace } from "./EscortCardFace";
-import { escortGeom, escortNameFor } from "./geometry";
+import { escortGeom, escortNameFor, escortPhotoFor } from "./geometry";
 import {
   CARD_91X55_LAYOUT,
   runSheetCapture,
@@ -67,7 +67,7 @@ async function captureOne(
           tableLabel={ec.tableLabel}
           heading={ec.heading}
           message={letter.escortMessage || ""}
-          photo={letter.escortPhoto || ec.defaultPhoto || ""}
+          photo={escortPhotoFor(letter, ec)}
           footText={ec.nameOverride.trim() || fallbackFootText}
           boxShadow="none"
         />

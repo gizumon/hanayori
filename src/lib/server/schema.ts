@@ -116,6 +116,11 @@ export interface EscortFieldsDoc {
   honor: Honor | null;
   /** 切り取り済みの写真。トリミングはアップロード時にクライアントで確定する。 */
   photo: LetterPhoto | null;
+  /**
+   * true = このお手紙のエスコートカードには写真を出さない(イベント既定も使わない)。
+   * 写真を持っているときは意味を持たない(自分の写真が優先される)。
+   */
+  hidePhoto?: boolean;
 }
 
 /**

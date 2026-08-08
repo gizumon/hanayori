@@ -30,6 +30,7 @@ function sanitize(raw: unknown): BulkLetterPatch | null {
   if ("escortHonor" in u) p.escortHonor = (u.escortHonor as Honor | null) ?? null;
   if ("escortPhoto" in u) p.escortPhoto = (u.escortPhoto as string | null) ?? null;
   if ("escortPhotoRatio" in u) p.escortPhotoRatio = u.escortPhotoRatio as number | undefined;
+  if ("hideEscortPhoto" in u) p.hideEscortPhoto = Boolean(u.hideEscortPhoto);
   return p;
 }
 

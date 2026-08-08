@@ -41,8 +41,6 @@ interface FieldDef {
   placeholder?: string;
   /** テキスト欄の自動生成プレースホルダ(空欄時に実際に使われる値)。 */
   auto?: (l: Letter) => string;
-  /** 写真欄が書き戻す縦横比フィールド(お手紙の写真は配列の中に縦横比を持つので不要)。 */
-  ratioKey?: "escortPhotoRatio";
   /** 敬称欄の「既定」が指すイベント既定値。 */
   honorDefault?: Honor;
 }
@@ -216,7 +214,6 @@ export function BulkEditScreen({
             key: "escortPhoto",
             label: "写真",
             type: "photo",
-            ratioKey: "escortPhotoRatio",
             desc: "エスコートカードに載せる写真(任意)。空欄ならイベント既定写真。",
           },
         ],
@@ -297,6 +294,14 @@ export function BulkEditScreen({
   // 卓番は名前の下に添える。ただし卓番そのものを編集している列とは重ねない。
   const showTableNo = project.escortConfig.enabled && field.key !== "tableNo";
 
+  // いま編集している写真の列で、共通設定に入っている既定の写真。
+  const fieldDefaultPhoto =
+    field.key === "photos"
+      ? project.letterConfig.defaultPhotos[0]?.url ?? null
+      : field.key === "escortPhoto"
+        ? project.escortConfig.defaultPhoto
+        : null;
+
   const cellKey = (id: string, f: BulkField) => `${id}:${f}`;
   const changedForField = (f: BulkField) =>
     [...changed].filter((k) => k.endsWith(`:${f}`)).length;
@@ -312,46 +317,58 @@ export function BulkEditScreen({
       ? JSON.stringify(a ?? []) === JSON.stringify(b ?? [])
       : norm(a) === norm(b);
 
-  function setField(id: string, f: BulkField, value: unknown, ratio?: number, ratioKey?: FieldDef["ratioKey"]) {
-    setRows((rs) =>
-      rs.map((r) =>
-        r.id === id
-          ? { ...r, [f]: value, ...(ratioKey ? { [ratioKey]: ratio } : null) }
-          : r
-      )
-    );
+  /**
+   * セルの値を書き換える。`extra` は同時に動かす関連フィールド(写真の縦横比や
+   * 「出さない」フラグ)で、変更ありの印は列のキー 1 つにまとめる。
+   */
+  function setField(id: string, f: BulkField, value: unknown, extra?: Partial<Letter>) {
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, [f]: value, ...extra } : r)));
     setChanged((c) => {
       const next = new Set(c);
       const base = baseline.get(id) as Record<string, unknown> | undefined;
       const k = cellKey(id, f);
-      if (base && sameValue(base[f], value)) next.delete(k);
+      // 関連フィールドだけが動くこともある(「共通設定を使う」↔「なし」)ので、
+      // 変更の有無はまとめて見る。
+      const patched: Record<string, unknown> = { [f]: value, ...extra };
+      const unchanged =
+        base && Object.keys(patched).every((key) => sameValue(base[key], patched[key]));
+      if (unchanged) next.delete(k);
       else next.add(k);
       return next;
     });
   }
 
-  async function onPickPhoto(id: string, f: BulkField, ratioKey: FieldDef["ratioKey"], file: File) {
+  async function onPickPhoto(id: string, f: BulkField, file: File) {
     try {
       const { dataUrl, ratio } = await encodeImageFile(file);
       // お手紙の写真は配列。表に出しているのは先頭の 1 枚なので、そこだけ差し替える。
       if (f === "photos") {
         const cur = rows.find((r) => r.id === id)?.photos ?? [];
-        setField(id, f, [{ id: cur[0]?.id ?? "", url: dataUrl, ratio }, ...cur.slice(1)]);
+        setField(id, f, [{ id: cur[0]?.id ?? "", url: dataUrl, ratio }, ...cur.slice(1)], {
+          hidePhotos: false,
+        });
       } else {
-        setField(id, f, dataUrl, ratio, ratioKey);
+        setField(id, f, dataUrl, { escortPhotoRatio: ratio, hideEscortPhoto: false });
       }
     } catch {
       /* エンコード失敗時は何もしない(トーストは保存時にまとめて出る) */
     }
   }
 
-  function onRemovePhoto(id: string, f: BulkField, ratioKey: FieldDef["ratioKey"]) {
+  /** × で外す。共通設定の既定も使わない状態(「なし」)にする。 */
+  function onRemovePhoto(id: string, f: BulkField) {
     if (f === "photos") {
       const cur = rows.find((r) => r.id === id)?.photos ?? [];
-      setField(id, f, cur.slice(1));
+      setField(id, f, cur.slice(1), { hidePhotos: true });
     } else {
-      setField(id, f, null, undefined, ratioKey);
+      setField(id, f, null, { escortPhotoRatio: undefined, hideEscortPhoto: true });
     }
+  }
+
+  /** 共通設定の既定写真に戻す。 */
+  function onUseDefaultPhoto(id: string, f: BulkField) {
+    if (f === "photos") setField(id, f, [], { hidePhotos: false });
+    else setField(id, f, null, { escortPhotoRatio: undefined, hideEscortPhoto: false });
   }
 
   function selectCategory(key: string) {
@@ -378,7 +395,12 @@ export function BulkEditScreen({
       const p: Record<string, unknown> = { id };
       fields.forEach((f) => {
         p[f] = rr[f] ?? null;
-        if (f === "escortPhoto") p.escortPhotoRatio = row.escortPhotoRatio;
+        // 写真の列は関連フィールドも一緒に送る(縦横比と「出さない」)。
+        if (f === "photos") p.hidePhotos = row.hidePhotos ?? false;
+        if (f === "escortPhoto") {
+          p.escortPhotoRatio = row.escortPhotoRatio;
+          p.hideEscortPhoto = row.hideEscortPhoto ?? false;
+        }
       });
       patches.push(p as BulkLetterPatch);
     });
@@ -588,8 +610,10 @@ export function BulkEditScreen({
                     onText={(v) => setField(row.id, field.key, v)}
                     onTheme={(v) => setField(row.id, field.key, v)}
                     onHonor={(v) => setField(row.id, field.key, v)}
-                    onPickPhoto={(file) => onPickPhoto(row.id, field.key, field.ratioKey, file)}
-                    onRemovePhoto={() => onRemovePhoto(row.id, field.key, field.ratioKey)}
+                    defaultPhoto={fieldDefaultPhoto}
+                    onPickPhoto={(file) => onPickPhoto(row.id, field.key, file)}
+                    onRemovePhoto={() => onRemovePhoto(row.id, field.key)}
+                    onUseDefaultPhoto={() => onUseDefaultPhoto(row.id, field.key)}
                   />
                 ))}
               </tbody>
@@ -761,11 +785,14 @@ interface RowProps {
   locked: boolean;
   narrow: boolean;
   changed: boolean;
+  /** 写真の列で、共通設定に入っている既定の写真。無ければ null。 */
+  defaultPhoto: string | null;
   onText: (v: string) => void;
   onTheme: (v: Letter["theme"]) => void;
   onHonor: (v: Honor | null) => void;
   onPickPhoto: (file: File) => void;
   onRemovePhoto: () => void;
+  onUseDefaultPhoto: () => void;
 }
 
 function Row({
@@ -777,11 +804,13 @@ function Row({
   locked,
   narrow,
   changed,
+  defaultPhoto,
   onText,
   onTheme,
   onHonor,
   onPickPhoto,
   onRemovePhoto,
+  onUseDefaultPhoto,
 }: RowProps) {
   const accent = THEMES[row.theme].accent;
   const cell = {
@@ -871,11 +900,13 @@ function Row({
             row={row}
             field={field}
             narrow={narrow}
+            defaultPhoto={defaultPhoto}
             onText={onText}
             onTheme={onTheme}
             onHonor={onHonor}
             onPickPhoto={onPickPhoto}
             onRemovePhoto={onRemovePhoto}
+            onUseDefaultPhoto={onUseDefaultPhoto}
           />
         )}
       </td>
@@ -890,11 +921,24 @@ interface ControlProps {
   onText: (v: string) => void;
   onTheme: (v: Letter["theme"]) => void;
   onHonor: (v: Honor | null) => void;
+  defaultPhoto: string | null;
   onPickPhoto: (file: File) => void;
   onRemovePhoto: () => void;
+  onUseDefaultPhoto: () => void;
 }
 
-function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, onRemovePhoto }: ControlProps) {
+function Control({
+  row,
+  field,
+  narrow,
+  defaultPhoto,
+  onText,
+  onTheme,
+  onHonor,
+  onPickPhoto,
+  onRemovePhoto,
+  onUseDefaultPhoto,
+}: ControlProps) {
   if (field.type === "text") {
     const value = (row[field.key] as string | null) ?? "";
     return (
@@ -982,15 +1026,19 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
   }
 
   // photo。お手紙の写真は配列なので、表には先頭の 1 枚を出す。
-  const photo =
-    field.key === "photos"
-      ? row.photos[0]?.url ?? null
-      : (row[field.key] as string | null | undefined) ?? null;
+  // 枠には実際に出る写真(自分の写真、無ければ共通設定の既定)を入れる。
+  const own =
+    field.key === "photos" ? row.photos[0]?.url ?? null : (row.escortPhoto as string | null) ?? null;
+  const hidden = field.key === "photos" ? Boolean(row.hidePhotos) : Boolean(row.hideEscortPhoto);
+  const inherited = !own && !hidden;
+  const photo = inherited ? defaultPhoto : own;
   return (
     <PhotoPicker
       photo={photo}
       onPick={onPickPhoto}
       onRemove={onRemovePhoto}
+      badge={inherited ? "共通" : null}
+      onUseDefault={defaultPhoto && !inherited ? onUseDefaultPhoto : undefined}
       size={narrow ? 44 : 52}
       ariaLabel={field.label}
     />

@@ -7,7 +7,14 @@ import { FONTS, THEMES } from "./constants";
 import { CropModal } from "./CropModal";
 import { CardFields, EscortFields, LetterFields } from "./EditorFields";
 import { EscortCardFace } from "./EscortCardFace";
-import { cardNameFor, escortGeom, escortNameFor, geom, letterPhotosFor } from "./geometry";
+import {
+  cardNameFor,
+  escortGeom,
+  escortNameFor,
+  escortPhotoFor,
+  geom,
+  letterPhotosFor,
+} from "./geometry";
 import styles from "./letter-studio.module.css";
 import { LetterPreviewFace } from "./LetterPreviewFace";
 import { QrCardFace } from "./QrCardFace";
@@ -32,6 +39,7 @@ const EDITABLE = [
   "escortHonor",
   "escortPhoto",
   "escortPhotoRatio",
+  "hideEscortPhoto",
 ] as const;
 
 /** 新規作成モードの作業コピーの初期値。 */
@@ -129,7 +137,8 @@ export function LetterEditDrawer({
     reader.readAsDataURL(file);
   };
   const applyEscortCrop = (dataUrl: string, ratio: number) => {
-    set({ escortPhoto: dataUrl, escortPhotoRatio: ratio });
+    // 写真を入れたので「出さない」は解除する。
+    set({ escortPhoto: dataUrl, escortPhotoRatio: ratio, hideEscortPhoto: false });
     setEscortCropSrc(null);
   };
 
@@ -372,7 +381,7 @@ export function LetterEditDrawer({
                 tableLabel={escortConf.tableLabel}
                 heading={escortConf.heading}
                 message={local.escortMessage || ""}
-                photo={local.escortPhoto || escortConf.defaultPhoto || ""}
+                photo={escortPhotoFor(local, escortConf)}
                 footText={escortConf.nameOverride.trim() || project.name}
                 boxShadow="0 14px 40px rgba(150,110,130,0.22)"
               />
@@ -398,7 +407,6 @@ export function LetterEditDrawer({
               onChange={set}
               escortConf={escortConf}
               onUploadPhoto={pickEscortPhoto}
-              onRemovePhoto={() => set({ escortPhoto: null, escortPhotoRatio: undefined })}
             />
           )}
         </div>

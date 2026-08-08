@@ -64,6 +64,8 @@ export interface Letter {
   /** 切り取り済みの写真(dataUrl)。トリミングはアップロード時に確定する。 */
   escortPhoto?: string | null;
   escortPhotoRatio?: number;
+  /** true = このお手紙のエスコートカードには写真を出さない(イベント既定も使わない)。 */
+  hideEscortPhoto?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -182,6 +184,7 @@ export type BulkLetterPatch = { id: string } & Partial<
     | "escortHonor"
     | "escortPhoto"
     | "escortPhotoRatio"
+    | "hideEscortPhoto"
   >
 >;
 

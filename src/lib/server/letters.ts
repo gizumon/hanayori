@@ -50,6 +50,8 @@ export interface LetterJson {
   escortHonor: Honor | null;
   escortPhoto: string | null;
   escortPhotoRatio?: number;
+  /** true = このお手紙のエスコートカードには写真を出さない(イベント既定も使わない)。 */
+  hideEscortPhoto: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,12 +73,15 @@ function photoFromInput(
 }
 
 function escortFromInput(input: EscortInput): EscortFieldsDoc {
+  const photo = photoFromInput(input.escortPhoto, input.escortPhotoRatio, "escort");
   return {
     tableNo: input.tableNo ?? null,
     name: input.escortName ?? null,
     message: input.escortMessage ?? null,
     honor: input.escortHonor ?? null,
-    photo: photoFromInput(input.escortPhoto, input.escortPhotoRatio, "escort"),
+    photo,
+    // 写真を入れたら「出さない」は解除する(相反する状態を残さない)。
+    hidePhoto: photo ? false : input.hideEscortPhoto ?? false,
   };
 }
 
@@ -101,6 +106,7 @@ function serializeLetter(id: string, data: LetterDoc): LetterJson {
     escortHonor: escort?.honor ?? null,
     escortPhoto: escort?.photo?.dataUrl ?? null,
     escortPhotoRatio: escort?.photo?.ratio ?? undefined,
+    hideEscortPhoto: escort?.hidePhoto ?? false,
     createdAt: toIso(data.createdAt),
     updatedAt: toIso(data.updatedAt),
   };
@@ -114,6 +120,7 @@ interface EscortInput {
   escortHonor?: Honor | null;
   escortPhoto?: string | null;
   escortPhotoRatio?: number;
+  hideEscortPhoto?: boolean;
 }
 
 /**
@@ -302,7 +309,8 @@ function hasEscortPatch(patch: UpdateLetterInput): boolean {
     patch.escortMessage !== undefined ||
     patch.escortHonor !== undefined ||
     patch.escortPhoto !== undefined ||
-    patch.escortPhotoRatio !== undefined
+    patch.escortPhotoRatio !== undefined ||
+    patch.hideEscortPhoto !== undefined
   );
 }
 
@@ -338,6 +346,8 @@ function buildLetterUpdate(patch: UpdateLetterInput, data: LetterDoc): Record<st
       escortPhoto: patch.escortPhoto !== undefined ? patch.escortPhoto : curPhoto.photo,
       escortPhotoRatio:
         patch.escortPhoto !== undefined ? patch.escortPhotoRatio : curPhoto.ratio,
+      hideEscortPhoto:
+        patch.hideEscortPhoto !== undefined ? patch.hideEscortPhoto : cur?.hidePhoto ?? false,
     });
   }
   return update;

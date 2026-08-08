@@ -40,6 +40,7 @@ export async function POST(
       escortHonor: body?.escortHonor ?? null,
       escortPhoto: body?.escortPhoto ?? null,
       escortPhotoRatio: body?.escortPhotoRatio,
+      hideEscortPhoto: Boolean(body?.hideEscortPhoto),
     });
     return NextResponse.json({ letter }, { status: 201 });
   } catch (err) {

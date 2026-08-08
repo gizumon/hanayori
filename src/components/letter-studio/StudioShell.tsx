@@ -6,6 +6,7 @@ import { FONTS, THEMES } from "./constants";
 import { LetterEditDrawer } from "./LetterEditDrawer";
 import { EscortModal } from "./EscortModal";
 import { EventSettingsDrawer } from "./EventSettingsDrawer";
+import { escortPhotoFor } from "./geometry";
 import styles from "./letter-studio.module.css";
 import { NewEventModal } from "./NewEventModal";
 import { QrModal } from "./QrModal";
@@ -156,7 +157,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
             tableLabel={escortConf.tableLabel}
             heading={escortConf.heading}
             message={state.escortModal.escortMessage || ""}
-            photo={state.escortModal.escortPhoto || escortConf.defaultPhoto || ""}
+            photo={escortPhotoFor(state.escortModal, escortConf)}
             footText={escortConf.nameOverride.trim() || curProject.name}
             cardRef={api.escortCardRef}
             onSaveImage={api.saveEscortCard}

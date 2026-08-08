@@ -126,6 +126,18 @@ export function letterPhotosFor(
   return letter?.hidePhotos ? [] : lc.defaultPhotos;
 }
 
+/**
+ * そのお手紙のエスコートカードに実際に出す写真。`letterPhotosFor` と同じ規則で
+ * **お手紙の写真 > 「出さない」 > イベント既定の写真** の順に決まる。
+ */
+export function escortPhotoFor(
+  letter: Draft | Letter | null | undefined,
+  ec: EscortConfig
+): string {
+  if (letter?.escortPhoto) return letter.escortPhoto;
+  return letter?.hideEscortPhoto ? "" : ec.defaultPhoto ?? "";
+}
+
 export function cardNameFor(
   letter: Draft | Letter | null | undefined,
   cc: CardConfig

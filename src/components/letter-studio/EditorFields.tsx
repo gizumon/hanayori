@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { MAX_LETTER_PHOTOS, THEMES } from "./constants";
-import { PillButton, fieldStyle } from "./controls";
-import { cardNameFor, escortNameFor } from "./geometry";
+import { fieldStyle } from "./controls";
+import { cardNameFor, escortNameFor, escortPhotoFor } from "./geometry";
 import { encodeImageFile } from "./imageEncode";
 import styles from "./letter-studio.module.css";
 import { PhotoPicker } from "./PhotoPicker";
@@ -210,15 +210,13 @@ export function LetterFields({ value, onChange, letterConf, font, date, bodyRows
   );
 }
 
-/** 写真の出しかた。イベント既定の写真があるときだけ選べる。 */
-type PhotoMode = "default" | "custom" | "none";
-
 /**
- * お手紙の写真。イベント既定の写真がある場合は「既定 / この手紙 / なし」を選び、
- * 無い場合は写真の枠だけを出す(既定と「なし」が同じ意味になるため)。
+ * お手紙の写真。枠には**実際に出る写真**が入っていて、共通設定の既定写真から
+ * 来ているときは「共通設定」の印が付く。枠を押せばこのお手紙の写真に差し替え、
+ * × で外し、外したあとは「共通設定の写真を使う」で戻せる。
  *
- * 写真そのものは `MAX_LETTER_PHOTOS` の枠を並べる形にしてある(いまは 1 枠)。
- * データは何枚でも持てるので、枠に収まらない分はそのまま残して触らない。
+ * 枠は `MAX_LETTER_PHOTOS` ぶん並べる(いまは 1 枠)。データは何枚でも持てるので、
+ * 枠に収まらない分はそのまま残して触らない。
  */
 function LetterPhotoField({
   value,
@@ -233,31 +231,17 @@ function LetterPhotoField({
   const photos = value.photos ?? [];
   const slots = photos.slice(0, MAX_LETTER_PHOTOS);
   const rest = photos.slice(MAX_LETTER_PHOTOS);
-  const hasDefault = letterConf.defaultPhotos.length > 0;
+  const defaults = letterConf.defaultPhotos;
+  // 自分の写真が無ければ共通設定の既定が入って見える(「なし」にしたときを除く)。
+  const inherited = slots.length === 0 && !value.hidePhotos;
 
-  // 「この手紙の写真」を選んでから実際に選ぶまでの間は、データ上は既定と見分けが
-  // つかない。その間だけ画面側で覚えておく。
-  const [picking, setPicking] = useState(false);
-  const mode: PhotoMode = photos.length
-    ? "custom"
-    : picking
-      ? "custom"
-      : value.hidePhotos
-        ? "none"
-        : "default";
-
-  const selectMode = (next: PhotoMode) => {
-    setError("");
-    setPicking(next === "custom");
-    if (next === "default") onChange({ photos: [], hidePhotos: false });
-    if (next === "none") onChange({ photos: [], hidePhotos: true });
-    if (next === "custom") onChange({ hidePhotos: false });
-  };
-
-  /** 枠 i の写真を差し替える(next が null なら削除)。 */
+  /** 枠 i の写真を差し替える(next が null なら「なし」にする)。 */
   const setAt = (i: number, next: LetterPhoto | null) => {
-    const kept = next ? [...slots.slice(0, i), next, ...slots.slice(i + 1)] : slots.filter((_, j) => j !== i);
-    onChange({ photos: [...kept, ...rest], hidePhotos: false });
+    if (!next) {
+      onChange({ photos: slots.filter((_, j) => j !== i).concat(rest), hidePhotos: true });
+      return;
+    }
+    onChange({ photos: [...slots.slice(0, i), next, ...slots.slice(i + 1), ...rest], hidePhotos: false });
   };
 
   async function pick(i: number, file: File) {
@@ -275,28 +259,27 @@ function LetterPhotoField({
   return (
     <div style={fieldWrap}>
       <span style={FIELD_LABEL}>写真</span>
-      {hasDefault && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <PillButton label="既定の写真" size="sm" active={mode === "default"} onClick={() => selectMode("default")} />
-          <PillButton label="この手紙の写真" size="sm" active={mode === "custom"} onClick={() => selectMode("custom")} />
-          <PillButton label="なし" size="sm" active={mode === "none"} onClick={() => selectMode("none")} />
-        </div>
-      )}
-      {(mode === "custom" || !hasDefault) && (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {Array.from({ length: MAX_LETTER_PHOTOS }, (_, i) => (
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {Array.from({ length: MAX_LETTER_PHOTOS }, (_, i) => {
+          const shown = inherited ? defaults[i] : slots[i];
+          return (
             <PhotoPicker
-              key={slots[i]?.id || i}
-              photo={slots[i]?.url ?? null}
+              key={shown?.id || i}
+              photo={shown?.url ?? null}
               onPick={(file) => void pick(i, file)}
               onRemove={() => setAt(i, null)}
               size={104}
               label="写真を選ぶ"
+              badge={inherited ? "共通設定" : null}
+              onUseDefault={
+                // 共通設定に写真があり、いまそれを使っていないときだけ戻せる。
+                defaults[i] && !inherited ? () => onChange({ photos: [], hidePhotos: false }) : undefined
+              }
               ariaLabel="お手紙の写真"
             />
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
       {/* 見え方はプレビューで分かるので、説明は出さない。エラーのときだけ理由を伝える。 */}
       {error && <span style={{ ...hintStyle, color: COLOR.danger }}>{error}</span>}
     </div>
@@ -348,7 +331,6 @@ interface EscortFieldsProps {
   onChange: FieldChange;
   escortConf: EscortConfig;
   onUploadPhoto: (file: File) => void;
-  onRemovePhoto: () => void;
   /** 渡したときだけ「エスコートカードの設定を開く」の導線を出す。 */
   onOpenSettings?: () => void;
 }
@@ -359,7 +341,6 @@ export function EscortFields({
   onChange,
   escortConf,
   onUploadPhoto,
-  onRemovePhoto,
   onOpenSettings,
 }: EscortFieldsProps) {
   return (
@@ -401,7 +382,7 @@ export function EscortFields({
           style={fieldStyle({ padding: "11px 13px", letterSpacing: "0.05em" })}
         />
       </label>
-      <EscortPhotoField photo={value.escortPhoto} onUpload={onUploadPhoto} onRemove={onRemovePhoto} />
+      <EscortPhotoField value={value} onChange={onChange} escortConf={escortConf} onUpload={onUploadPhoto} />
       {onOpenSettings && (
         <SettingsShortcut
           note="スタイル・QR・フォント・見出しはイベント共通の設定です"
@@ -413,23 +394,38 @@ export function EscortFields({
   );
 }
 
-/** エスコート写真。切り取りは呼び出し側が CropModal で行う。 */
+/**
+ * エスコートカードの写真。お手紙の写真と同じ操作で、枠には**実際に出る写真**が
+ * 入る(共通設定の既定から来ているときは「共通設定」の印が付く)。
+ * 切り取りは呼び出し側が CropModal で行う。
+ */
 export function EscortPhotoField({
-  photo,
+  value,
+  onChange,
+  escortConf,
   onUpload,
-  onRemove,
 }: {
-  photo: string | null | undefined;
+  value: Draft;
+  onChange: FieldChange;
+  escortConf: EscortConfig;
   onUpload: (file: File) => void;
-  onRemove: () => void;
 }) {
+  const inherited = !value.escortPhoto && !value.hideEscortPhoto;
+  const shown = escortPhotoFor(value, escortConf);
   return (
     <div style={fieldWrap}>
       <span style={FIELD_LABEL}>写真(任意)</span>
       <PhotoPicker
-        photo={photo ?? null}
+        photo={shown || null}
         onPick={onUpload}
-        onRemove={onRemove}
+        badge={inherited ? "共通設定" : null}
+        onUseDefault={
+          // 共通設定に写真があり、いまそれを使っていないときだけ戻せる。
+          escortConf.defaultPhoto && !inherited
+            ? () => onChange({ escortPhoto: null, escortPhotoRatio: undefined, hideEscortPhoto: false })
+            : undefined
+        }
+        onRemove={() => onChange({ escortPhoto: null, escortPhotoRatio: undefined, hideEscortPhoto: true })}
         size={104}
         label="写真を選ぶ"
         ariaLabel="エスコートカードの写真"

@@ -5,7 +5,14 @@ import { createPortal } from "react-dom";
 import { CircleAlert, CircleQuestionMark, Download, Lock, Pencil, Printer, X } from "lucide-react";
 import { FONTS, HIDDEN_BODY_NOTE, THEMES } from "../constants";
 import { EscortCardFace } from "../EscortCardFace";
-import { cardNameFor, escortGeom, escortNameFor, geom, letterPhotosFor } from "../geometry";
+import {
+  cardNameFor,
+  escortGeom,
+  escortNameFor,
+  escortPhotoFor,
+  geom,
+  letterPhotosFor,
+} from "../geometry";
 import styles from "../letter-studio.module.css";
 import { LetterPreviewFace } from "../LetterPreviewFace";
 import { QrCardFace } from "../QrCardFace";
@@ -536,7 +543,7 @@ function ReviewCard({ letter, index, kind, project, warning, qrUrl, onEdit, save
             tableLabel={escortConf.tableLabel}
             heading={escortConf.heading}
             message={letter.escortMessage || ""}
-            photo={letter.escortPhoto || escortConf.defaultPhoto || ""}
+            photo={escortPhotoFor(letter, escortConf)}
             footText={escortConf.nameOverride.trim() || project.name}
             boxShadow="0 10px 28px rgba(150,110,130,0.2)"
           />
