@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createLetter, listLettersForEvent } from "@/lib/server/letters";
+import { sanitizePhotos } from "@/lib/server/photos";
 import { handleRouteError } from "@/lib/server/route-helpers";
 import { requireUid } from "@/lib/server/session";
 
@@ -29,8 +30,8 @@ export async function POST(
       to: String(body?.to ?? ""),
       body: String(body?.body ?? ""),
       theme: body?.theme ?? "rose",
-      photo: body?.photo ?? null,
-      photoRatio: body?.photoRatio,
+      photos: sanitizePhotos(body?.photos),
+      hidePhotos: Boolean(body?.hidePhotos),
       cardName: body?.cardName ?? null,
       honor: body?.honor ?? null,
       tableNo: body?.tableNo ?? null,

@@ -2,6 +2,8 @@
 
 import { Lock } from "lucide-react";
 import { HIDDEN_BODY_FILLER, HIDDEN_BODY_NOTE } from "./constants";
+import { LetterPhotos } from "./LetterPhotos";
+import type { LetterPhoto } from "./types";
 import { withAlpha } from "@/lib/color";
 import { FONT_SIZE } from "@/lib/typography";
 
@@ -19,8 +21,8 @@ interface LetterPreviewTheme {
 interface LetterPreviewFaceProps {
   to: string;
   body: string;
-  photo?: string | null;
-  photoRatio?: number;
+  /** 本文のあとに淡く重ねる写真。 */
+  photos?: LetterPhoto[];
   date: string | null;
   font: string;
   theme: LetterPreviewTheme;
@@ -36,8 +38,7 @@ interface LetterPreviewFaceProps {
 export function LetterPreviewFace({
   to,
   body,
-  photo,
-  photoRatio,
+  photos,
   date,
   font,
   theme,
@@ -162,27 +163,13 @@ export function LetterPreviewFace({
         ) : (
           <div style={bodyStyle}>{body || "ここに本文が入ります"}</div>
         )}
-        {!hiddenBody && photo && (
-          <div
-            style={{
-              margin: "20px auto 4px",
-              width: "min(70%,220px)",
-              background: "#FFFFFF",
-              padding: "7px 7px 18px",
-              boxShadow: "0 4px 14px rgba(150,110,130,0.18)",
-              transform: "rotate(-0.8deg)",
-            }}
-          >
-            <div
-              style={{
-                width: "100%",
-                aspectRatio: photoRatio || 1.3333,
-                backgroundImage: `url('${photo}')`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            />
-          </div>
+        {!hiddenBody && (
+          <LetterPhotos
+            photos={photos ?? []}
+            paper={theme.paper}
+            width="min(72%,230px)"
+            margin="18px auto 4px"
+          />
         )}
         <div
           style={{

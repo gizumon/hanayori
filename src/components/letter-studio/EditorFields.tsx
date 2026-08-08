@@ -1,10 +1,21 @@
 "use client";
 
-import { THEMES } from "./constants";
-import { fieldStyle } from "./controls";
+import { useState } from "react";
+import { MAX_LETTER_PHOTOS, THEMES } from "./constants";
+import { PillButton, fieldStyle } from "./controls";
 import { cardNameFor, escortNameFor } from "./geometry";
+import { encodeImageFile } from "./imageEncode";
 import styles from "./letter-studio.module.css";
-import type { CardConfig, Draft, EscortConfig, Honor, Letter } from "./types";
+import { PhotoPicker } from "./PhotoPicker";
+import type {
+  CardConfig,
+  Draft,
+  EscortConfig,
+  Honor,
+  Letter,
+  LetterConfig,
+  LetterPhoto,
+} from "./types";
 import { FONT_SIZE } from "@/lib/typography";
 import { COLOR } from "@/lib/palette";
 
@@ -128,14 +139,15 @@ function SettingsShortcut({
 interface LetterFieldsProps {
   value: Draft;
   onChange: FieldChange;
+  letterConf: LetterConfig;
   font: string;
   /** イベントの挙式日。渡すと「日付は〜が使われます」の案内を出す。 */
   date?: string | null;
   bodyRows?: number;
 }
 
-/** お手紙タブ: 宛名 / 本文 / 色。「新規作成」と「1通ぶんの編集」で共用する。 */
-export function LetterFields({ value, onChange, font, date, bodyRows = 9 }: LetterFieldsProps) {
+/** お手紙タブ: 宛名 / 本文 / 色 / 写真。「新規作成」と「1通ぶんの編集」で共用する。 */
+export function LetterFields({ value, onChange, letterConf, font, date, bodyRows = 9 }: LetterFieldsProps) {
   return (
     <>
       <label style={fieldWrap}>
@@ -192,22 +204,102 @@ export function LetterFields({ value, onChange, font, date, bodyRows = 9 }: Lett
           })}
         />
       </label>
-      <div style={fieldWrap}>
-        <span style={FIELD_LABEL}>写真(本文のあとに1枚)</span>
-        <div
-          style={{
-            background: "rgba(255,252,248,0.55)",
-            border: `1px dashed ${COLOR.borderDash}`,
-            borderRadius: 14,
-            padding: "14px 18px",
-            color: COLOR.inkFaint,
-            maxWidth: 260,
-          }}
-        >
-          <div style={{ fontSize: FONT_SIZE.bodySm, letterSpacing: "0.08em" }}>Coming soon</div>
-        </div>
-      </div>
+      {/* 対象が変わったら選びかけの状態は持ち越さない */}
+      <LetterPhotoField key={value.id ?? "new"} value={value} onChange={onChange} letterConf={letterConf} />
     </>
+  );
+}
+
+/** 写真の出しかた。イベント既定の写真があるときだけ選べる。 */
+type PhotoMode = "default" | "custom" | "none";
+
+/**
+ * お手紙の写真。イベント既定の写真がある場合は「既定 / この手紙 / なし」を選び、
+ * 無い場合は写真の枠だけを出す(既定と「なし」が同じ意味になるため)。
+ *
+ * 写真そのものは `MAX_LETTER_PHOTOS` の枠を並べる形にしてある(いまは 1 枠)。
+ * データは何枚でも持てるので、枠に収まらない分はそのまま残して触らない。
+ */
+function LetterPhotoField({
+  value,
+  onChange,
+  letterConf,
+}: {
+  value: Draft;
+  onChange: FieldChange;
+  letterConf: LetterConfig;
+}) {
+  const [error, setError] = useState("");
+  const photos = value.photos ?? [];
+  const slots = photos.slice(0, MAX_LETTER_PHOTOS);
+  const rest = photos.slice(MAX_LETTER_PHOTOS);
+  const hasDefault = letterConf.defaultPhotos.length > 0;
+
+  // 「この手紙の写真」を選んでから実際に選ぶまでの間は、データ上は既定と見分けが
+  // つかない。その間だけ画面側で覚えておく。
+  const [picking, setPicking] = useState(false);
+  const mode: PhotoMode = photos.length
+    ? "custom"
+    : picking
+      ? "custom"
+      : value.hidePhotos
+        ? "none"
+        : "default";
+
+  const selectMode = (next: PhotoMode) => {
+    setError("");
+    setPicking(next === "custom");
+    if (next === "default") onChange({ photos: [], hidePhotos: false });
+    if (next === "none") onChange({ photos: [], hidePhotos: true });
+    if (next === "custom") onChange({ hidePhotos: false });
+  };
+
+  /** 枠 i の写真を差し替える(next が null なら削除)。 */
+  const setAt = (i: number, next: LetterPhoto | null) => {
+    const kept = next ? [...slots.slice(0, i), next, ...slots.slice(i + 1)] : slots.filter((_, j) => j !== i);
+    onChange({ photos: [...kept, ...rest], hidePhotos: false });
+  };
+
+  async function pick(i: number, file: File) {
+    setError("");
+    try {
+      // クロップは挟まず、元の縦横比のまま縮小して data: URL にする
+      // (保存時に uploadIfDataUrl が Storage へ上げて URL に変わる)。
+      const { dataUrl, ratio } = await encodeImageFile(file);
+      setAt(i, { id: slots[i]?.id ?? "", url: dataUrl, ratio });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "画像の読み込みに失敗しました");
+    }
+  }
+
+  return (
+    <div style={fieldWrap}>
+      <span style={FIELD_LABEL}>写真</span>
+      {hasDefault && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <PillButton label="既定の写真" size="sm" active={mode === "default"} onClick={() => selectMode("default")} />
+          <PillButton label="この手紙の写真" size="sm" active={mode === "custom"} onClick={() => selectMode("custom")} />
+          <PillButton label="なし" size="sm" active={mode === "none"} onClick={() => selectMode("none")} />
+        </div>
+      )}
+      {(mode === "custom" || !hasDefault) && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {Array.from({ length: MAX_LETTER_PHOTOS }, (_, i) => (
+            <PhotoPicker
+              key={slots[i]?.id || i}
+              photo={slots[i]?.url ?? null}
+              onPick={(file) => void pick(i, file)}
+              onRemove={() => setAt(i, null)}
+              size={104}
+              label="写真を選ぶ"
+              ariaLabel="お手紙の写真"
+            />
+          ))}
+        </div>
+      )}
+      {/* 見え方はプレビューで分かるので、説明は出さない。エラーのときだけ理由を伝える。 */}
+      {error && <span style={{ ...hintStyle, color: COLOR.danger }}>{error}</span>}
+    </div>
   );
 }
 
@@ -321,7 +413,7 @@ export function EscortFields({
   );
 }
 
-/** エスコート写真: 選択 / 変更 / 削除。切り取りは呼び出し側が CropModal で行う。 */
+/** エスコート写真。切り取りは呼び出し側が CropModal で行う。 */
 export function EscortPhotoField({
   photo,
   onUpload,
@@ -332,72 +424,16 @@ export function EscortPhotoField({
   onRemove: () => void;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={fieldWrap}>
       <span style={FIELD_LABEL}>写真(任意)</span>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        {photo && (
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 10,
-              backgroundImage: `url('${photo}')`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              flex: "none",
-              boxShadow: "0 3px 10px rgba(150,110,130,0.18)",
-            }}
-          />
-        )}
-        <label
-          className={styles.btnOutline}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            padding: "9px 18px",
-            borderRadius: 999,
-            border: `1px solid ${COLOR.border}`,
-            background: COLOR.surfaceRaised,
-            color: COLOR.ink,
-            fontSize: FONT_SIZE.label,
-            letterSpacing: "0.06em",
-            cursor: "pointer",
-          }}
-        >
-          {photo ? "写真を変更" : "写真を選ぶ"}
-          <input
-            type="file"
-            accept="image/*"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) onUpload(file);
-              e.target.value = "";
-            }}
-          />
-        </label>
-        {photo && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className={styles.btnGhost}
-            style={{
-              padding: "9px 14px",
-              borderRadius: 999,
-              border: "none",
-              background: "transparent",
-              color: COLOR.danger,
-              fontSize: FONT_SIZE.label,
-              letterSpacing: "0.06em",
-            }}
-          >
-            削除
-          </button>
-        )}
-      </div>
-      <div style={{ fontSize: FONT_SIZE.overline, color: COLOR.inkFaint, letterSpacing: "0.05em" }}>
-        アップロード時に切り取り位置を選べます。やり直す場合は再度アップロードしてください。
-      </div>
+      <PhotoPicker
+        photo={photo ?? null}
+        onPick={onUpload}
+        onRemove={onRemove}
+        size={104}
+        label="写真を選ぶ"
+        ariaLabel="エスコートカードの写真"
+      />
     </div>
   );
 }

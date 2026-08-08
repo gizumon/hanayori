@@ -413,9 +413,9 @@ export function LetterRow({
                   卓番未設定
                 </Chip>
               ))}
-            {l.photo && (
+            {l.photos.length > 0 && (
               <Chip icon={<ImageIcon size={11} strokeWidth={1.9} />} accent={accent}>
-                写真あり
+                {l.photos.length > 1 ? `写真${l.photos.length}枚` : "写真あり"}
               </Chip>
             )}
         </div>

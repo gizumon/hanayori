@@ -5,6 +5,7 @@ import {
   type BulkCreateInput,
   type BulkLetterPatch,
 } from "@/lib/server/letters";
+import { sanitizePhotos } from "@/lib/server/photos";
 import { handleRouteError } from "@/lib/server/route-helpers";
 import type { Honor, ThemeKey } from "@/lib/server/schema";
 import { requireUid } from "@/lib/server/session";
@@ -19,8 +20,8 @@ function sanitize(raw: unknown): BulkLetterPatch | null {
   if ("to" in u) p.to = String(u.to ?? "");
   if ("body" in u) p.body = String(u.body ?? "");
   if ("theme" in u) p.theme = u.theme as ThemeKey;
-  if ("photo" in u) p.photo = (u.photo as string | null) ?? null;
-  if ("photoRatio" in u) p.photoRatio = u.photoRatio as number | undefined;
+  if ("photos" in u) p.photos = sanitizePhotos(u.photos);
+  if ("hidePhotos" in u) p.hidePhotos = Boolean(u.hidePhotos);
   if ("cardName" in u) p.cardName = (u.cardName as string | null) ?? null;
   if ("honor" in u) p.honor = (u.honor as Honor | null) ?? null;
   if ("tableNo" in u) p.tableNo = (u.tableNo as string | null) ?? null;

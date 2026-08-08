@@ -2,6 +2,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { eventsCollection, lettersCollection } from "./collections";
 import { HttpError } from "./http-error";
 import type { MemberJson } from "./members";
+import { photosFromInput, photosToJson, sanitizePhotos, type LetterPhotoJson } from "./photos";
 import type {
   CardConfigDoc,
   EscortConfigDoc,
@@ -13,6 +14,7 @@ import { getUserProfiles, type UserProfile } from "./users";
 
 const DEFAULT_LETTER_CONFIG: LetterConfigDoc = {
   font: "yomogi",
+  defaultPhotos: [],
 };
 
 const DEFAULT_CARD_CONFIG: CardConfigDoc = {
@@ -74,6 +76,11 @@ export function normalizeEventDoc(data: EventDoc): EventDoc {
   };
 }
 
+/** API が返すお手紙の共通設定。既定写真だけ JSON の形(`url`)に直して返す。 */
+export interface LetterConfigJson extends Omit<LetterConfigDoc, "defaultPhotos"> {
+  defaultPhotos: LetterPhotoJson[];
+}
+
 export interface EventJson {
   id: string;
   name: string;
@@ -83,7 +90,7 @@ export interface EventJson {
    * 他のメンバーがどうしているかは返さない。
    */
   shareMyLetters: boolean;
-  letterConfig: LetterConfigDoc;
+  letterConfig: LetterConfigJson;
   cardConfig: CardConfigDoc;
   escortConfig: EscortConfigDoc;
   letterCount: number;
@@ -142,7 +149,7 @@ async function serializeEvent(
     name: data.name,
     date: data.date,
     shareMyLetters: (data.letterSharingUids ?? []).includes(uid),
-    letterConfig: data.letterConfig,
+    letterConfig: { ...data.letterConfig, defaultPhotos: photosToJson(data.letterConfig.defaultPhotos) },
     cardConfig: data.cardConfig,
     escortConfig: data.escortConfig,
     letterCount: countSnap.data().count,
@@ -212,7 +219,8 @@ export interface UpdateEventInput {
   date?: string | null;
   /** 自分が作ったお手紙を他のメンバーにも見せるか。触れるのは常に自分の分だけ。 */
   shareMyLetters?: boolean;
-  letterConfig?: Partial<LetterConfigDoc>;
+  /** 既定写真はクライアントの形(`url`)で届くので、書き込み前にドキュメントの形へ直す。 */
+  letterConfig?: Partial<Omit<LetterConfigDoc, "defaultPhotos">> & { defaultPhotos?: unknown };
   cardConfig?: Partial<CardConfigDoc>;
   escortConfig?: Partial<EscortConfigDoc>;
 }
@@ -237,7 +245,14 @@ export async function updateEvent(
   // 部分マージした完全形を書き戻す。旧形式ドキュメントもこの時点で新形式に移行し、
   // 残っていた旧トップレベルフィールドは削除する。
   if (patch.letterConfig !== undefined) {
-    update.letterConfig = { ...current.letterConfig, ...patch.letterConfig };
+    const { defaultPhotos, ...rest } = patch.letterConfig;
+    update.letterConfig = {
+      ...current.letterConfig,
+      ...rest,
+      ...(defaultPhotos !== undefined
+        ? { defaultPhotos: photosFromInput(sanitizePhotos(defaultPhotos)) }
+        : {}),
+    };
     update.font = FieldValue.delete();
   }
   if (patch.cardConfig !== undefined) {

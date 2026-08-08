@@ -348,3 +348,54 @@
 .noScrollbar::-webkit-scrollbar {
   display: none; /* Chrome/Safari */
 }
+
+/* 写真の枠(PhotoPicker)。枠そのものが選択ボタンで、押すと選択・入れ替え */
+.photoTile {
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.photoTile:hover {
+  border-color: var(--c-accent) !important;
+}
+.photoTile:focus-within {
+  border-color: var(--c-accent) !important;
+  box-shadow: 0 0 0 3px rgba(211, 165, 180, 0.4);
+}
+/* 写真が入っているときの「入れ替え」の覆い。ホバー/フォーカスでだけ見せる */
+.photoTileHint {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.photoTile:hover .photoTileHint,
+.photoTile:focus-within .photoTileHint {
+  opacity: 1;
+}
+.photoRemove {
+  cursor: pointer;
+}
+.photoRemove:hover {
+  background: var(--c-danger) !important;
+  border-color: var(--c-danger) !important;
+  color: var(--c-on-accent) !important;
+}
+
+/* 読み上げ・キーボード用に残すが見せない要素(ファイル入力など) */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photoTile,
+  .photoTileHint {
+    transition: none;
+  }
+}

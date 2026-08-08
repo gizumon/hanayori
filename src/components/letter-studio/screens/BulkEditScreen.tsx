@@ -1,11 +1,12 @@
 "use client";
 
-import { Lock, Trash2 } from "lucide-react";
+import { Lock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "../Avatar";
 import { THEMES } from "../constants";
 import { encodeImageFile } from "../imageEncode";
 import styles from "../letter-studio.module.css";
+import { PhotoPicker } from "../PhotoPicker";
 import type { BulkLetterPatch, EventTab, Honor, Letter, Project, SettingsTab } from "../types";
 import { CREATOR_ALL, CreatorFilter, useCreatorFilter } from "./CreatorFilter";
 import { EventHeader } from "./EventHeader";
@@ -23,7 +24,7 @@ type CellType = "text" | "theme" | "honor" | "photo";
 type BulkField =
   | "to"
   | "theme"
-  | "photo"
+  | "photos"
   | "cardName"
   | "honor"
   | "tableNo"
@@ -40,8 +41,8 @@ interface FieldDef {
   placeholder?: string;
   /** テキスト欄の自動生成プレースホルダ(空欄時に実際に使われる値)。 */
   auto?: (l: Letter) => string;
-  /** 写真欄が書き戻す縦横比フィールド。 */
-  ratioKey?: "photoRatio" | "escortPhotoRatio";
+  /** 写真欄が書き戻す縦横比フィールド(お手紙の写真は配列の中に縦横比を持つので不要)。 */
+  ratioKey?: "escortPhotoRatio";
   /** 敬称欄の「既定」が指すイベント既定値。 */
   honorDefault?: Honor;
 }
@@ -142,11 +143,10 @@ export function BulkEditScreen({
           },
           { key: "theme", label: "色", type: "theme", desc: "お手紙の配色テーマを選びます。" },
           {
-            key: "photo",
+            key: "photos",
             label: "写真",
             type: "photo",
-            ratioKey: "photoRatio",
-            desc: "本文のあとに載せる写真(任意)。",
+            desc: "空欄なら共通設定の既定の写真が使われます。",
           },
         ],
       },
@@ -305,7 +305,12 @@ export function BulkEditScreen({
 
   // 敬称の「なし」("")と「既定」(null)は別物なので "" は畳まない。
   // Letter の任意フィールドは undefined になり得るので null に正規化して比較する。
+  // 写真の配列(photos)だけは参照ではなく中身で比べる。
   const norm = (v: unknown) => (v === undefined ? null : v);
+  const sameValue = (a: unknown, b: unknown) =>
+    Array.isArray(a) || Array.isArray(b)
+      ? JSON.stringify(a ?? []) === JSON.stringify(b ?? [])
+      : norm(a) === norm(b);
 
   function setField(id: string, f: BulkField, value: unknown, ratio?: number, ratioKey?: FieldDef["ratioKey"]) {
     setRows((rs) =>
@@ -319,7 +324,7 @@ export function BulkEditScreen({
       const next = new Set(c);
       const base = baseline.get(id) as Record<string, unknown> | undefined;
       const k = cellKey(id, f);
-      if (base && norm(base[f]) === norm(value)) next.delete(k);
+      if (base && sameValue(base[f], value)) next.delete(k);
       else next.add(k);
       return next;
     });
@@ -328,9 +333,24 @@ export function BulkEditScreen({
   async function onPickPhoto(id: string, f: BulkField, ratioKey: FieldDef["ratioKey"], file: File) {
     try {
       const { dataUrl, ratio } = await encodeImageFile(file);
-      setField(id, f, dataUrl, ratio, ratioKey);
+      // お手紙の写真は配列。表に出しているのは先頭の 1 枚なので、そこだけ差し替える。
+      if (f === "photos") {
+        const cur = rows.find((r) => r.id === id)?.photos ?? [];
+        setField(id, f, [{ id: cur[0]?.id ?? "", url: dataUrl, ratio }, ...cur.slice(1)]);
+      } else {
+        setField(id, f, dataUrl, ratio, ratioKey);
+      }
     } catch {
       /* エンコード失敗時は何もしない(トーストは保存時にまとめて出る) */
+    }
+  }
+
+  function onRemovePhoto(id: string, f: BulkField, ratioKey: FieldDef["ratioKey"]) {
+    if (f === "photos") {
+      const cur = rows.find((r) => r.id === id)?.photos ?? [];
+      setField(id, f, cur.slice(1));
+    } else {
+      setField(id, f, null, undefined, ratioKey);
     }
   }
 
@@ -358,7 +378,6 @@ export function BulkEditScreen({
       const p: Record<string, unknown> = { id };
       fields.forEach((f) => {
         p[f] = rr[f] ?? null;
-        if (f === "photo") p.photoRatio = row.photoRatio;
         if (f === "escortPhoto") p.escortPhotoRatio = row.escortPhotoRatio;
       });
       patches.push(p as BulkLetterPatch);
@@ -570,7 +589,7 @@ export function BulkEditScreen({
                     onTheme={(v) => setField(row.id, field.key, v)}
                     onHonor={(v) => setField(row.id, field.key, v)}
                     onPickPhoto={(file) => onPickPhoto(row.id, field.key, field.ratioKey, file)}
-                    onRemovePhoto={() => setField(row.id, field.key, null, undefined, field.ratioKey)}
+                    onRemovePhoto={() => onRemovePhoto(row.id, field.key, field.ratioKey)}
                   />
                 ))}
               </tbody>
@@ -962,96 +981,18 @@ function Control({ row, field, narrow, onText, onTheme, onHonor, onPickPhoto, on
     );
   }
 
-  // photo
-  const photo = row[field.key] as string | null;
+  // photo。お手紙の写真は配列なので、表には先頭の 1 枚を出す。
+  const photo =
+    field.key === "photos"
+      ? row.photos[0]?.url ?? null
+      : (row[field.key] as string | null | undefined) ?? null;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: narrow ? 8 : 12, flexWrap: "wrap" }}>
-      {photo ? (
-        <span
-          aria-hidden="true"
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            flex: "none",
-            backgroundImage: `url('${photo}')`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            border: `1px solid ${COLOR.border}`,
-            boxShadow: "0 3px 10px rgba(150,110,130,0.2)",
-          }}
-        />
-      ) : (
-        <span
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            flex: "none",
-            background: COLOR.surfaceRaised,
-            border: `1px solid ${COLOR.border}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: FONT_SIZE.micro,
-            color: COLOR.inkFaint,
-          }}
-        >
-          なし
-        </span>
-      )}
-      <label
-        className={styles.btnOutline}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          padding: narrow ? "7px 12px" : "8px 15px",
-          borderRadius: 999,
-          border: `1px solid ${COLOR.border}`,
-          background: COLOR.surfaceRaised,
-          color: COLOR.ink,
-          fontSize: FONT_SIZE.label,
-          letterSpacing: "0.04em",
-          whiteSpace: "nowrap",
-          cursor: "pointer",
-        }}
-      >
-        {narrow ? (photo ? "変更" : "選ぶ") : photo ? "写真を変更" : "写真を選ぶ"}
-        <input
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) onPickPhoto(file);
-            e.target.value = "";
-          }}
-        />
-      </label>
-      {photo && (
-        <button
-          type="button"
-          onClick={onRemovePhoto}
-          aria-label="写真を削除"
-          title="写真を削除"
-          className={styles.btnGhost}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-            padding: narrow ? "7px 8px" : "8px 10px",
-            borderRadius: 999,
-            border: "none",
-            background: "transparent",
-            color: COLOR.danger,
-            fontSize: FONT_SIZE.label,
-            letterSpacing: "0.04em",
-          }}
-        >
-          <Trash2 size={14} strokeWidth={1.8} aria-hidden="true" />
-          {!narrow && "削除"}
-        </button>
-      )}
-    </div>
+    <PhotoPicker
+      photo={photo}
+      onPick={onPickPhoto}
+      onRemove={onRemovePhoto}
+      size={narrow ? 44 : 52}
+      ariaLabel={field.label}
+    />
   );
 }

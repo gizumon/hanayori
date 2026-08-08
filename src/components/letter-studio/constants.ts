@@ -13,6 +13,12 @@ export const HIDDEN_BODY_FILLER =
 /** 非公開のお手紙に添える一言。錠前アイコンと並べて使う。 */
 export const HIDDEN_BODY_NOTE = "本文は作成した人だけが見られます";
 
+/**
+ * お手紙に載せられる写真の枚数。データ(Letter.photos / Firestore の photos)は
+ * 何枚でも持てるが、画面から追加できるのはこの枚数まで。
+ */
+export const MAX_LETTER_PHOTOS = 1;
+
 export const THEMES: Record<
   ThemeKey,
   {

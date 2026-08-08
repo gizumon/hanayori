@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FONTS, THEMES } from "@/components/letter-studio/constants";
-import type { FontKey, ThemeKey } from "@/components/letter-studio/types";
+import { LetterPhotos } from "@/components/letter-studio/LetterPhotos";
+import type { FontKey, LetterPhoto, ThemeKey } from "@/components/letter-studio/types";
 import { withAlpha } from "@/lib/color";
 import { EnvelopeScene, type LetterPhase } from "./EnvelopeScene";
 import { Petals } from "./Petals";
@@ -12,13 +13,13 @@ interface LetterViewProps {
   to: string;
   body: string;
   theme: ThemeKey;
-  photo: string | null;
-  photoRatio?: number;
+  /** 本文のあとに淡く重ねる写真。 */
+  photos: LetterPhoto[];
   date: string | null;
   font: FontKey;
 }
 
-export function LetterView({ to, body, theme: themeKey, photo, photoRatio, date, font: fontKey }: LetterViewProps) {
+export function LetterView({ to, body, theme: themeKey, photos, date, font: fontKey }: LetterViewProps) {
   const [phase, setPhase] = useState<LetterPhase>("closed");
   const [saving, setSaving] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
@@ -238,30 +239,13 @@ export function LetterView({ to, body, theme: themeKey, photo, photoRatio, date,
                 </div>
               ))}
             </div>
-            {photo && (
-              <div
-                style={{
-                  margin: "2.8em auto 0",
-                  width: "min(78%,330px)",
-                  background: "#FFFFFF",
-                  padding: "9px 9px 24px",
-                  boxShadow: "0 4px 18px rgba(140,105,120,0.16)",
-                  transform: "rotate(-0.8deg)",
-                }}
-              >
-                <div
-                  role="img"
-                  aria-label="思い出の写真"
-                  style={{
-                    width: "100%",
-                    aspectRatio: photoRatio || 1.3333,
-                    backgroundImage: `url('${photo}')`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
-                />
-              </div>
-            )}
+            <LetterPhotos
+              photos={photos}
+              paper={theme.paper}
+              width="min(78%,330px)"
+              margin="2.6em auto 0"
+            />
+
             <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", gap: 7, marginTop: "2.1em" }}>
               <span
                 style={{

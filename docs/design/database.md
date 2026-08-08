@@ -73,6 +73,7 @@ Firebase Authentication の `uid` をキーとするプロフィール。
 | `font` | string | お手紙フォント (`yomogi` \| `klee` \| `mincho` \| `gothic` \| `maru`) |
 | `cardFont` | string | 席札フォント(同上) |
 | `cardEnabled` | boolean | 席札を作成するか |
+| `letterConfig` | map | お手紙の共通設定。`font` と `defaultPhotos`(§3.3 の `photos` と同じ形の配列。お手紙側で写真を設定しなかったときの既定) |
 | `cardConfig` | map | 席札の共通設定(下記) |
 | `createdAt` | timestamp | 作成日時 |
 | `updatedAt` | timestamp | 更新日時 |
@@ -103,7 +104,8 @@ Firebase Authentication の `uid` をキーとするプロフィール。
 | `to` | string | 宛名(例: 「さくらへ」) |
 | `body` | string | 本文 |
 | `theme` | string | `rose` \| `blue` \| `sage` \| `kinari` |
-| `photos` | map[] | 添付写真のリスト(下記)。表示順 = 配列順。現行 UI は 1 枚だが複数枚を許容できる形にしてある |
+| `photos` | map[] | 添付写真のリスト(下記)。表示順 = 配列順。現行 UI は 1 枚だが複数枚を許容できる形にしてある。**空ならイベントの `letterConfig.defaultPhotos` を使う** |
+| `hidePhotos` | boolean \| 無し | true = この手紙では写真を出さない(イベント既定も使わない)。既定は false。写真を持つ手紙では意味を持たない(**自分の写真 > 「出さない」 > イベント既定** の順で解決する) |
 | `cardName` | string \| null | 席札の氏名(null なら宛名から自動生成) |
 | `honor` | string \| null | 手紙個別の敬称。**null = イベント既定に従う**、`様` \| `さん` \| `""`(空文字 = 明示的に敬称なし) |
 | `createdAt` | timestamp | 作成日時 |

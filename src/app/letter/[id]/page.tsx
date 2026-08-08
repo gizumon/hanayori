@@ -34,8 +34,7 @@ export default async function LetterPage({ params }: LetterPageProps) {
       to={letter.to}
       body={letter.body}
       theme={letter.theme}
-      photo={letter.photo}
-      photoRatio={letter.photoRatio}
+      photos={letter.photos}
       date={letter.date}
       font={letter.font}
     />

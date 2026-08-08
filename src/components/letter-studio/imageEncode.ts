@@ -12,6 +12,30 @@ export const IMAGE_MAX_WIDTH = 900;
 /** JPEG/WebP の品質(0〜1)。見た目とサイズの折り合い。 */
 export const IMAGE_QUALITY = 0.82;
 
+/**
+ * 画像の file input に付ける accept。
+ *
+ * `image/*` にしないのは HEIC/HEIF(iPhone の既定形式)を避けるため。縮小・
+ * 切り取りはブラウザに画像をデコードさせて行うが、Safari 以外は HEIC を
+ * デコードできず、選んだ時点で読み込みエラーになる。ここで受け付ける形式を
+ * 挙げておくと、iOS の写真選択は HEIC を JPEG に変換して渡してくれるし、
+ * パソコンのファイル選択では読めない形式がそもそも選べなくなる。
+ */
+export const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
+
+/**
+ * 読み込めなかったときのエラー。HEIC は「エラーになる形式」だと分かるよう
+ * 名指しで案内する(iOS から AirDrop 等で渡ってきたファイルはここに来る)。
+ */
+function decodeError(file: File): Error {
+  const heic = /image\/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
+  return new Error(
+    heic
+      ? "HEIC 形式の写真は読み込めません。JPEG などで保存し直してからお試しください"
+      : "画像の読み込みに失敗しました"
+  );
+}
+
 let webpSupport: boolean | null = null;
 
 /**
@@ -49,10 +73,10 @@ export function encodeImageFile(
 ): Promise<{ dataUrl: string; ratio: number }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
+    reader.onerror = () => reject(decodeError(file));
     reader.onload = () => {
       const img = new Image();
-      img.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
+      img.onerror = () => reject(decodeError(file));
       img.onload = () => {
         const w = Math.min(IMAGE_MAX_WIDTH, img.width);
         const h = Math.round((img.height * w) / img.width);

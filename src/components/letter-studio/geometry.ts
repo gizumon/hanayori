@@ -1,4 +1,12 @@
-import type { CardConfig, Draft, EscortConfig, EscortStyle, Letter } from "./types";
+import type {
+  CardConfig,
+  Draft,
+  EscortConfig,
+  EscortStyle,
+  Letter,
+  LetterConfig,
+  LetterPhoto,
+} from "./types";
 
 /**
  * カード内の寸法は「カード幅に対する比率」(cqw)で指定する。
@@ -102,6 +110,20 @@ export function geom(cc: CardConfig, rule: string): CardGeometry {
             ? "width:91mm;height:110mm"
             : "width:110mm;height:91mm",
   };
+}
+
+/**
+ * そのお手紙に実際に出す写真。優先順は
+ * **お手紙の写真 > 「出さない」 > イベント既定の写真**(サーバー側の
+ * `resolvePhotos` と同じ規則)。プレビューはこれを通して描く。
+ */
+export function letterPhotosFor(
+  letter: Draft | Letter | null | undefined,
+  lc: LetterConfig
+): LetterPhoto[] {
+  const own = letter?.photos ?? [];
+  if (own.length > 0) return own;
+  return letter?.hidePhotos ? [] : lc.defaultPhotos;
 }
 
 export function cardNameFor(

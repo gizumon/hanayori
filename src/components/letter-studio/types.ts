@@ -18,6 +18,17 @@ export type EditorTab = "letter" | "card" | "escort";
 /** イベント配下の画面タブ。一覧 / 一括編集 / 確認。 */
 export type EventTab = "list" | "bulk" | "review";
 
+/**
+ * お手紙の本文のあとに載せる写真 1 枚。`url` は保存済みなら Storage の公開 URL、
+ * 選んだ直後のドラフトでは data: URL(保存時に `uploadIfDataUrl` が URL 化する)。
+ * `ratio` は横 / 縦。null なら表示側の既定(4:3)を使う。
+ */
+export interface LetterPhoto {
+  id: string;
+  url: string;
+  ratio: number | null;
+}
+
 export interface Letter {
   id: string;
   /** 作成した人の uid。この機能より前の手紙には無いので null。 */
@@ -34,8 +45,14 @@ export interface Letter {
   to: string;
   body: string;
   theme: ThemeKey;
-  photo: string | null;
-  photoRatio?: number;
+  /**
+   * このお手紙の写真。並びは配列の順で、データとしては何枚でも持てる。画面から
+   * 追加できるのは今のところ 1 枚だけ(`MAX_LETTER_PHOTOS`)。
+   * 空ならイベント既定(`letterConfig.defaultPhotos`)が使われる。
+   */
+  photos: LetterPhoto[];
+  /** true = このお手紙では写真を出さない(イベント既定も使わない)。 */
+  hidePhotos?: boolean;
   cardName?: string | null;
   /** null/undefined = イベント既定の敬称に従う */
   honor?: Honor | null;
@@ -54,6 +71,8 @@ export interface Letter {
 /** お手紙のイベント共通設定 */
 export interface LetterConfig {
   font: FontKey;
+  /** お手紙側で写真を設定しなかったときに使う既定の写真。UI は 1 枚だが配列で持つ。 */
+  defaultPhotos: LetterPhoto[];
 }
 
 /** 席札/QRカードのイベント共通設定 */
@@ -153,8 +172,8 @@ export type BulkLetterPatch = { id: string } & Partial<
     | "to"
     | "body"
     | "theme"
-    | "photo"
-    | "photoRatio"
+    | "photos"
+    | "hidePhotos"
     | "cardName"
     | "honor"
     | "tableNo"

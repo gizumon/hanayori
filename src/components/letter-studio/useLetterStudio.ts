@@ -33,9 +33,21 @@ import type {
   EventSummary,
   EventTab,
   Letter,
+  LetterPhoto,
   Screen,
   SettingsTab,
 } from "./types";
+
+/**
+ * 選んだ直後の写真は data: URL のまま作業コピーに入っている。保存の直前に
+ * Storage へ上げて URL に差し替える(すでに URL のものはそのまま返る)。
+ */
+async function uploadPhotos(photos: LetterPhoto[] | undefined): Promise<LetterPhoto[]> {
+  if (!photos) return [];
+  return Promise.all(
+    photos.map(async (p) => ({ ...p, url: (await uploadIfDataUrl(p.url)) ?? p.url }))
+  );
+}
 
 const EDITOR_TABS = ["letter", "card", "escort"] as const;
 const SETTINGS_TABS = ["general", "card", "escort", "members"] as const;
@@ -364,7 +376,7 @@ export function useLetterStudio() {
         const uploaded = await Promise.all(
           patches.map(async (p) => {
             const out: BulkLetterPatch = { ...p };
-            if ("photo" in p) out.photo = await uploadIfDataUrl(p.photo);
+            if ("photos" in p) out.photos = await uploadPhotos(p.photos);
             if ("escortPhoto" in p) out.escortPhoto = await uploadIfDataUrl(p.escortPhoto);
             return out;
           })
@@ -400,13 +412,13 @@ export function useLetterStudio() {
         return null;
       }
       try {
-        const [photo, escortPhoto] = await Promise.all([
-          uploadIfDataUrl(payload.photo),
+        const [photos, escortPhoto] = await Promise.all([
+          uploadPhotos(payload.photos),
           uploadIfDataUrl(payload.escortPhoto),
         ]);
         const data = await api<{ letter: Letter }>(`/api/events/${curP}/letters`, {
           method: "POST",
-          body: JSON.stringify({ ...payload, photo, escortPhoto }),
+          body: JSON.stringify({ ...payload, photos, escortPhoto }),
         });
         setLettersRaw((ls) => ls.concat([data.letter]));
         void setEditId(data.letter.id);

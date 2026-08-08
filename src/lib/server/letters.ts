@@ -4,6 +4,13 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { eventsCollection, lettersCollection } from "./collections";
 import { normalizeEventDoc, requireEventMembership } from "./events";
 import { HttpError } from "./http-error";
+import {
+  photosFromInput,
+  photosToJson,
+  resolvePhotos,
+  type LetterPhotoInput,
+  type LetterPhotoJson,
+} from "./photos";
 import { getUserProfiles } from "./users";
 import type {
   EscortFieldsDoc,
@@ -27,8 +34,14 @@ export interface LetterJson {
   to: string;
   body: string;
   theme: ThemeKey;
-  photo: string | null;
-  photoRatio?: number;
+  /**
+   * このお手紙の写真。並びは配列の順。データとしては何枚でも持てるが、画面から
+   * 追加できるのは今のところ 1 枚だけ(`MAX_LETTER_PHOTOS`)。
+   * 空ならイベント既定(`letterConfig.defaultPhotos`)が使われる。
+   */
+  photos: LetterPhotoJson[];
+  /** true = このお手紙では写真を出さない(イベント既定も使わない)。 */
+  hidePhotos: boolean;
   cardName: string | null;
   honor: Honor | null;
   tableNo: string | null;
@@ -57,14 +70,6 @@ function photoFromInput(
   return { id, dataUrl: photo, ratio: photoRatio ?? null };
 }
 
-function photosFromInput(
-  photo: string | null | undefined,
-  photoRatio: number | undefined
-): LetterPhoto[] {
-  const p = photoFromInput(photo, photoRatio, "primary");
-  return p ? [p] : [];
-}
-
 function escortFromInput(input: EscortInput): EscortFieldsDoc {
   return {
     tableNo: input.tableNo ?? null,
@@ -76,7 +81,6 @@ function escortFromInput(input: EscortInput): EscortFieldsDoc {
 }
 
 function serializeLetter(id: string, data: LetterDoc): LetterJson {
-  const primary = data.photos[0];
   const escort = data.escort;
   return {
     id,
@@ -87,8 +91,8 @@ function serializeLetter(id: string, data: LetterDoc): LetterJson {
     to: data.to,
     body: data.body,
     theme: data.theme,
-    photo: primary?.dataUrl ?? null,
-    photoRatio: primary?.ratio ?? undefined,
+    photos: photosToJson(data.photos),
+    hidePhotos: data.hidePhotos ?? false,
     cardName: data.cardName,
     honor: data.honor,
     tableNo: escort?.tableNo ?? null,
@@ -154,8 +158,9 @@ function maskHiddenLetters(
 ): LetterJson[] {
   return letters.map((letter) =>
     !letter.createdBy || letter.createdBy === uid || sharingUids.includes(letter.createdBy)
+      // 伏せるときはイベント既定の写真も出さない(中身に触れさせない)。
       ? letter
-      : { ...letter, hidden: true, body: "", photo: null, photoRatio: undefined }
+      : { ...letter, hidden: true, body: "", photos: [], hidePhotos: true }
   );
 }
 
@@ -186,8 +191,8 @@ export interface CreateLetterInput extends EscortInput {
   to: string;
   body: string;
   theme: ThemeKey;
-  photo?: string | null;
-  photoRatio?: number;
+  photos?: LetterPhotoInput[] | null;
+  hidePhotos?: boolean;
   cardName?: string | null;
   honor?: Honor | null;
 }
@@ -211,7 +216,8 @@ export async function createLetter(
     to: input.to,
     body: input.body,
     theme: input.theme,
-    photos: photosFromInput(input.photo, input.photoRatio),
+    photos: photosFromInput(input.photos),
+    hidePhotos: input.hidePhotos ?? false,
     cardName: input.cardName ?? null,
     honor: input.honor ?? null,
     escort: escortFromInput(input),
@@ -263,6 +269,7 @@ export async function createLettersBulk(
       body: "",
       theme: "rose",
       photos: [],
+      hidePhotos: false,
       cardName: row.cardName ?? null,
       honor: row.honor ?? null,
       escort: escortFromInput(row),
@@ -281,8 +288,8 @@ export interface UpdateLetterInput extends EscortInput {
   to?: string;
   body?: string;
   theme?: ThemeKey;
-  photo?: string | null;
-  photoRatio?: number;
+  photos?: LetterPhotoInput[] | null;
+  hidePhotos?: boolean;
   cardName?: string | null;
   honor?: Honor | null;
 }
@@ -311,8 +318,12 @@ function buildLetterUpdate(patch: UpdateLetterInput, data: LetterDoc): Record<st
   if (patch.theme !== undefined) update.theme = patch.theme;
   if (patch.cardName !== undefined) update.cardName = patch.cardName;
   if (patch.honor !== undefined) update.honor = patch.honor;
-  if (patch.photo !== undefined) {
-    update.photos = photosFromInput(patch.photo, patch.photoRatio);
+  if (patch.hidePhotos !== undefined) update.hidePhotos = patch.hidePhotos;
+  if (patch.photos !== undefined) {
+    const photos = photosFromInput(patch.photos);
+    update.photos = photos;
+    // 写真を入れたら「出さない」は解除する(相反する状態を残さない)。
+    if (photos.length > 0) update.hidePhotos = false;
   }
   // エスコート系は既存値をベースにパッチをマージして書き戻す。
   if (hasEscortPatch(patch)) {
@@ -392,8 +403,8 @@ export interface GuestLetterView {
   to: string;
   body: string;
   theme: ThemeKey;
-  photo: string | null;
-  photoRatio?: number;
+  /** 本文のあとに載せる写真。お手紙の写真とイベント既定を解決したあとの結果。 */
+  photos: LetterPhotoJson[];
   /** イベント側の値を都度解決する(手紙には複製しない)。 */
   date: string | null;
   font: FontKey;
@@ -419,14 +430,16 @@ export const getLetterForGuest = cache(
     const eventData = eventSnap.data();
     if (!eventSnap.exists || !eventData) return null;
 
-    const primary = letterData.photos[0];
     const normalized = normalizeEventDoc(eventData);
     return {
       to: letterData.to,
       body: letterData.body,
       theme: letterData.theme,
-      photo: primary?.dataUrl ?? null,
-      photoRatio: primary?.ratio ?? undefined,
+      photos: resolvePhotos(
+        photosToJson(letterData.photos),
+        letterData.hidePhotos,
+        photosToJson(normalized.letterConfig.defaultPhotos)
+      ),
       date: eventData.date,
       font: normalized.letterConfig.font,
       cardName: letterData.cardName,

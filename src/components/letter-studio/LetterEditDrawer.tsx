@@ -7,7 +7,7 @@ import { FONTS, THEMES } from "./constants";
 import { CropModal } from "./CropModal";
 import { CardFields, EscortFields, LetterFields } from "./EditorFields";
 import { EscortCardFace } from "./EscortCardFace";
-import { cardNameFor, escortGeom, escortNameFor, geom } from "./geometry";
+import { cardNameFor, escortGeom, escortNameFor, geom, letterPhotosFor } from "./geometry";
 import styles from "./letter-studio.module.css";
 import { LetterPreviewFace } from "./LetterPreviewFace";
 import { QrCardFace } from "./QrCardFace";
@@ -17,11 +17,13 @@ import { useScrollLock } from "@/hooks/useScrollLock";
 import { FONT_SIZE } from "@/lib/typography";
 import { COLOR } from "@/lib/palette";
 
-/** ドロワーで編集できるフィールド。「新規作成」画面と揃えている(本文写真は未実装)。 */
+/** ドロワーで編集できるフィールド。「新規作成」画面と揃えている。 */
 const EDITABLE = [
   "to",
   "body",
   "theme",
+  "photos",
+  "hidePhotos",
   "cardName",
   "honor",
   "tableNo",
@@ -38,7 +40,7 @@ const EMPTY_LETTER: Letter = {
   to: "",
   body: "",
   theme: "rose",
-  photo: null,
+  photos: [],
   createdAt: "",
   updatedAt: "",
 };
@@ -97,7 +99,13 @@ export function LetterEditDrawer({
     setSaved(initial);
   }
 
-  const changed = EDITABLE.filter((k) => (local[k] ?? null) !== (saved[k] ?? null));
+  // 写真は配列なので、参照ではなく中身で比べる(写真を選び直して同じ並びに
+  // 戻したときに「未保存の変更」として残らないように)。
+  const same = (a: unknown, b: unknown) =>
+    Array.isArray(a) || Array.isArray(b)
+      ? JSON.stringify(a ?? []) === JSON.stringify(b ?? [])
+      : (a ?? null) === (b ?? null);
+  const changed = EDITABLE.filter((k) => !same(local[k], saved[k]));
   const dirty = changed.length > 0;
   const { guard, pendingConfirm, confirmLeave, cancelLeave } = useUnsavedGuard(dirty);
   useScrollLock();
@@ -317,8 +325,7 @@ export function LetterEditDrawer({
             <LetterPreviewFace
               to={local.to}
               body={local.body}
-              photo={local.photo}
-              photoRatio={local.photoRatio}
+              photos={letterPhotosFor(local, project.letterConfig)}
               date={project.date}
               font={FONTS[project.letterConfig.font].family}
               theme={theme}
@@ -374,7 +381,13 @@ export function LetterEditDrawer({
 
           {/* 入力欄(「新規作成」画面と共通のフィールド) */}
           {curTab === "letter" && (
-            <LetterFields value={local} onChange={set} font={FONTS[project.letterConfig.font].family} bodyRows={9} />
+            <LetterFields
+              value={local}
+              onChange={set}
+              letterConf={project.letterConfig}
+              font={FONTS[project.letterConfig.font].family}
+              bodyRows={9}
+            />
           )}
 
           {curTab === "card" && <CardFields value={local} onChange={set} cardConf={cardConf} />}

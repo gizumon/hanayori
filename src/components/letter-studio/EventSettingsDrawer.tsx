@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DatePicker } from "@/components/DatePicker";
-import { FONTS, THEMES } from "./constants";
+import { FONTS, MAX_LETTER_PHOTOS, THEMES } from "./constants";
 import { FontSelect, PillButton, Toggle, fieldStyle } from "./controls";
 import { isoToJaDate, jaDateToIso } from "@/lib/date";
 import { escortGeom, geom } from "./geometry";
 import { EscortCardFace } from "./EscortCardFace";
 import { CropModal } from "./CropModal";
+import { encodeImageFile } from "./imageEncode";
+import { LetterPhotos } from "./LetterPhotos";
+import { PhotoPicker } from "./PhotoPicker";
 import { MembersTab } from "./MembersTab";
 import { useStudio } from "./StudioContext";
 import { uploadIfDataUrl } from "./uploadImage";
@@ -25,6 +28,7 @@ import type {
   EventSettingsPatch,
   FontKey,
   Honor,
+  LetterPhoto,
   Project,
   SettingsTab,
 } from "./types";
@@ -38,6 +42,8 @@ interface EventSettingsForm {
   name: string;
   date: string | null;
   letterFont: FontKey;
+  /** お手紙の既定の写真。UI は 1 枚だが、データに合わせて配列で持つ。 */
+  letterPhotos: LetterPhoto[];
   card: CardConfig;
   escort: EscortConfig;
 }
@@ -47,6 +53,7 @@ function formOf(project: Project): EventSettingsForm {
     name: project.name,
     date: project.date,
     letterFont: project.letterConfig.font,
+    letterPhotos: project.letterConfig.defaultPhotos,
     card: { ...project.cardConfig },
     escort: { ...project.escortConfig },
   };
@@ -131,8 +138,28 @@ export function EventSettingsDrawer({
   const setEscort = (patch: Partial<EscortConfig>) =>
     setLocal((s) => ({ ...s, escort: { ...s.escort, ...patch } }));
 
-  // 既定写真: アップロードしたらまずクロップし、確定でドラフト(data URL)に入れて
-  // プレビューする。実際の Storage アップロードは手紙と同様「設定を保存」時に行う。
+  // お手紙の既定写真: 切り取りは挟まず、縮小した data URL をドラフトに入れる
+  // (お手紙側の写真と同じ扱い)。Storage へのアップロードは「設定を保存」時。
+  const setLetterPhotoAt = (i: number, next: LetterPhoto | null) => {
+    setLocal((s) => {
+      const photos = [...s.letterPhotos];
+      if (next) photos[i] = next;
+      else photos.splice(i, 1);
+      return { ...s, letterPhotos: photos };
+    });
+  };
+
+  const pickLetterPhoto = async (i: number, file: File) => {
+    try {
+      const { dataUrl, ratio } = await encodeImageFile(file);
+      setLetterPhotoAt(i, { id: local.letterPhotos[i]?.id ?? "", url: dataUrl, ratio });
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "画像の読み込みに失敗しました");
+    }
+  };
+
+  // エスコートの既定写真: アップロードしたらまずクロップし、確定でドラフト(data URL)に
+  // 入れてプレビューする。実際の Storage アップロードは同じく「設定を保存」時に行う。
   const [escortCropSrc, setEscortCropSrc] = useState<string | null>(null);
 
   const pickEscortDefaultPhoto = (file: File) => {
@@ -150,18 +177,23 @@ export function EventSettingsDrawer({
     setSaving(true);
     try {
       // 既定写真が data URL(未アップロード)なら Storage に上げて URL 化する。
-      const defaultPhoto = await uploadIfDataUrl(local.escort.defaultPhoto);
+      const [defaultPhoto, letterPhotos] = await Promise.all([
+        uploadIfDataUrl(local.escort.defaultPhoto),
+        Promise.all(
+          local.letterPhotos.map(async (p) => ({ ...p, url: (await uploadIfDataUrl(p.url)) ?? p.url }))
+        ),
+      ]);
       const escort = { ...local.escort, defaultPhoto };
       const ok = await onSave({
         name: local.name,
         date: local.date,
-        letterConfig: { font: local.letterFont },
+        letterConfig: { font: local.letterFont, defaultPhotos: letterPhotos },
         cardConfig: local.card,
         escortConfig: escort,
       });
       // 保存が通ったら、確定した URL をローカルにも反映して dirty を解消する。
       if (ok) {
-        const next = { ...local, escort };
+        const next = { ...local, escort, letterPhotos };
         setLocal(next);
         setSaved(next);
       }
@@ -317,6 +349,26 @@ export function EventSettingsDrawer({
                   sample="今日は来てくれてありがとう"
                 />
               </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <span style={sectionLabel}>お手紙の既定の写真</span>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {Array.from({ length: MAX_LETTER_PHOTOS }, (_, i) => (
+                    <PhotoPicker
+                      key={local.letterPhotos[i]?.id || i}
+                      photo={local.letterPhotos[i]?.url ?? null}
+                      onPick={(file) => void pickLetterPhoto(i, file)}
+                      onRemove={() => setLetterPhotoAt(i, null)}
+                      size={104}
+                      label="写真を選ぶ"
+                      ariaLabel="お手紙の既定の写真"
+                    />
+                  ))}
+                </div>
+                {/* 画面から読み取れない優先順位だけを伝える。 */}
+                <span style={{ fontSize: FONT_SIZE.overline, color: COLOR.inkFaint, letterSpacing: "0.05em" }}>
+                  お手紙ごとに設定した写真が優先されます
+                </span>
+              </div>
               {/* プレビューはどのタブでも一番下(タブを切り替えても位置が動かない) */}
               <div
                 style={{
@@ -403,6 +455,12 @@ export function EventSettingsDrawer({
                     今日は来てくれてありがとう。
                     {"\n"}おかげさまで、とても幸せな一日になりました。
                   </div>
+                  <LetterPhotos
+                    photos={local.letterPhotos}
+                    paper={theme.paper}
+                    width="min(72%,180px)"
+                    margin="18px auto 4px"
+                  />
                   <div
                     style={{
                       fontFamily: FONTS[local.letterFont].family,
@@ -585,57 +643,18 @@ export function EventSettingsDrawer({
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <span style={sectionLabel}>既定の写真(お手紙ごとに変更できます)</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                      <label
-                        className={styles.btnOutline}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          padding: "9px 18px",
-                          borderRadius: 999,
-                          border: `1px solid ${COLOR.border}`,
-                          background: COLOR.surfaceRaised,
-                          color: COLOR.ink,
-                          fontSize: FONT_SIZE.label,
-                          letterSpacing: "0.06em",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {local.escort.defaultPhoto ? "写真を変更" : "写真を選ぶ"}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: "none" }}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) pickEscortDefaultPhoto(file);
-                            e.target.value = "";
-                          }}
-                        />
-                      </label>
-                      {local.escort.defaultPhoto && (
-                        <button
-                          type="button"
-                          onClick={() => setEscort({ defaultPhoto: null, defaultPhotoRatio: null })}
-                          className={styles.btnGhost}
-                          style={{
-                            padding: "9px 14px",
-                            borderRadius: 999,
-                            border: "none",
-                            background: "transparent",
-                            color: COLOR.danger,
-                            fontSize: FONT_SIZE.label,
-                            letterSpacing: "0.06em",
-                            cursor: "pointer",
-                          }}
-                        >
-                          削除
-                        </button>
-                      )}
-                    </div>
+                    <span style={sectionLabel}>既定の写真</span>
+                    <PhotoPicker
+                      photo={local.escort.defaultPhoto}
+                      onPick={pickEscortDefaultPhoto}
+                      onRemove={() => setEscort({ defaultPhoto: null, defaultPhotoRatio: null })}
+                      size={104}
+                      label="写真を選ぶ"
+                      ariaLabel="エスコートカードの既定の写真"
+                    />
+                    {/* 画面から読み取れない優先順位だけを伝える(操作の説明は書かない)。 */}
                     <span style={{ fontSize: FONT_SIZE.overline, color: COLOR.inkFaint, letterSpacing: "0.05em" }}>
-                      アップロード時に切り取り位置を選べます。お手紙で個別に写真を設定するとそちらが優先されます。
+                      お手紙ごとに設定した写真が優先されます
                     </span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

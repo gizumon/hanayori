@@ -18,6 +18,11 @@ export type Honor = "" | "様" | "さん";
 /** お手紙のイベント共通設定 */
 export interface LetterConfigDoc {
   font: FontKey;
+  /**
+   * お手紙側で写真を設定しなかったときに使う既定の写真。並びは配列の順で、
+   * データとしては何枚でも持てる(画面から設定できるのは 1 枚)。
+   */
+  defaultPhotos: LetterPhoto[];
 }
 
 /** 席札/QRカードのイベント共通設定 */
@@ -135,7 +140,13 @@ export interface LetterDoc {
   to: string;
   body: string;
   theme: ThemeKey;
+  /** このお手紙の写真。空ならイベント既定(`letterConfig.defaultPhotos`)を使う。 */
   photos: LetterPhoto[];
+  /**
+   * true = このお手紙では写真を出さない(イベント既定も使わない)。
+   * 写真を持っているお手紙では意味を持たない(自分の写真が優先される)。
+   */
+  hidePhotos?: boolean;
   cardName: string | null;
   /** null = イベント既定の敬称に従う */
   honor: Honor | null;
