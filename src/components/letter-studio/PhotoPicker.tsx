@@ -40,8 +40,8 @@ interface PhotoPickerProps {
  * 共通設定から来ていることを示す)。× で外すと空になり、`onUseDefault` から
  * いつでも共通設定に戻せる。
  *
- * 枠は正方形だが写真は全体を収める(切り取りは CropModal で済ませてあるので、
- * ここで端を切ると出るものと違って見えてしまう)。
+ * 枠は正方形で、写真は端を切って枠を埋める。切り取った形そのものはプレビューで
+ * 分かるので、ここは枠の大きさを揃えて並びを乱さないほうを取っている。
  *
  * ファイル入力は隠さず読み上げ用に残してある(`display:none` にするとキーボードで
  * 到達できなくなるため)。フォーカスは枠の縁で示す。
@@ -88,13 +88,13 @@ export function PhotoPicker({
             border: photo
               ? `1px solid ${dropping ? COLOR.accent : COLOR.border}`
               : `1px dashed ${dropping ? COLOR.accent : COLOR.borderDash}`,
-            background: photo ? COLOR.surfaceRaised : dropping ? COLOR.tint : COLOR.surface,
+            // 一括指定の background にすると、色が変わる再描画(写真なし→あり)で
+            // backgroundSize/Position が既定へ戻され、写真が原寸・左上で出てしまう
+            // (React は値の変わっていない個別指定を書き直さないため)。色は個別に指定する。
+            backgroundColor: photo ? COLOR.surfaceRaised : dropping ? COLOR.tint : COLOR.surface,
             backgroundImage: photo ? `url('${photo}')` : undefined,
-            // 写真は切り取って入れるので、枠でさらに切らずに全体を収める
-            // (枠に見えている形が、そのままお手紙・カードに出る形)。
-            backgroundSize: "contain",
+            backgroundSize: "cover",
             backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
           }}
         >
           <input
